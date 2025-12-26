@@ -279,3 +279,47 @@ input[type="checkbox"]:hover {
 .hidden {
   display: none;
 }
+#map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+#map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-point {
+  fill: red;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.backward {
+  stroke: blue;
+}
+
+.forward {
+  stroke: red;
+}
+
+.arrow {
+  stroke-width: 2;
+  fill: none;
+  marker-end: url(#arrowhead-red);
+}
+
+.icon {
+  font-size: 16px;
+  user-select: none;
+  pointer-events: none;
+}

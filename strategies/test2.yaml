@@ -1,4 +1,24 @@
 name: test2
 selected: true
 color: blue
-tasks: []
+tasks:
+- description: Task 1
+  global_goal: []
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 200
+    - 500
+    - 0
+    wait: false
+- description: Task 2
+  global_goal: []
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 200
+    - 1000
+    - 700
+    wait: true

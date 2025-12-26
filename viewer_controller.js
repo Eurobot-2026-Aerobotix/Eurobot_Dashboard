@@ -313,4 +313,163 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
   }
 });
 
+function addDefs(svg) {
+  svg.innerHTML = `
+    <defs>
+      <marker id="arrowhead-red" markerWidth="10" markerHeight="7"
+        refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="red"/>
+      </marker>
+      <marker id="arrowhead-blue" markerWidth="10" markerHeight="7"
+        refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="blue"/>
+      </marker>
+    </defs>
+  `;
+}
+
+function mapToScreen(x, y) {
+  const img = document.getElementById("map");
+  const rect = img.getBoundingClientRect();
+
+  return {
+    cx: (y / 3000) * rect.width,   // y → right
+    cy: (x / 2000) * rect.height   // x → down
+  };
+}
+
+function renderMap() {
+  const svg = document.getElementById("map-overlay");
+  svg.innerHTML = "";
+  addDefs(svg);
+
+  if (!selected_strategy) return;
+
+  let currentPos = { x: 0, y: 0 };
+
+  selected_strategy.tasks.forEach(task => {
+    task.sequence.forEach(action => {
+
+      const backwards = action.command.includes("_backwards");
+
+      if (action.command.includes("set_position")) {
+        const [x, y] = action.params;
+        currentPos = { x, y };
+
+        drawPoint(svg, x, y, "robot");
+      }
+
+      else if (action.command.includes("go_to")) {
+        const [x, y] = action.params;
+        drawArrow(svg, currentPos, { x, y }, backwards);
+        drawPoint(svg, x, y);
+        currentPos = { x, y };
+      }
+
+      else if (action.command.includes("bezier")) {
+        drawBezier(svg, currentPos, action.params, backwards);
+        const [ , , , , x3, y3 ] = action.params;
+        currentPos = { x: x3, y: y3 };
+      }
+
+      else if (action.command.includes("orientate")) {
+        drawRotateIcon(svg, currentPos);
+      }
+
+      else if (action.command.includes("pick_up")) {
+        drawIcon(svg, currentPos, "⏳");
+      }
+
+      else if (action.command.includes("drop")) {
+        drawIcon(svg, currentPos, "📦");
+      }
+    });
+  });
+}
+
+function drawPoint(svg, x, y, cls = "") {
+  const { cx, cy } = mapToScreen(x, y);
+
+  const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  c.setAttribute("cx", cx);
+  c.setAttribute("cy", cy);
+  c.setAttribute("r", 6);
+  c.classList.add("map-point", cls);
+
+  enableDrag(c, x, y);
+  svg.appendChild(c);
+}
+
+function drawArrow(svg, from, to, backwards) {
+  const p1 = mapToScreen(from.x, from.y);
+  const p2 = mapToScreen(to.x, to.y);
+
+  const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l.setAttribute("x1", p1.cx);
+  l.setAttribute("y1", p1.cy);
+  l.setAttribute("x2", p2.cx);
+  l.setAttribute("y2", p2.cy);
+  l.classList.add("arrow", backwards ? "backward" : "forward");
+  l.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
+
+  svg.appendChild(l);
+}
+
+function drawBezier(svg, start, params, backwards) {
+  const [x1,y1,x2,y2,x3,y3] = params;
+
+  const p0 = mapToScreen(start.x, start.y);
+  const p1 = mapToScreen(x1, y1);
+  const p2 = mapToScreen(x2, y2);
+  const p3 = mapToScreen(x3, y3);
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    `M ${p0.cx} ${p0.cy} C ${p1.cx} ${p1.cy}, ${p2.cx} ${p2.cy}, ${p3.cx} ${p3.cy}`
+  );
+  path.classList.add(backwards ? "backward" : "forward");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke-width", "2");
+
+  svg.appendChild(path);
+
+  [x1,y1,x2,y2,x3,y3].forEach((_, i) => {
+    if (i % 2 === 0)
+      drawPoint(svg, params[i], params[i+1]);
+  });
+}
+function drawIcon(svg, pos, symbol) {
+  const { cx, cy } = mapToScreen(pos.x, pos.y);
+
+  const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  t.setAttribute("x", cx + 10);
+  t.setAttribute("y", cy - 10);
+  t.textContent = symbol;
+  t.classList.add("icon");
+
+  svg.appendChild(t);
+}
+
+function drawRotateIcon(svg, pos) {
+  drawIcon(svg, pos, "↻");
+}
+
+function enableDrag(el, x, y) {
+  let dragging = false;
+
+  el.addEventListener("mousedown", e => {
+    dragging = true;
+  });
+
+  window.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    el.setAttribute("cx", e.offsetX);
+    el.setAttribute("cy", e.offsetY);
+    // here you update action.params accordingly
+  });
+
+  window.addEventListener("mouseup", () => dragging = false);
+}
 populateAddList();
+renderMap();
