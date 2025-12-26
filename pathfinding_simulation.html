@@ -41,19 +41,20 @@
 
         .content {
             display: flex;
+            flex-direction: column;
             gap: 20px;
             padding: 20px;
         }
 
         .controls {
-            flex: 0 0 300px;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-start;
         }
 
         .map-container {
-            flex: 1;
+            width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -68,12 +69,14 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             border: 3px solid #333;
             cursor: crosshair;
+            max-width: 100%;
+            width: 100%;
         }
 
         #map {
             display: block;
-            width: 900px;
-            height: 600px;
+            width: 100%;
+            height: auto;
         }
 
         .marker {
@@ -177,7 +180,8 @@
             background: #ecf0f1;
             padding: 20px;
             border-radius: 8px;
-            margin-top: 10px;
+            flex: 2;
+            min-width: 400px;
         }
 
         .info-panel h3 {
@@ -190,8 +194,10 @@
             background: white;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 10px;
         }
 
         .pose-info h4 {
@@ -298,6 +304,13 @@
             transform: none;
         }
 
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 150px;
+        }
+
         .instructions {
             background: #fff3cd;
             border: 2px solid #ffc107;
@@ -321,11 +334,12 @@
         }
 
         .batch-selector {
-            margin-top: 20px;
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 250px;
         }
 
         .batch-selector h4 {
@@ -423,56 +437,6 @@
         </div>
 
         <div class="content">
-            <div class="controls">
-                <div class="instructions">
-                    <h4>📋 Instructions:</h4>
-                    <ol>
-                        <li>Click a pose button</li>
-                        <li>Click on the map</li>
-                        <li>Set orientation</li>
-                        <li>Confirm to send</li>
-                    </ol>
-                </div>
-
-                <button class="button start-btn" id="startPoseBtn">
-                    🎯 Start Pose
-                </button>
-
-                <button class="button enemy-btn" id="enemyPoseBtn">
-                    ⚠️ Enemy Pose
-                </button>
-
-                <div class="info-panel">
-                    <h3>Current Poses</h3>
-                    
-                    <div class="pose-info start-pose">
-                        <h4>Start Position</h4>
-                        <p id="startX">X: -</p>
-                        <p id="startY">Y: -</p>
-                        <p id="startTheta">θ: -</p>
-                    </div>
-
-                    <div class="pose-info enemy-pose">
-                        <h4>Enemy Position</h4>
-                        <p id="enemyX">X: -</p>
-                        <p id="enemyY">Y: -</p>
-                        <p id="enemyTheta">θ: -</p>
-                    </div>
-                </div>
-
-                <div class="batch-selector">
-                    <h4>🔢 Batch Selector</h4>
-                    
-                    <button class="batch-toggle-all" id="toggleAllBtn">
-                        Toggle All Batches
-                    </button>
-
-                    <div class="batch-list" id="batchList">
-                        <!-- Batch items will be populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
             <div class="map-container">
                 <div class="map-wrapper" id="mapWrapper">
                     <img id="map" src="resources/map.png" alt="Eurobot Map">
@@ -502,6 +466,48 @@
                     <button class="confirm-btn" id="confirmBtn">
                         ✓ Confirm & Send
                     </button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="button-group">
+                    <button class="button start-btn" id="startPoseBtn">
+                        🎯 Start Pose
+                    </button>
+
+                    <button class="button enemy-btn" id="enemyPoseBtn">
+                        ⚠️ Enemy Pose
+                    </button>
+                </div>
+
+                <div class="info-panel">
+                    <h3>Current Poses</h3>
+                    
+                    <div class="pose-info start-pose">
+                        <h4>Start Position</h4>
+                        <p id="startX">X: -</p>
+                        <p id="startY">Y: -</p>
+                        <p id="startTheta">θ: -</p>
+                    </div>
+
+                    <div class="pose-info enemy-pose">
+                        <h4>Enemy Position</h4>
+                        <p id="enemyX">X: -</p>
+                        <p id="enemyY">Y: -</p>
+                        <p id="enemyTheta">θ: -</p>
+                    </div>
+                </div>
+
+                <div class="batch-selector">
+                    <h4>🔢 Batch Selector</h4>
+                    
+                    <button class="batch-toggle-all" id="toggleAllBtn">
+                        Toggle All Batches
+                    </button>
+
+                    <div class="batch-list" id="batchList">
+                        <!-- Batch items will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
         </div>
