@@ -9,7 +9,7 @@ goal_point:
   theta: 90
 batches:
   - batch_id: 1
-    known_id: "V_TOP_LEFT"
+    known_id: "V_TOP_LEFT1"
     count: 4
     direction: "vertical"
     phi_deg: 0.0

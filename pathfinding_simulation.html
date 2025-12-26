@@ -320,6 +320,77 @@
             margin: 5px 0;
         }
 
+        .batch-selector {
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .batch-selector h4 {
+            margin-bottom: 15px;
+            color: #34495e;
+            font-size: 1.1em;
+        }
+
+        .batch-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .batch-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        .batch-item:hover {
+            background: #d5dbdb;
+        }
+
+        .batch-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .batch-label {
+            flex: 1;
+            cursor: pointer;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .batch-count {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            padding: 3px 8px;
+            background: white;
+            border-radius: 3px;
+        }
+
+        .batch-toggle-all {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+
+        .batch-toggle-all:hover {
+            background: #2980b9;
+        }
+
         .obstacle-marker {
             position: absolute;
             width: 20px;
@@ -335,6 +406,12 @@
             justify-content: center;
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: opacity 0.3s;
+        }
+
+        .obstacle-marker.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -380,6 +457,18 @@
                         <p id="enemyX">X: -</p>
                         <p id="enemyY">Y: -</p>
                         <p id="enemyTheta">θ: -</p>
+                    </div>
+                </div>
+
+                <div class="batch-selector">
+                    <h4>🔢 Batch Selector</h4>
+                    
+                    <button class="batch-toggle-all" id="toggleAllBtn">
+                        Toggle All Batches
+                    </button>
+
+                    <div class="batch-list" id="batchList">
+                        <!-- Batch items will be populated by JavaScript -->
                     </div>
                 </div>
             </div>
@@ -433,6 +522,8 @@
             enemy: null
         };
         let obstacles = []; // Store obstacles from YAML
+        let batches = [];   // Store batch information
+        let batchVisibility = {}; // Track which batches are visible
 
         // DOM Elements
         const mapWrapper = document.getElementById('mapWrapper');
@@ -443,15 +534,22 @@
         const orientationInput = document.getElementById('orientationInput');
         const confirmBtn = document.getElementById('confirmBtn');
         const orientationBtns = document.querySelectorAll('.orientation-btn');
+        const batchList = document.getElementById('batchList');
+        const toggleAllBtn = document.getElementById('toggleAllBtn');
 
-        // Load obstacles on page load
+        // Load obstacles and batches on page load
         loadObstacles();
+
+        // Toggle all batches
+        toggleAllBtn.addEventListener('click', toggleAllBatches);
+        loadBatches();
 
         // Initialize
         startPoseBtn.addEventListener('click', () => activateMode('start'));
         enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
         mapWrapper.addEventListener('click', handleMapClick);
         confirmBtn.addEventListener('click', confirmPose);
+        toggleAllBtn.addEventListener('click', toggleAllBatches);
 
         // Orientation button handlers
         orientationBtns.forEach(btn => {
@@ -487,6 +585,17 @@
                 
                 if (data.batches) {
                     data.batches.forEach(batch => {
+                        // Store batch information
+                        batches.push({
+                            batch_id: batch.batch_id,
+                            known_id: batch.known_id,
+                            direction: batch.direction,
+                            count: batch.count
+                        });
+                        
+                        // Initialize batch visibility (all visible by default)
+                        batchVisibility[batch.batch_id] = true;
+                        
                         if (batch.members) {
                             batch.members.forEach(member => {
                                 obstacles.push({
@@ -505,7 +614,10 @@
                 // Draw obstacles on map
                 drawObstacles();
                 
-                console.log(`Loaded ${obstacles.length} obstacles`);
+                // Populate batch selector
+                populateBatchSelector();
+                
+                console.log(`Loaded ${obstacles.length} obstacles in ${batches.length} batches`);
             } catch (error) {
                 console.error('Error loading obstacles:', error);
             }
@@ -526,6 +638,10 @@
                     currentBatch = { members: [] };
                     currentBatch.batch_id = parseInt(line.split(':')[1]);
                     data.batches.push(currentBatch);
+                } else if (line.includes('known_id:') && currentBatch && !line.includes('-')) {
+                    currentBatch.known_id = line.split(':')[1].trim().replace(/"/g, '');
+                } else if (line.includes('count:') && currentBatch) {
+                    currentBatch.count = parseInt(line.split(':')[1]);
                 } else if (line.includes('direction:') && currentBatch) {
                     currentBatch.direction = line.split(':')[1].trim().replace(/"/g, '');
                 } else if (line.includes('- aruco_id:') && currentBatch) {
@@ -585,6 +701,7 @@
                 // Create obstacle marker
                 const obstacleMarker = document.createElement('div');
                 obstacleMarker.className = 'obstacle-marker';
+                obstacleMarker.dataset.batchId = obstacle.batch_id;  // Add batch ID as data attribute
                 obstacleMarker.style.left = center_x_px + 'px';
                 obstacleMarker.style.top = center_y_px + 'px';
                 obstacleMarker.style.position = 'absolute';
@@ -616,6 +733,74 @@
                 obstacleMarker.title = `ArUco ID: ${obstacle.aruco_id}\nColor: ${obstacle.color}\nPosition: (${obstacle.x}, ${obstacle.y})\nDirection: ${obstacle.direction}\nSize: ${width_mm}x${height_mm}mm`;
                 
                 mapWrapper.appendChild(obstacleMarker);
+            });
+        }
+
+        function populateBatchSelector() {
+            batchList.innerHTML = '';
+            
+            batches.forEach(batch => {
+                const batchItem = document.createElement('div');
+                batchItem.className = 'batch-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'batch-checkbox';
+                checkbox.id = `batch-${batch.batch_id}`;
+                checkbox.checked = batchVisibility[batch.batch_id];
+                checkbox.addEventListener('change', () => toggleBatchVisibility(batch.batch_id));
+                
+                const label = document.createElement('label');
+                label.className = 'batch-label';
+                label.htmlFor = `batch-${batch.batch_id}`;
+                label.textContent = batch.known_id || `Batch ${batch.batch_id}`;
+                
+                const count = document.createElement('span');
+                count.className = 'batch-count';
+                count.textContent = `${batch.count} items`;
+                
+                batchItem.appendChild(checkbox);
+                batchItem.appendChild(label);
+                batchItem.appendChild(count);
+                
+                batchList.appendChild(batchItem);
+            });
+        }
+
+        function toggleBatchVisibility(batchId) {
+            batchVisibility[batchId] = !batchVisibility[batchId];
+            
+            // Update obstacle markers visibility using data attribute
+            const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batchId}"]`);
+            obstacleMarkers.forEach(marker => {
+                if (batchVisibility[batchId]) {
+                    marker.classList.remove('hidden');
+                } else {
+                    marker.classList.add('hidden');
+                }
+            });
+        }
+
+        function toggleAllBatches() {
+            const allChecked = batches.every(batch => batchVisibility[batch.batch_id]);
+            
+            // Toggle all to opposite state
+            batches.forEach(batch => {
+                batchVisibility[batch.batch_id] = !allChecked;
+                const checkbox = document.getElementById(`batch-${batch.batch_id}`);
+                if (checkbox) {
+                    checkbox.checked = !allChecked;
+                }
+                
+                // Update markers for this batch
+                const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batch.batch_id}"]`);
+                obstacleMarkers.forEach(marker => {
+                    if (!allChecked) {
+                        marker.classList.remove('hidden');
+                    } else {
+                        marker.classList.add('hidden');
+                    }
+                });
             });
         }
 
