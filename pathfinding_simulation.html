@@ -483,15 +483,15 @@
                     <h4>Select Orientation</h4>
                     
                     <div class="orientation-grid">
-                        <button class="orientation-btn" data-angle="90">↑</button>
-                        <button class="orientation-btn" data-angle="45">↗</button>
-                        <button class="orientation-btn" data-angle="0">→</button>
-                        <button class="orientation-btn" data-angle="135">↖</button>
-                        <button class="orientation-btn" data-angle="180">●</button>
-                        <button class="orientation-btn" data-angle="-45">↘</button>
-                        <button class="orientation-btn" data-angle="-90">↓</button>
-                        <button class="orientation-btn" data-angle="-135">↙</button>
-                        <button class="orientation-btn" data-angle="180">←</button>
+                        <button class="orientation-btn" data-angle="180">↑</button>
+                        <button class="orientation-btn" data-angle="135">↗</button>
+                        <button class="orientation-btn" data-angle="90">→</button>
+                        <button class="orientation-btn" data-angle="-135">↖</button>
+                        <button class="orientation-btn" data-angle="0">●</button>
+                        <button class="orientation-btn" data-angle="45">↘</button>
+                        <button class="orientation-btn" data-angle="0">↓</button>
+                        <button class="orientation-btn" data-angle="-45">↙</button>
+                        <button class="orientation-btn" data-angle="-90">←</button>
                     </div>
 
                     <div class="orientation-input">
@@ -886,8 +886,10 @@
 
         function updateMarkerOrientation(marker, angle) {
             const arrow = marker.querySelector('.marker-arrow');
-            // Convert to rotation (0° = right, 90° = up)
-            arrow.style.transform = `translate(-50%, -50%) rotate(${-angle + 90}deg)`;
+            // Your coordinate system: 0° = down, 90° = right, counter-clockwise
+            // CSS rotate: 0° = up, positive = clockwise
+            // Conversion: CSS_angle = -angle (to flip direction) + 180 (to start from down instead of up)
+            arrow.style.transform = `translate(-50%, -50%) rotate(${-angle + 180}deg)`;
         }
 
         function confirmPose() {
