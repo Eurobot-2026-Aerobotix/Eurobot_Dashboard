@@ -234,6 +234,11 @@
             color: white;
         }
 
+        .button.find-path-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+        }
+
         .button.active {
             animation: pulse 1.5s infinite;
         }
@@ -557,6 +562,10 @@
                     <button class="button goal-btn" id="goalPoseBtn">
                         🏁 Goal Pose
                     </button>
+
+                    <button class="button find-path-btn" id="findPathBtn">
+                        🔍 Find Path
+                    </button>
                 </div>
 
                 <div class="info-panel">
@@ -624,6 +633,7 @@
         const startPoseBtn = document.getElementById('startPoseBtn');
         const enemyPoseBtn = document.getElementById('enemyPoseBtn');
         const goalPoseBtn = document.getElementById('goalPoseBtn');
+        const findPathBtn = document.getElementById('findPathBtn');
         const orientationSelector = document.getElementById('orientationSelector');
         const orientationInput = document.getElementById('orientationInput');
         const confirmBtn = document.getElementById('confirmBtn');
@@ -638,6 +648,7 @@
         startPoseBtn.addEventListener('click', () => activateMode('start'));
         enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
         goalPoseBtn.addEventListener('click', () => activateMode('goal'));
+        findPathBtn.addEventListener('click', findPath);
         mapWrapper.addEventListener('click', handleMapClick);
         confirmBtn.addEventListener('click', confirmPose);
         toggleAllBtn.addEventListener('click', toggleAllBatches);
@@ -1179,6 +1190,15 @@
         function send_goal() {
             console.log('send_goal() called');
             console.log('Goal Pose:', poses.goal);
+        }
+
+        function findPath() {
+            // TODO: Implement pathfinding logic
+            console.log('findPath() called');
+            console.log('Start:', poses.start);
+            console.log('Goal:', poses.goal);
+            console.log('Enemy:', poses.enemy);
+            console.log('Obstacles:', obstacles);
         }
     </script>
 </body>
