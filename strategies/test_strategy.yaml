@@ -8,6 +8,13 @@ tasks:
   - 2
   - 0
   sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 200
+    - 400
+    - 0
+    wait: false
   - device: motor
     command: move
     params:
@@ -29,14 +36,12 @@ tasks:
     command: go_to
     params: []
     wait: false
-  - device: Task
+  - device: STM
+    command: go_to
     params: []
     wait: false
   - device: STM
-    command: orientate
-    params: []
-    wait: false
-  - device: Task
+    command: go_to
     params: []
     wait: false
   - device: STM
@@ -47,30 +52,8 @@ tasks:
     command: go_to
     params: []
     wait: false
-  - device: motor
-    command: rotate
-    params:
-    - 90
-    wait: false
   - device: STM
     command: go_to
-    params: []
-    wait: false
-  - device: STM
-    command: go_to
-    params: []
-    wait: false
-  - device: motor
-    command: orientate
-    params:
-    - 90
-    - 0
-    wait: false
-  - device: STM
-    command: go_to
-    params: []
-    wait: false
-  - device: Task
     params: []
     wait: false
 - description: Task 3
@@ -104,26 +87,10 @@ tasks:
     wait: false
 - description: Task 4
   global_goal: []
-  sequence:
-  - device: STM
-    command: bezier
-    params: []
-    wait: false
+  sequence: []
 - description: Task 5
   global_goal: []
   sequence:
-  - device: STM
-    command: bezier_backwards
-    params: []
-    wait: false
-  - device: ESP_front
-    command: pick_up
-    params: []
-    wait: false
-  - device: ESP_front
-    command: put_down
-    params: []
-    wait: false
   - device: ESP_front
     command: prepare
     params: []
@@ -142,18 +109,16 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
-    wait: false
-- description: Task 6
-  global_goal: []
-  sequence:
-  - device: STM
-    command: bezier_backwards
     params: []
     wait: false
 - description: Task 7
   global_goal: []
   sequence:
+  - device: STM
+    command: orientate
+    params:
+    - 180
+    wait: false
   - device: STM
     command: go_to
     params:
@@ -162,7 +127,23 @@ tasks:
     - 700
     wait: false
   - device: STM
-    command: orientate
+    command: bezier
     params:
-    - 90.5
+    - -50
+    - 0
+    - 84
+    - 500
+    - -20
+    - 0
+    - 750
     wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 700
+    - 1800
+    - 200
+    wait: false
+- description: Task 7
+  global_goal: []
+  sequence: []

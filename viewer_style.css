@@ -256,3 +256,26 @@ input[type="checkbox"]:checked::after {
 input[type="checkbox"]:hover {
   background-color: #4a4a7a;
 }
+.context-menu {
+  position: fixed;
+  background-color: #2b2b3f;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  z-index: 2000;
+  width: 120px;
+}
+
+.context-menu div {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.context-menu div:hover {
+  background-color: #4a4a7a;
+}
+
+.hidden {
+  display: none;
+}
