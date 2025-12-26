@@ -328,9 +328,19 @@ function populateBatchSelector() {
         count.className = 'batch-count';
         count.textContent = `${batch.count} items`;
         
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'batch-delete-btn';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Delete batch';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteBatch(batch.batch_id, batch.known_id);
+        });
+        
         batchItem.appendChild(checkbox);
         batchItem.appendChild(label);
         batchItem.appendChild(count);
+        batchItem.appendChild(deleteBtn);
         
         batchList.appendChild(batchItem);
     });
@@ -799,7 +809,7 @@ async function saveBatch() {
     
     // Validation
     if (!knownId) {
-        alert('Please enter a Known ID');
+        console.log('Known ID is required');
         return;
     }
     
@@ -897,10 +907,10 @@ async function saveBatch() {
         // Close modal
         closeModal();
         
-        alert(`Batch "${knownId}" saved successfully!`);
+        console.log(`Batch "${knownId}" saved successfully!`);
     } catch (error) {
         console.error('Error saving batch:', error);
-        alert('Error saving batch. Please try again.');
+        console.log('Error saving batch. Please try again.');
     }
 }
 
@@ -913,7 +923,7 @@ function sendBatches() {
     const selectedBatches = batches.filter(batch => batchVisibility[batch.batch_id]);
     
     if (selectedBatches.length === 0) {
-        alert('⚠️ No batches selected! Please select at least one batch to send.');
+        console.warn('⚠️ No batches selected!');
         return;
     }
     
@@ -945,13 +955,53 @@ function sendBatches() {
     // TODO: Add your sending logic here
     // Example: Send to ROS2 node, WebSocket, HTTP API, etc.
     
-    // For now, show a success message
-    alert(`✅ Ready to send ${selectedBatches.length} batches with ${batchesTable.reduce((sum, b) => sum + b.members.length, 0)} members!\n\n` +
-          `Selected batches:\n${selectedBatches.map(b => `- ${b.known_id} (${b.count} items)`).join('\n')}\n\n` +
-          `Check console for full details.`);
-    
     // Return the batches table for further use
     return batchesTable;
+}
+
+// -------------------------------------------------
+// Delete Batch Function
+// -------------------------------------------------
+
+async function deleteBatch(batchId, knownId) {
+    try {
+        // Call server to delete batch from YAML
+        const response = await fetch(`http://localhost:8000/obstacles/batch/${batchId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete batch');
+        }
+        
+        const result = await response.json();
+        console.log('🗑️ Batch deleted:', result);
+        
+        // Remove from local state
+        const batchIndex = batches.findIndex(b => b.batch_id === batchId);
+        if (batchIndex !== -1) {
+            batches.splice(batchIndex, 1);
+        }
+        
+        // Remove obstacles for this batch
+        obstacles = obstacles.filter(obs => obs.batch_id !== batchId);
+        
+        // Remove visibility state
+        delete batchVisibility[batchId];
+        
+        // Redraw obstacles
+        const existingObstacles = document.querySelectorAll('.obstacle-marker');
+        existingObstacles.forEach(marker => marker.remove());
+        drawObstacles();
+        
+        // Update batch selector
+        populateBatchSelector();
+        
+        console.log(`✅ Batch "${knownId}" deleted successfully!`);
+        
+    } catch (error) {
+        console.error('Error deleting batch:', error);
+    }
 }
 
 // -------------------------------------------------

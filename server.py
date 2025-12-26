@@ -156,6 +156,36 @@ def add_batch():
     return jsonify({"status": "saved", "batch_id": batch_id})
 
 
+# -------------------------------------------------
+# Delete a batch from obstacles
+# DELETE /obstacles/batch/<batch_id>
+# -------------------------------------------------
+@app.route("/obstacles/batch/<int:batch_id>", methods=["DELETE"])
+def delete_batch(batch_id):
+    if not os.path.exists(OBSTACLES_FILE):
+        abort(404, "Obstacles file not found")
+    
+    # Load existing data
+    with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    
+    if "batches" not in data or not data["batches"]:
+        abort(404, "No batches found")
+    
+    # Find and remove the batch
+    original_length = len(data["batches"])
+    data["batches"] = [b for b in data["batches"] if b.get("batch_id") != batch_id]
+    
+    if len(data["batches"]) == original_length:
+        abort(404, f"Batch with ID {batch_id} not found")
+    
+    # Save back to file
+    with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+    
+    return jsonify({"status": "deleted", "batch_id": batch_id})
+
+
 def run_flask():
     app.run(host="localhost", port=8000, debug=False)
 
