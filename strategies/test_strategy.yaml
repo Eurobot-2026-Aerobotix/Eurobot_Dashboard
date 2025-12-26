@@ -14,7 +14,36 @@ tasks:
     - 100
     wait: true
   - device: motor
+    command: go_to
+    params:
+    - 100
+    - 500
+    wait: true
+  - device: motor
     command: rotate
     params:
     - 90
+    wait: false
+- description: arja3
+  global_goal:
+  - 1
+  - 8
+  - 90
+  sequence:
+  - device: motor
+    command: orientate
+    params:
+    - 90
+    - 0
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: STM
+    command: orientate
+    params: []
+    wait: false
+  - device: Task
+    params: []
     wait: false
