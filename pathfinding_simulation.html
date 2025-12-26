@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinding Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .controls {
+            flex: 0 0 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .map-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .map-wrapper {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 3px solid #333;
+            cursor: crosshair;
+        }
+
+        #map {
+            display: block;
+            width: 900px;
+            height: 600px;
+        }
+
+        .marker {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .marker-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .marker-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid;
+        }
+
+        .marker.start .marker-circle {
+            background: rgba(46, 204, 113, 0.7);
+            border-color: #27ae60;
+        }
+
+        .marker.enemy .marker-circle {
+            background: rgba(231, 76, 60, 0.7);
+            border-color: #c0392b;
+        }
+
+        .marker-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 15px solid;
+            transform-origin: center 60%;
+        }
+
+        .marker.start .marker-arrow {
+            border-bottom-color: #27ae60;
+        }
+
+        .marker.enemy .marker-arrow {
+            border-bottom-color: #c0392b;
+        }
+
+        .button {
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.start-btn {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+
+        .button.enemy-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .button.active {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            50% {
+                box-shadow: 0 4px 20px rgba(255,255,255,0.5), 0 0 20px currentColor;
+            }
+        }
+
+        .info-panel {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+
+        .pose-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pose-info h4 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .pose-info.start-pose h4 {
+            color: #27ae60;
+        }
+
+        .pose-info.enemy-pose h4 {
+            color: #c0392b;
+        }
+
+        .pose-info p {
+            margin: 5px 0;
+            color: #555;
+            font-family: 'Courier New', monospace;
+        }
+
+        .orientation-selector {
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .orientation-selector h4 {
+            margin-bottom: 15px;
+            color: #34495e;
+        }
+
+        .orientation-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .orientation-btn {
+            padding: 10px;
+            background: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+
+        .orientation-btn:hover {
+            background: #bdc3c7;
+        }
+
+        .orientation-btn.selected {
+            background: #3498db;
+            border-color: #2980b9;
+            color: white;
+        }
+
+        .orientation-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .orientation-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .orientation-input label {
+            font-weight: bold;
+            color: #34495e;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .confirm-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .confirm-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: #856404;
+        }
+
+        .instructions h4 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Pathfinding Simulation</h1>
+            <p>Interactive Map - 3m x 2m (3000 x 2000 pixels)</p>
+        </div>
+
+        <div class="content">
+            <div class="controls">
+                <div class="instructions">
+                    <h4>📋 Instructions:</h4>
+                    <ol>
+                        <li>Click a pose button</li>
+                        <li>Click on the map</li>
+                        <li>Set orientation</li>
+                        <li>Confirm to send</li>
+                    </ol>
+                </div>
+
+                <button class="button start-btn" id="startPoseBtn">
+                    🎯 Start Pose
+                </button>
+
+                <button class="button enemy-btn" id="enemyPoseBtn">
+                    ⚠️ Enemy Pose
+                </button>
+
+                <div class="info-panel">
+                    <h3>Current Poses</h3>
+                    
+                    <div class="pose-info start-pose">
+                        <h4>Start Position</h4>
+                        <p id="startX">X: -</p>
+                        <p id="startY">Y: -</p>
+                        <p id="startTheta">θ: -</p>
+                    </div>
+
+                    <div class="pose-info enemy-pose">
+                        <h4>Enemy Position</h4>
+                        <p id="enemyX">X: -</p>
+                        <p id="enemyY">Y: -</p>
+                        <p id="enemyTheta">θ: -</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div class="map-wrapper" id="mapWrapper">
+                    <img id="map" src="resources/map.png" alt="Eurobot Map">
+                    <!-- Markers will be added dynamically -->
+                </div>
+
+                <div class="orientation-selector" id="orientationSelector" style="display: none;">
+                    <h4>Select Orientation</h4>
+                    
+                    <div class="orientation-grid">
+                        <button class="orientation-btn" data-angle="90">↑</button>
+                        <button class="orientation-btn" data-angle="45">↗</button>
+                        <button class="orientation-btn" data-angle="0">→</button>
+                        <button class="orientation-btn" data-angle="135">↖</button>
+                        <button class="orientation-btn" data-angle="180">●</button>
+                        <button class="orientation-btn" data-angle="-45">↘</button>
+                        <button class="orientation-btn" data-angle="-90">↓</button>
+                        <button class="orientation-btn" data-angle="-135">↙</button>
+                        <button class="orientation-btn" data-angle="180">←</button>
+                    </div>
+
+                    <div class="orientation-input">
+                        <label>Angle (°):</label>
+                        <input type="number" id="orientationInput" min="-180" max="180" step="1" placeholder="0">
+                    </div>
+
+                    <button class="confirm-btn" id="confirmBtn">
+                        ✓ Confirm & Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const MAP_WIDTH_MM = 3000;  // 3000mm = 3m
+        const MAP_HEIGHT_MM = 2000; // 2000mm = 2m
+        const MAP_WIDTH_PX = 3000;  // pixels
+        const MAP_HEIGHT_PX = 2000; // pixels
+
+        // State
+        let currentMode = null; // 'start' or 'enemy'
+        let pendingPose = null;
+        let poses = {
+            start: null,
+            enemy: null
+        };
+
+        // DOM Elements
+        const mapWrapper = document.getElementById('mapWrapper');
+        const map = document.getElementById('map');
+        const startPoseBtn = document.getElementById('startPoseBtn');
+        const enemyPoseBtn = document.getElementById('enemyPoseBtn');
+        const orientationSelector = document.getElementById('orientationSelector');
+        const orientationInput = document.getElementById('orientationInput');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const orientationBtns = document.querySelectorAll('.orientation-btn');
+
+        // Initialize
+        startPoseBtn.addEventListener('click', () => activateMode('start'));
+        enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
+        mapWrapper.addEventListener('click', handleMapClick);
+        confirmBtn.addEventListener('click', confirmPose);
+
+        // Orientation button handlers
+        orientationBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const angle = btn.dataset.angle;
+                orientationInput.value = angle;
+                
+                // Update selected state
+                orientationBtns.forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                
+                if (pendingPose) {
+                    updateMarkerOrientation(pendingPose.marker, angle);
+                }
+            });
+        });
+
+        // Manual orientation input
+        orientationInput.addEventListener('input', () => {
+            orientationBtns.forEach(b => b.classList.remove('selected'));
+            if (pendingPose) {
+                updateMarkerOrientation(pendingPose.marker, orientationInput.value);
+            }
+        });
+
+        function activateMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            startPoseBtn.classList.toggle('active', mode === 'start');
+            enemyPoseBtn.classList.toggle('active', mode === 'enemy');
+            
+            // Hide orientation selector
+            orientationSelector.style.display = 'none';
+            
+            // Clear pending pose
+            if (pendingPose && pendingPose.marker) {
+                pendingPose.marker.remove();
+            }
+            pendingPose = null;
+        }
+
+        function handleMapClick(event) {
+            if (!currentMode) return;
+
+            // Get click position relative to map
+            const rect = map.getBoundingClientRect();
+            const x_px = event.clientX - rect.left;
+            const y_px = event.clientY - rect.top;
+
+            // Convert to actual map coordinates (mm)
+            const displayWidth = map.offsetWidth;
+            const displayHeight = map.offsetHeight;
+            
+            const x_mm = (y_px / displayHeight) * MAP_HEIGHT_MM;
+            const y_mm = (x_px / displayWidth) * MAP_WIDTH_MM;
+
+            // Round to 1 decimal place
+            const x = Math.round(x_mm * 10) / 10;
+            const y = Math.round(y_mm * 10) / 10;
+
+            // Remove old pending marker if exists
+            if (pendingPose && pendingPose.marker) {
+                pendingPose.marker.remove();
+            }
+
+            // Create marker
+            const marker = createMarker(x_px, y_px, currentMode);
+            
+            // Store pending pose
+            pendingPose = {
+                x: x,
+                y: y,
+                theta: 0,
+                marker: marker,
+                type: currentMode
+            };
+
+            // Show orientation selector
+            orientationSelector.style.display = 'block';
+            orientationInput.value = '0';
+            orientationBtns.forEach(b => b.classList.remove('selected'));
+        }
+
+        function createMarker(x_px, y_px, type) {
+            const marker = document.createElement('div');
+            marker.className = `marker ${type}`;
+            marker.style.left = x_px + 'px';
+            marker.style.top = y_px + 'px';
+            
+            marker.innerHTML = `
+                <div class="marker-inner">
+                    <div class="marker-circle"></div>
+                    <div class="marker-arrow"></div>
+                </div>
+            `;
+            
+            mapWrapper.appendChild(marker);
+            return marker;
+        }
+
+        function updateMarkerOrientation(marker, angle) {
+            const arrow = marker.querySelector('.marker-arrow');
+            // Convert to rotation (0° = right, 90° = up)
+            arrow.style.transform = `translate(-50%, -50%) rotate(${-angle + 90}deg)`;
+        }
+
+        function confirmPose() {
+            if (!pendingPose) return;
+
+            const theta = parseFloat(orientationInput.value) || 0;
+            pendingPose.theta = theta;
+
+            // Store the pose
+            poses[pendingPose.type] = {
+                x: pendingPose.x,
+                y: pendingPose.y,
+                theta: theta
+            };
+
+            // Update display
+            updatePoseDisplay(pendingPose.type, pendingPose.x, pendingPose.y, theta);
+
+            // Call appropriate function
+            if (pendingPose.type === 'start') {
+                send_start();
+            } else {
+                send_enemy();
+            }
+
+            // Clean up
+            orientationSelector.style.display = 'none';
+            currentMode = null;
+            startPoseBtn.classList.remove('active');
+            enemyPoseBtn.classList.remove('active');
+            pendingPose = null;
+        }
+
+        function updatePoseDisplay(type, x, y, theta) {
+            if (type === 'start') {
+                document.getElementById('startX').textContent = `X: ${x.toFixed(1)} mm`;
+                document.getElementById('startY').textContent = `Y: ${y.toFixed(1)} mm`;
+                document.getElementById('startTheta').textContent = `θ: ${theta.toFixed(1)}°`;
+            } else {
+                document.getElementById('enemyX').textContent = `X: ${x.toFixed(1)} mm`;
+                document.getElementById('enemyY').textContent = `Y: ${y.toFixed(1)} mm`;
+                document.getElementById('enemyTheta').textContent = `θ: ${theta.toFixed(1)}°`;
+            }
+        }
+
+        // Functions to be implemented later
+        function send_start() {
+            console.log('send_start() called');
+            console.log('Start Pose:', poses.start);
+            // TODO: Implement this function
+        }
+
+        function send_enemy() {
+            console.log('send_enemy() called');
+            console.log('Enemy Pose:', poses.enemy);
+            // TODO: Implement this function
+        }
+    </script>
+</body>
+</html>
