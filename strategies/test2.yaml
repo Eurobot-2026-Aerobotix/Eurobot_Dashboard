@@ -8,8 +8,8 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - 200
-    - 500
+    - '246.76'
+    - '389.84'
     - 0
     wait: false
 - description: Task 2
@@ -18,7 +18,51 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 200
-    - 1000
+    - '567.94'
+    - '272.34'
     - 700
     wait: true
+  - device: STM
+    command: go_to
+    params:
+    - '885.20'
+    - '331.09'
+    - 700
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1135.87'
+    - '785.44'
+    - '1288.63'
+    - '158.75'
+    - '1476.64'
+    - '679.68'
+    - 700
+    wait: true
+- description: Task 3
+  global_goal: []
+  sequence:
+  - device: STM
+    command: orientate
+    params:
+    - 90
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - '1331.71'
+    - '1764.64'
+    - 700
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1695.98'
+    - '1725.47'
+    - 700
+    wait: false

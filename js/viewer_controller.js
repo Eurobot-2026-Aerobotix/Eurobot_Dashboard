@@ -1,7 +1,7 @@
-import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./js/file_handler.js"; // your API functions
-import { Strategy } from "./classes/Strategy.js";
-import { Task } from "./classes/Task.js";
-import { Action } from "./classes/Action.js";
+import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js"; // your API functions
+import { Strategy } from "../classes/Strategy.js";
+import { Task } from "../classes/Task.js";
+import { Action } from "../classes/Action.js";
 
 
 let strategies = [];
@@ -30,8 +30,6 @@ async function get_selected_strategy() {
   renderTasks();
 }
 
-get_selected_strategy();
-
 // ------------------------------
 // Render tasks and actions
 // ------------------------------
@@ -54,23 +52,73 @@ function renderTasks() {
     task.sequence.forEach((action, actionIndex) => {
       const actionDiv = document.createElement("div");
       actionDiv.classList.add("action-item");
-      actionDiv.textContent = `${action.device} - ${action.command}(${action.params.join(", ")}) with${action.wait?"":"out"} waiting`;
+      actionDiv.textContent =
+        `${action.device} - ${action.command}(${action.params.join(", ")}) ` +
+        `with${action.wait ? "" : "out"} waiting`;
+
       actionDiv.draggable = true;
       actionDiv.dataset.taskIndex = taskIndex;
       actionDiv.dataset.actionIndex = actionIndex;
 
-      // Drag events
+      /* ---------- DRAG START / END ---------- */
       actionDiv.addEventListener("dragstart", e => {
         actionDiv.classList.add("dragging");
-        e.dataTransfer.setData("text/plain", JSON.stringify({
-          fromTask: taskIndex,
-          fromAction: actionIndex
-        }));
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(
+          "text/plain",
+          JSON.stringify({
+            fromTask: taskIndex,
+            fromAction: actionIndex
+          })
+        );
       });
-      actionDiv.addEventListener("dragend", () => actionDiv.classList.remove("dragging"));
 
-      actionList.appendChild(actionDiv);
+      actionDiv.addEventListener("dragend", () => {
+        actionDiv.classList.remove("dragging");
+      });
 
+      /* ---------- DRAG OVER ---------- */
+      actionDiv.addEventListener("dragover", e => {
+        e.preventDefault();
+        actionDiv.classList.add("drag-over");
+      });
+
+      actionDiv.addEventListener("dragleave", () => {
+        actionDiv.classList.remove("drag-over");
+      });
+
+      /* ---------- DROP (INSERT HERE) ---------- */
+      actionDiv.addEventListener("drop", e => {
+        e.preventDefault();
+        actionDiv.classList.remove("drag-over");
+
+        const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+        const { fromTask, fromAction } = data;
+        const toTask = taskIndex;
+        const toAction = actionIndex;
+
+        if (fromTask == null || fromAction == null) return;
+
+        const movedAction =
+          selected_strategy.tasks[fromTask].sequence.splice(fromAction, 1)[0];
+
+        const insertIndex =
+          fromTask === toTask && fromAction < toAction
+            ? toAction - 1
+            : toAction;
+
+        selected_strategy.tasks[toTask].sequence.splice(
+          insertIndex,
+          0,
+          movedAction
+        );
+
+        renderTasks();
+        renderMap();
+        updateStrategy(selected_strategy);
+      });
+
+      /* ---------- CONTEXT MENU ---------- */
       actionDiv.addEventListener("contextmenu", e => {
         e.preventDefault();
 
@@ -82,40 +130,49 @@ function renderTasks() {
         menu.style.top = `${e.clientY}px`;
         menu.classList.remove("hidden");
       });
+
+      actionList.appendChild(actionDiv);
     });
 
-    // Drop target
+    /* ---------- DROP AT END OF TASK ---------- */
     actionList.addEventListener("dragover", e => e.preventDefault());
+
     actionList.addEventListener("drop", e => {
-      e.preventDefault();
+      if (e.target !== actionList) return;
+
       const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-      const fromTask = data.fromTask;
-      const fromAction = data.fromAction;
-      const toTask = taskIndex;
+      const { fromTask, fromAction } = data;
 
-      if (fromTask === undefined || fromAction === undefined) return;
+      if (fromTask == null || fromAction == null) return;
 
-      // Move action
-      const movedAction = selected_strategy.tasks[fromTask].sequence.splice(fromAction, 1)[0];
-      selected_strategy.tasks[toTask].sequence.push(movedAction);
+      const movedAction =
+        selected_strategy.tasks[fromTask].sequence.splice(fromAction, 1)[0];
+
+      selected_strategy.tasks[taskIndex].sequence.push(movedAction);
 
       renderTasks();
-      updateStrategy(selected_strategy); // save/update
+      renderMap();
+      updateStrategy(selected_strategy);
     });
-    
+
     taskBox.appendChild(actionList);
     actionsContainer.appendChild(taskBox);
   });
+
+  /* ---------- GLOBAL CONTEXT MENU HANDLERS ---------- */
+
   document.addEventListener("click", () => {
     document.getElementById("action-context-menu").classList.add("hidden");
   });
-  document.getElementById("ctx-delete").addEventListener("click", () => {
+
+  document.getElementById("ctx-delete").onclick = () => {
     if (!contextAction || !contextTask) return;
 
     const idx = contextTask.sequence.indexOf(contextAction);
     if (idx !== -1) {
       contextTask.sequence.splice(idx, 1);
     }
+
     if (contextTask.sequence.length === 0) {
       const taskIndex = selected_strategy.tasks.indexOf(contextTask);
       if (taskIndex !== -1) {
@@ -133,32 +190,26 @@ function renderTasks() {
 
     renderTasks();
     updateStrategy(selected_strategy);
-  });
-  document.getElementById("ctx-modify").addEventListener("click", () => {
+  };
+
+  document.getElementById("ctx-modify").onclick = () => {
     if (!contextAction) return;
 
-    let command = contextAction.command;
+    const command = contextAction.command;
     document.getElementById("modal-wait").checked = contextAction.wait;
 
-    // Trigger arg input regeneration
     let args_table = [];
-    document.getElementById("command_label").textContent = "Command: "+command;
-    // Decide which argument table to use
-    if (command.includes("go_to")) {
-      args_table = go_to_args;
-    } 
-    else if (command.includes("bezier")) {
-      args_table = bezier_args;
-    } 
-    else if (command.includes("orientate")) {
-      args_table = orientate_args;
-    }else if (command.includes("set_position")) {
-      args_table = set_position_args;
-    }
+    document.getElementById("command_label").textContent =
+      "Command: " + command;
+
+    if (command.includes("go_to")) args_table = go_to_args;
+    else if (command.includes("bezier")) args_table = bezier_args;
+    else if (command.includes("orientate")) args_table = orientate_args;
+    else if (command.includes("set_position")) args_table = set_position_args;
+
     const argsContainer = document.getElementById("args-container");
     argsContainer.innerHTML = "";
 
-    // Create inputs dynamically
     args_table.forEach(arg => {
       const label = document.createElement("label");
       label.textContent = arg;
@@ -171,7 +222,6 @@ function renderTasks() {
       argsContainer.appendChild(label);
     });
 
-    // Fill params
     const inputs = document.querySelectorAll("#args-container input");
     inputs.forEach((input, i) => {
       input.value = contextAction.params[i] ?? "";
@@ -179,8 +229,9 @@ function renderTasks() {
 
     modal.classList.remove("hidden");
     document.getElementById("action-context-menu").classList.add("hidden");
-  });
+  };
 }
+
 
 // ------------------------------
 // Populate Add Action dropdown
@@ -281,11 +332,6 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     }
 
     selected_strategy.tasks[selected_strategy.tasks.length - 1].sequence.push(action);
-
-    modal.classList.add("hidden");
-
-    renderTasks();
-    updateStrategy(selected_strategy);
   }else{
     const wait = document.getElementById("modal-wait").checked;
 
@@ -306,11 +352,11 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
         new Action(device, command, params, wait)
       );
     }
-
-    modal.classList.add("hidden");
-    renderTasks();
-    updateStrategy(selected_strategy);
   }
+  modal.classList.add("hidden");
+  renderTasks();
+  renderMap();
+  updateStrategy(selected_strategy);
 });
 
 function addDefs(svg) {
@@ -337,6 +383,15 @@ function mapToScreen(x, y) {
     cy: (x / 2000) * rect.height   // x → down
   };
 }
+function screenToMap(cx, cy) {
+  const img = document.getElementById("map");
+  const rect = img.getBoundingClientRect();
+
+  return {
+    x: (cy / rect.height) * 2000, // down = +x
+    y: (cx / rect.width) * 3000   // right = +y
+  };
+}
 
 function renderMap() {
   const svg = document.getElementById("map-overlay");
@@ -346,7 +401,6 @@ function renderMap() {
   if (!selected_strategy) return;
 
   let currentPos = { x: 0, y: 0 };
-
   selected_strategy.tasks.forEach(task => {
     task.sequence.forEach(action => {
 
@@ -355,19 +409,18 @@ function renderMap() {
       if (action.command.includes("set_position")) {
         const [x, y] = action.params;
         currentPos = { x, y };
-
-        drawPoint(svg, x, y, "robot");
+        drawPoint(svg, x, y, "robot", action, 0, 1);
       }
 
       else if (action.command.includes("go_to")) {
         const [x, y] = action.params;
         drawArrow(svg, currentPos, { x, y }, backwards);
-        drawPoint(svg, x, y);
+        drawPoint(svg, x, y,"", action, 0, 1);
         currentPos = { x, y };
       }
 
       else if (action.command.includes("bezier")) {
-        drawBezier(svg, currentPos, action.params, backwards);
+        drawBezier(svg, currentPos, action.params, backwards, action);
         const [ , , , , x3, y3 ] = action.params;
         currentPos = { x: x3, y: y3 };
       }
@@ -387,16 +440,17 @@ function renderMap() {
   });
 }
 
-function drawPoint(svg, x, y, cls = "") {
+function drawPoint(svg, x, y, cls = "", action, paramIndexX, paramIndexY) {
   const { cx, cy } = mapToScreen(x, y);
 
   const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
   c.setAttribute("cx", cx);
   c.setAttribute("cy", cy);
   c.setAttribute("r", 6);
-  c.classList.add("map-point", cls);
+  c.classList.add("map-point");
+  if (cls) c.classList.add(cls);
 
-  enableDrag(c, x, y);
+  enableDrag(c, action , paramIndexX, paramIndexY);
   svg.appendChild(c);
 }
 
@@ -415,7 +469,7 @@ function drawArrow(svg, from, to, backwards) {
   svg.appendChild(l);
 }
 
-function drawBezier(svg, start, params, backwards) {
+function drawBezier(svg, start, params, backwards, action) {
   const [x1,y1,x2,y2,x3,y3] = params;
 
   const p0 = mapToScreen(start.x, start.y);
@@ -436,7 +490,7 @@ function drawBezier(svg, start, params, backwards) {
 
   [x1,y1,x2,y2,x3,y3].forEach((_, i) => {
     if (i % 2 === 0)
-      drawPoint(svg, params[i], params[i+1]);
+      drawPoint(svg, params[i], params[i+1], "", action, i, i+1);
   });
 }
 function drawIcon(svg, pos, symbol) {
@@ -454,22 +508,52 @@ function drawIcon(svg, pos, symbol) {
 function drawRotateIcon(svg, pos) {
   drawIcon(svg, pos, "↻");
 }
+function updateActionParamsFromDrag(action, paramIndexX, paramIndexY, cx, cy) {
+  const { x, y } = screenToMap(cx, cy);
 
-function enableDrag(el, x, y) {
+  action.params[paramIndexX] = x.toFixed(2);
+  action.params[paramIndexY] = y.toFixed(2);
+
+  renderMap();
+}
+
+function enableDrag(el, action, paramIndexX, paramIndexY) {
   let dragging = false;
 
   el.addEventListener("mousedown", e => {
     dragging = true;
+    e.stopPropagation();
   });
 
   window.addEventListener("mousemove", e => {
     if (!dragging) return;
-    el.setAttribute("cx", e.offsetX);
-    el.setAttribute("cy", e.offsetY);
-    // here you update action.params accordingly
+
+    const map = document.getElementById("map");
+    const rect = map.getBoundingClientRect();
+
+    const x = e.clientY - rect.top;
+    const y = e.clientX - rect.left;
+
+    el.setAttribute("cx", y);
+    el.setAttribute("cy", x);
+
+    updateActionParamsFromDrag(
+      action,
+      paramIndexX,
+      paramIndexY,
+      y,
+      x
+    );
   });
 
-  window.addEventListener("mouseup", () => dragging = false);
+  window.addEventListener("mouseup", () => {
+    if (!dragging) return;
+
+    dragging = false;          // ← drag is over
+    renderTasks();
+    updateStrategy(selected_strategy); // ← CALLED ONCE
+  });
 }
+await get_selected_strategy();
 populateAddList();
 renderMap();

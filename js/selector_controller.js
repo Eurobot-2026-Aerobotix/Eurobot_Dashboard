@@ -1,7 +1,7 @@
-import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./js/file_handler.js"; // your API functions
-import { Strategy } from "./classes/Strategy.js";
-import { Task } from "./classes/Task.js";
-import { Action } from "./classes/Action.js";
+import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js"; // your API functions
+import { Strategy } from "../classes/Strategy.js";
+import { Task } from "../classes/Task.js";
+import { Action } from "../classes/Action.js";
 
 // HTML elements
 const listDivYellow = document.getElementById("strategy-list-yellow");
