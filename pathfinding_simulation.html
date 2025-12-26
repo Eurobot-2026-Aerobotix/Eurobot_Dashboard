@@ -540,10 +540,6 @@
         // Load obstacles and batches on page load
         loadObstacles();
 
-        // Toggle all batches
-        toggleAllBtn.addEventListener('click', toggleAllBatches);
-        loadBatches();
-
         // Initialize
         startPoseBtn.addEventListener('click', () => activateMode('start'));
         enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
@@ -823,6 +819,14 @@
 
         function handleMapClick(event) {
             if (!currentMode) return;
+            
+            // Only handle clicks on the map image or map wrapper, not on other elements
+            if (event.target.classList.contains('obstacle-marker') || 
+                event.target.closest('.obstacle-marker') ||
+                event.target.classList.contains('marker') ||
+                event.target.closest('.marker')) {
+                return;
+            }
 
             // Get click position relative to map
             const rect = map.getBoundingClientRect();
