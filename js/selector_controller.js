@@ -90,7 +90,7 @@ deleteBtn.addEventListener("click", async () => {
 openBtn.addEventListener("click", () => {
   if (selectedIndex === null) return;
   const strategy = strategies[selectedIndex];
-  window.location.href = `strategy_viewer.html?name=${strategy.name}`;
+  window.location.href = `html/strategy_viewer.html?name=${strategy.name}`;
 });
 
 selectBtn.addEventListener("click", () => {

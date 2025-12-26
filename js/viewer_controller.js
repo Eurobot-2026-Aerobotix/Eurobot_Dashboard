@@ -36,7 +36,7 @@ async function get_selected_strategy() {
 function renderTasks() {
   actionsContainer.innerHTML = "";
   if (!selected_strategy) return;
-
+  
   selected_strategy.tasks.forEach((task, taskIndex) => {
     const taskBox = document.createElement("div");
     taskBox.classList.add("task-box");

@@ -8,8 +8,8 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - '246.76'
-    - '389.84'
+    - '197.17'
+    - '402.82'
     - 0
     wait: false
 - description: Task 2
@@ -25,8 +25,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - '885.20'
-    - '331.09'
+    - 900
+    - 400
     - 700
     wait: true
   - device: STM
