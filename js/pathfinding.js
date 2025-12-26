@@ -15,6 +15,8 @@ let poses = {
 let obstacles = []; // Store obstacles from YAML
 let batches = [];   // Store batch information
 let batchVisibility = {}; // Track which batches are visible
+let isAddingBatch = false; // Track if we're in "add batch" mode
+let pendingBatch = null; // Store batch being created
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
@@ -29,6 +31,12 @@ const confirmBtn = document.getElementById('confirmBtn');
 const orientationBtns = document.querySelectorAll('.orientation-btn');
 const batchList = document.getElementById('batchList');
 const toggleAllBtn = document.getElementById('toggleAllBtn');
+const addBatchBtn = document.getElementById('addBatchBtn');
+const batchModal = document.getElementById('batchModal');
+const modalClose = document.getElementById('modalClose');
+const batchForm = document.getElementById('batchForm');
+const cancelBatchBtn = document.getElementById('cancelBatchBtn');
+const saveBatchBtn = document.getElementById('saveBatchBtn');
 
 // Load obstacles and batches on page load
 loadObstacles();
@@ -41,6 +49,10 @@ findPathBtn.addEventListener('click', findPath);
 mapWrapper.addEventListener('click', handleMapClick);
 confirmBtn.addEventListener('click', confirmPose);
 toggleAllBtn.addEventListener('click', toggleAllBatches);
+addBatchBtn.addEventListener('click', startAddBatch);
+modalClose.addEventListener('click', closeModal);
+cancelBatchBtn.addEventListener('click', cancelBatch);
+saveBatchBtn.addEventListener('click', saveBatch);
 
 // Orientation button handlers
 orientationBtns.forEach(btn => {
@@ -178,9 +190,11 @@ function parseYAML(yamlText) {
     const lines = yamlText.split('\n');
     let currentBatch = null;
     let currentMember = null;
+    let inMapPos = false;
+    let mapPosData = {};
     
-    for (let line of lines) {
-        line = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
         if (!line || line.startsWith('#')) continue;
         
         if (line.includes('- batch_id:')) {
@@ -197,14 +211,18 @@ function parseYAML(yamlText) {
             currentMember = {};
             currentMember.aruco_id = parseInt(line.split(':')[1]);
             currentBatch.members.push(currentMember);
-        } else if (line.includes('map_pos:') && currentMember) {
-            const match = line.match(/x:\s*([\d.]+).*y:\s*([\d.]+)/);
-            if (match) {
-                currentMember.map_pos = {
-                    x: parseFloat(match[1]),
-                    y: parseFloat(match[2])
-                };
-            }
+            inMapPos = false;
+        } else if (line === 'map_pos:' && currentMember) {
+            inMapPos = true;
+            mapPosData = {};
+        } else if (inMapPos && line.startsWith('x:')) {
+            mapPosData.x = parseFloat(line.split(':')[1].trim());
+        } else if (inMapPos && line.startsWith('y:')) {
+            mapPosData.y = parseFloat(line.split(':')[1].trim());
+        } else if (inMapPos && line.startsWith('z:')) {
+            mapPosData.z = parseFloat(line.split(':')[1].trim());
+            currentMember.map_pos = { ...mapPosData };
+            inMapPos = false;
         } else if (line.includes('color:') && currentMember) {
             currentMember.color = line.split(':')[1].trim().replace(/"/g, '');
         }
@@ -230,13 +248,13 @@ function drawObstacles() {
         // Determine width and height based on direction
         let width_mm, height_mm;
         if (obstacle.direction === 'vertical') {
-            // Vertical: wide width, short height
-            width_mm = OBSTACLE_LONG_MM;
-            height_mm = OBSTACLE_SHORT_MM;
-        } else if (obstacle.direction === 'horizontal') {
-            // Horizontal: narrow width, tall height
+            // Vertical: narrow width, tall height (stacked vertically)
             width_mm = OBSTACLE_SHORT_MM;
             height_mm = OBSTACLE_LONG_MM;
+        } else if (obstacle.direction === 'horizontal') {
+            // Horizontal: wide width, short height (side by side)
+            width_mm = OBSTACLE_LONG_MM;
+            height_mm = OBSTACLE_SHORT_MM;
         } else {
             // Default to square if direction unknown
             width_mm = OBSTACLE_SHORT_MM;
@@ -384,6 +402,13 @@ function activateMode(mode) {
 }
 
 function handleMapClick(event) {
+    // Handle batch placement
+    if (isAddingBatch && !pendingBatch) {
+        handleBatchPlacement(event);
+        return;
+    }
+    
+    // Original pose placement logic
     if (!currentMode) return;
     
     // Only handle clicks on the map image or map wrapper, not on other elements
@@ -588,4 +613,291 @@ function findPath() {
     console.log('Goal:', poses.goal);
     console.log('Enemy:', poses.enemy);
     console.log('Obstacles:', obstacles);
+}
+
+// -------------------------------------------------
+// Batch Creation Functions
+// -------------------------------------------------
+
+function startAddBatch() {
+    isAddingBatch = true;
+    batchModal.classList.add('active');
+    mapWrapper.style.cursor = 'crosshair';
+    
+    // Deactivate other modes
+    currentMode = null;
+    startPoseBtn.classList.remove('active');
+    enemyPoseBtn.classList.remove('active');
+    goalPoseBtn.classList.remove('active');
+    orientationSelector.style.display = 'none';
+    
+    // Show instruction
+    document.querySelector('.modal-instruction').style.display = 'block';
+    batchForm.style.display = 'none';
+    
+    console.log('Click on the map to place the batch center');
+}
+
+function closeModal() {
+    batchModal.classList.remove('active');
+    isAddingBatch = false;
+    mapWrapper.style.cursor = 'crosshair';
+    
+    // Clear pending batch preview
+    if (pendingBatch && pendingBatch.previewElement) {
+        pendingBatch.previewElement.remove();
+    }
+    pendingBatch = null;
+    
+    // Reset form
+    document.getElementById('batchKnownId').value = '';
+    document.getElementById('batchDirection').value = 'vertical';
+    document.getElementById('color1').value = 'yellow';
+    document.getElementById('color2').value = 'blue';
+    document.getElementById('color3').value = 'yellow';
+    document.getElementById('color4').value = 'blue';
+    document.querySelector('.modal-instruction').style.display = 'block';
+    document.querySelector('.modal-instruction').textContent = 'Click on the map to place the batch center';
+    batchForm.style.display = 'none';
+}
+
+function cancelBatch() {
+    closeModal();
+}
+
+function handleBatchPlacement(event) {
+    // Only handle clicks on the map image, not on other elements
+    if (event.target !== map && event.target !== mapWrapper) {
+        return;
+    }
+    
+    const rect = map.getBoundingClientRect();
+    const x_px = event.clientX - rect.left;
+    const y_px = event.clientY - rect.top;
+    
+    // Convert to actual map coordinates (mm)
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    const x_mm = (y_px / displayHeight) * MAP_HEIGHT_MM;
+    const y_mm = (x_px / displayWidth) * MAP_WIDTH_MM;
+    
+    // Round to 1 decimal place
+    const x = Math.round(x_mm * 10) / 10;
+    const y = Math.round(y_mm * 10) / 10;
+    
+    // Store batch center position
+    pendingBatch = {
+        center: { x, y, z: 0.0 },
+        center_px: { x: x_px, y: y_px }
+    };
+    
+    // Show batch preview
+    showBatchPreview(x_px, y_px, 'vertical');
+    
+    // Show form
+    batchForm.style.display = 'flex';
+    document.querySelector('.modal-instruction').textContent = 'Configure batch properties:';
+}
+
+function showBatchPreview(centerX_px, centerY_px, direction) {
+    // Remove existing preview
+    const existingPreview = document.querySelector('.batch-preview');
+    if (existingPreview) {
+        existingPreview.remove();
+    }
+    
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    // Batch dimensions
+    const OBSTACLE_LONG_MM = 150;
+    const OBSTACLE_SHORT_MM = 50;
+    const SPACING_MM = 50; // Distance between centers of adjacent rectangles
+    
+    // Create preview container
+    const preview = document.createElement('div');
+    preview.className = 'batch-preview';
+    
+    // Calculate member positions based on direction
+    let positions = [];
+    if (direction === 'vertical') {
+        // Vertical: rectangles stacked vertically (same X, varying Y)
+        const width_mm = OBSTACLE_SHORT_MM;
+        const height_mm = OBSTACLE_LONG_MM;
+        const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
+        const height_px = (height_mm / MAP_HEIGHT_MM) * displayHeight;
+        const spacing_px = (SPACING_MM / MAP_HEIGHT_MM) * displayHeight;
+        
+        positions = [
+            { x: centerX_px, y: centerY_px - spacing_px * 1.5, w: width_px, h: height_px },
+            { x: centerX_px, y: centerY_px - spacing_px * 0.5, w: width_px, h: height_px },
+            { x: centerX_px, y: centerY_px + spacing_px * 0.5, w: width_px, h: height_px },
+            { x: centerX_px, y: centerY_px + spacing_px * 1.5, w: width_px, h: height_px }
+        ];
+    } else {
+        // Horizontal: rectangles side by side horizontally (same Y, varying X)
+        const width_mm = OBSTACLE_LONG_MM;
+        const height_mm = OBSTACLE_SHORT_MM;
+        const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
+        const height_px = (height_mm / MAP_HEIGHT_MM) * displayHeight;
+        const spacing_px = (SPACING_MM / MAP_WIDTH_MM) * displayWidth;
+        
+        positions = [
+            { x: centerX_px - spacing_px * 1.5, y: centerY_px, w: width_px, h: height_px },
+            { x: centerX_px - spacing_px * 0.5, y: centerY_px, w: width_px, h: height_px },
+            { x: centerX_px + spacing_px * 0.5, y: centerY_px, w: width_px, h: height_px },
+            { x: centerX_px + spacing_px * 1.5, y: centerY_px, w: width_px, h: height_px }
+        ];
+    }
+    
+    // Create member previews
+    positions.forEach((pos, index) => {
+        const member = document.createElement('div');
+        member.className = 'batch-preview-member';
+        member.style.left = pos.x + 'px';
+        member.style.top = pos.y + 'px';
+        member.style.width = pos.w + 'px';
+        member.style.height = pos.h + 'px';
+        member.style.transform = 'translate(-50%, -50%)';
+        member.textContent = index + 1;
+        preview.appendChild(member);
+    });
+    
+    mapWrapper.appendChild(preview);
+    
+    // Store preview element
+    if (pendingBatch) {
+        pendingBatch.previewElement = preview;
+        pendingBatch.direction = direction;
+    }
+}
+
+// Update preview when direction changes
+document.getElementById('batchDirection').addEventListener('change', (e) => {
+    if (pendingBatch && pendingBatch.center_px) {
+        showBatchPreview(pendingBatch.center_px.x, pendingBatch.center_px.y, e.target.value);
+    }
+});
+
+async function saveBatch() {
+    // Validate form
+    const knownId = document.getElementById('batchKnownId').value.trim();
+    const direction = document.getElementById('batchDirection').value;
+    const colors = [
+        document.getElementById('color1').value,
+        document.getElementById('color2').value,
+        document.getElementById('color3').value,
+        document.getElementById('color4').value
+    ];
+    
+    // Automatically assign ArUco IDs based on color
+    // Yellow = 47, Blue = 36
+    const arucoIds = colors.map(color => color === 'yellow' ? 47 : 36);
+    
+    // Validation
+    if (!knownId) {
+        alert('Please enter a Known ID');
+        return;
+    }
+    
+    // Calculate member positions
+    const SPACING_MM = 50;
+    const members = [];
+    
+    for (let i = 0; i < 4; i++) {
+        let memberPos;
+        if (direction === 'vertical') {
+            // Vertical arrangement - same X, varying Y
+            const offset = (i - 1.5) * SPACING_MM;
+            memberPos = {
+                x: pendingBatch.center.x,
+                y: pendingBatch.center.y + offset,
+                z: 0.0
+            };
+        } else {
+            // Horizontal arrangement - same Y, varying X
+            const offset = (i - 1.5) * SPACING_MM;
+            memberPos = {
+                x: pendingBatch.center.x + offset,
+                y: pendingBatch.center.y,
+                z: 0.0
+            };
+        }
+        
+        members.push({
+            aruco_id: arucoIds[i],
+            map_pos: memberPos,
+            color: colors[i]
+        });
+    }
+    
+    // Create batch object
+    const newBatch = {
+        known_id: knownId,
+        count: 4,
+        direction: direction,
+        phi_deg: direction === 'vertical' ? 0.0 : 90.0,
+        avg_adjacent_dist_m: 0.05,
+        center: pendingBatch.center,
+        members: members
+    };
+    
+    // Save to server
+    try {
+        const response = await fetch('http://localhost:8000/obstacles/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newBatch)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save batch');
+        }
+        
+        const result = await response.json();
+        console.log('Batch saved:', result);
+        
+        // Add to local state
+        newBatch.batch_id = result.batch_id;
+        batches.push({
+            batch_id: newBatch.batch_id,
+            known_id: newBatch.known_id,
+            direction: newBatch.direction,
+            count: newBatch.count
+        });
+        
+        // Add obstacles
+        members.forEach(member => {
+            obstacles.push({
+                aruco_id: member.aruco_id,
+                x: member.map_pos.x,
+                y: member.map_pos.y,
+                color: member.color,
+                batch_id: newBatch.batch_id,
+                direction: direction
+            });
+        });
+        
+        // Initialize visibility
+        batchVisibility[newBatch.batch_id] = true;
+        
+        // Redraw obstacles
+        const existingObstacles = document.querySelectorAll('.obstacle-marker');
+        existingObstacles.forEach(marker => marker.remove());
+        drawObstacles();
+        
+        // Update batch selector
+        populateBatchSelector();
+        
+        // Close modal
+        closeModal();
+        
+        alert(`Batch "${knownId}" saved successfully!`);
+    } catch (error) {
+        console.error('Error saving batch:', error);
+        alert('Error saving batch. Please try again.');
+    }
 }

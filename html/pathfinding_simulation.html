@@ -96,9 +96,71 @@
                     <button class="batch-toggle-all" id="toggleAllBtn">
                         Toggle All Batches
                     </button>
+                    
+                    <button class="batch-add-btn" id="addBatchBtn">
+                        ➕ Add New Batch
+                    </button>
 
                     <div class="batch-list" id="batchList">
                         <!-- Batch items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Batch Modal -->
+    <div id="batchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Batch</h3>
+                <span class="modal-close" id="modalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="modal-instruction">Click on the map to place the batch center</p>
+                
+                <div class="batch-form" id="batchForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="batchKnownId">Known ID:</label>
+                        <input type="text" id="batchKnownId" placeholder="e.g., V_TOP_LEFT1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="batchDirection">Direction:</label>
+                        <select id="batchDirection" required>
+                            <option value="vertical">Vertical (50mm wide × 150mm tall, stacked)</option>
+                            <option value="horizontal">Horizontal (150mm wide × 50mm tall, side-by-side)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Member Colors (4 rectangles):</label>
+                        <div class="color-inputs">
+                            <select id="color1">
+                                <option value="yellow">🟡 Yellow (ID: 47)</option>
+                                <option value="blue">🔵 Blue (ID: 36)</option>
+                            </select>
+                            <select id="color2">
+                                <option value="blue">🔵 Blue (ID: 36)</option>
+                                <option value="yellow">🟡 Yellow (ID: 47)</option>
+                            </select>
+                            <select id="color3">
+                                <option value="yellow">🟡 Yellow (ID: 47)</option>
+                                <option value="blue">🔵 Blue (ID: 36)</option>
+                            </select>
+                            <select id="color4">
+                                <option value="blue">🔵 Blue (ID: 36)</option>
+                                <option value="yellow">🟡 Yellow (ID: 47)</option>
+                            </select>
+                        </div>
+                        <p style="font-size: 0.85em; color: #666; margin-top: 8px;">
+                            Yellow → ArUco ID 47 | Blue → ArUco ID 36
+                        </p>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn-cancel" id="cancelBatchBtn">Cancel</button>
+                        <button class="btn-save" id="saveBatchBtn">Save Batch</button>
                     </div>
                 </div>
             </div>
