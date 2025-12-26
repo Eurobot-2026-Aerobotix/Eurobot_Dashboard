@@ -32,6 +32,7 @@ const orientationBtns = document.querySelectorAll('.orientation-btn');
 const batchList = document.getElementById('batchList');
 const toggleAllBtn = document.getElementById('toggleAllBtn');
 const addBatchBtn = document.getElementById('addBatchBtn');
+const sendBatchesBtn = document.getElementById('sendBatchesBtn');
 const batchModal = document.getElementById('batchModal');
 const modalClose = document.getElementById('modalClose');
 const batchForm = document.getElementById('batchForm');
@@ -50,6 +51,7 @@ mapWrapper.addEventListener('click', handleMapClick);
 confirmBtn.addEventListener('click', confirmPose);
 toggleAllBtn.addEventListener('click', toggleAllBatches);
 addBatchBtn.addEventListener('click', startAddBatch);
+sendBatchesBtn.addEventListener('click', sendBatches);
 modalClose.addEventListener('click', closeModal);
 cancelBatchBtn.addEventListener('click', cancelBatch);
 saveBatchBtn.addEventListener('click', saveBatch);
@@ -901,3 +903,57 @@ async function saveBatch() {
         alert('Error saving batch. Please try again.');
     }
 }
+
+// -------------------------------------------------
+// Send Batches Function
+// -------------------------------------------------
+
+function sendBatches() {
+    // Get all selected (visible) batches
+    const selectedBatches = batches.filter(batch => batchVisibility[batch.batch_id]);
+    
+    if (selectedBatches.length === 0) {
+        alert('⚠️ No batches selected! Please select at least one batch to send.');
+        return;
+    }
+    
+    // Build the batches table with full details
+    const batchesTable = selectedBatches.map(batch => {
+        // Find all obstacles (members) for this batch
+        const batchMembers = obstacles.filter(obs => obs.batch_id === batch.batch_id);
+        
+        return {
+            batch_id: batch.batch_id,
+            known_id: batch.known_id,
+            direction: batch.direction,
+            count: batch.count,
+            members: batchMembers.map(member => ({
+                aruco_id: member.aruco_id,
+                position: {
+                    x: member.x,
+                    y: member.y
+                },
+                color: member.color
+            }))
+        };
+    });
+    
+    console.log('📤 Sending batches:', batchesTable);
+    console.log('Total selected batches:', selectedBatches.length);
+    console.log('Total members:', batchesTable.reduce((sum, b) => sum + b.members.length, 0));
+    
+    // TODO: Add your sending logic here
+    // Example: Send to ROS2 node, WebSocket, HTTP API, etc.
+    
+    // For now, show a success message
+    alert(`✅ Ready to send ${selectedBatches.length} batches with ${batchesTable.reduce((sum, b) => sum + b.members.length, 0)} members!\n\n` +
+          `Selected batches:\n${selectedBatches.map(b => `- ${b.known_id} (${b.count} items)`).join('\n')}\n\n` +
+          `Check console for full details.`);
+    
+    // Return the batches table for further use
+    return batchesTable;
+}
+
+// -------------------------------------------------
+// Batch Creation Functions
+// -------------------------------------------------

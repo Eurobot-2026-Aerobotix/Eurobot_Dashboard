@@ -496,6 +496,33 @@ h1 {
     background: #27ae60;
 }
 
+.batch-send-btn {
+    margin-top: 5px;
+    margin-bottom: 15px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.3s;
+    width: 100%;
+    box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+}
+
+.batch-send-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(231, 76, 60, 0.4);
+}
+
+.batch-send-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
 /* Modal Styles */
 .modal {
     display: none;
