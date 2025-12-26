@@ -8,6 +8,11 @@ let strategies = [];
 let selected_strategy = null;
 let actionsContainer = document.getElementById("side-panel");
 const actionSelect = document.getElementById("action-select");
+const newTaskCheckBox = document.getElementById("task-checkbox");
+const modal = document.getElementById("action-modal");
+const go_to_args = ["x", "y", "speed"];
+const orientate_args = ["angle"];
+const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"];
 
 // ------------------------------
 // Load selected strategy
@@ -105,10 +110,10 @@ function populateAddList() {
     new Action("ESP_back", "put_down"),
     new Action("ESP_back", "prepare"),
   ];
-  actionSelect.innerHTML = '<option value="-1">Task</option>';
+  actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
     const opt = document.createElement("option");
-    opt.value = i;
+    opt.value = i+1;
     opt.textContent = `${a.device} - ${a.command}`;
     actionSelect.appendChild(opt);
   });
@@ -116,23 +121,75 @@ function populateAddList() {
 
 document.getElementById("add-action-btn").addEventListener("click", () => {
   const index = actionSelect.value;
-  if (!selected_strategy) return;
-  if (index === ""){
-    selected_strategy.tasks.push(new Task(`Task ${selected_strategy.tasks.length + 1 }`, []));
-  }
+  if (index == "" || !selected_strategy) return;
   const opt = actionSelect.options[index];
   const [device, command] = opt.textContent.split(" - ");
-  // Add to first task by default
-  if (selected_strategy.tasks.length === 0) {
-    selected_strategy.tasks.push(new Task("Task 1", []));
+  let args_table = [];
+  document.getElementById("command_label").textContent = "Command: "+command;
+  // Decide which argument table to use
+  if (command.includes("go_to")) {
+    args_table = go_to_args;
+  } 
+  else if (command.includes("bezier")) {
+    args_table = bezier_args;
+  } 
+  else if (command.includes("orientate")) {
+    args_table = orientate_args;
   }
-  selected_strategy.tasks[selected_strategy.tasks.length - 1].sequence.push(new Action(device, command));
-  renderTasks();
-  updateStrategy(selected_strategy);
+  const argsContainer = document.getElementById("args-container");
+  argsContainer.innerHTML = "";
+
+  // Create inputs dynamically
+  args_table.forEach(arg => {
+    const label = document.createElement("label");
+    label.textContent = arg;
+
+    const input = document.createElement("input");
+    input.type = "decimal";
+    input.dataset.argName = arg;
+
+    label.appendChild(input);
+    argsContainer.appendChild(label);
+  });
+  modal.classList.remove("hidden");
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
   window.history.back();
+});
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  modal.classList.add("hidden");
+});
+
+document.getElementById("modal-confirm").addEventListener("click", () => {
+  const index = actionSelect.value;
+  if (newTaskCheckBox.checked){
+    selected_strategy.tasks.push(new Task(`Task ${selected_strategy.tasks.length + 1 }`, []));
+  }
+  const opt = actionSelect.options[index];
+  const [device, command] = opt.textContent.split(" - ");
+  const params = [];
+  document.querySelectorAll("#args-container input").forEach(input => {
+    params.push(parseFloat(input.value) || 0);
+  });
+  const wait = document.getElementById("modal-wait").checked;
+
+  if (!device || !command) return;
+
+  const action = new Action(device, command, params, wait);
+
+  // Add to last task (or selected task if you add selection later)
+  if (selected_strategy.tasks.length === 0) {
+    selected_strategy.tasks.push(new Task("Task 1", []));
+  }
+
+  selected_strategy.tasks[selected_strategy.tasks.length - 1].sequence.push(action);
+
+  modal.classList.add("hidden");
+
+  renderTasks();
+  updateStrategy(selected_strategy);
 });
 
 populateAddList();

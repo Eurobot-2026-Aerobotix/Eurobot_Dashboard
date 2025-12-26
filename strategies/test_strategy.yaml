@@ -19,17 +19,47 @@ tasks:
     - 100
     - 500
     wait: true
-  - device: motor
-    command: rotate
-    params:
-    - 90
-    wait: false
 - description: arja3
   global_goal:
   - 1
   - 8
   - 90
   sequence:
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: Task
+    params: []
+    wait: false
+  - device: STM
+    command: orientate
+    params: []
+    wait: false
+  - device: Task
+    params: []
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: motor
+    command: rotate
+    params:
+    - 90
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
   - device: motor
     command: orientate
     params:
@@ -40,10 +70,99 @@ tasks:
     command: go_to
     params: []
     wait: false
+  - device: Task
+    params: []
+    wait: false
+- description: Task 3
+  global_goal: []
+  sequence:
   - device: STM
     command: orientate
     params: []
     wait: false
-  - device: Task
+  - device: STM
+    command: orientate
     params: []
     wait: false
+  - device: select action
+    params: []
+    wait: false
+  - device: select action
+    params: []
+    wait: false
+  - device: STM
+    command: go_to
+    params: []
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params: []
+    wait: false
+  - device: STM
+    command: orientate
+    params: []
+    wait: false
+- description: Task 4
+  global_goal: []
+  sequence:
+  - device: STM
+    command: bezier
+    params: []
+    wait: false
+- description: Task 5
+  global_goal: []
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params: []
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: false
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: false
+  - device: ESP_front
+    command: prepare
+    params: []
+    wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: false
+  - device: ESP_back
+    command: prepare
+    params: []
+    wait: false
+  - device: ESP_back
+    command: prepare
+    params: []
+    wait: false
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: false
+- description: Task 6
+  global_goal: []
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params: []
+    wait: false
+- description: Task 7
+  global_goal: []
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 400
+    - 2300
+    - 700
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 90.5
+    wait: true
