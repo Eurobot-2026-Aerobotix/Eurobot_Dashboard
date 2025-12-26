@@ -131,6 +131,54 @@
             border-bottom-color: #c0392b;
         }
 
+        /* Robot model styling */
+        .robot-model {
+            position: absolute;
+            width: 30px;  /* Will be scaled based on map size */
+            height: 30px;
+            pointer-events: none;
+            z-index: 5;
+            transform-origin: center center;
+        }
+
+        .robot-body {
+            width: 100%;
+            height: 100%;
+            border: 3px solid;
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .robot-model.start .robot-body {
+            background: rgba(46, 204, 113, 0.3);
+            border-color: #27ae60;
+        }
+
+        .robot-model.enemy .robot-body {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: #c0392b;
+        }
+
+        .robot-front {
+            position: absolute;
+            top: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid;
+        }
+
+        .robot-model.start .robot-front {
+            border-bottom-color: #27ae60;
+        }
+
+        .robot-model.enemy .robot-front {
+            border-bottom-color: #c0392b;
+        }
+
         .button {
             padding: 15px 25px;
             font-size: 16px;
@@ -577,6 +625,47 @@
             }
         });
 
+        // Update robot models on window resize
+        window.addEventListener('resize', () => {
+            updateAllRobotModels();
+        });
+
+        function updateAllRobotModels() {
+            // Update start robot if exists
+            if (poses.start) {
+                const oldRobot = document.querySelector('.robot-model.start');
+                if (oldRobot) {
+                    oldRobot.remove();
+                    const startMarker = document.querySelector('.marker.start');
+                    if (startMarker) {
+                        createRobotModel(
+                            startMarker.style.left.replace('px', ''),
+                            startMarker.style.top.replace('px', ''),
+                            poses.start.theta,
+                            'start'
+                        );
+                    }
+                }
+            }
+            
+            // Update enemy robot if exists
+            if (poses.enemy) {
+                const oldRobot = document.querySelector('.robot-model.enemy');
+                if (oldRobot) {
+                    oldRobot.remove();
+                    const enemyMarker = document.querySelector('.marker.enemy');
+                    if (enemyMarker) {
+                        createRobotModel(
+                            enemyMarker.style.left.replace('px', ''),
+                            enemyMarker.style.top.replace('px', ''),
+                            poses.enemy.theta,
+                            'enemy'
+                        );
+                    }
+                }
+            }
+        }
+
         async function loadObstacles() {
             try {
                 const response = await fetch('resources/obstacles.yaml');
@@ -898,11 +987,62 @@
             arrow.style.transform = `translate(-50%, -50%) rotate(${-angle + 180}deg)`;
         }
 
+        function createRobotModel(x_px, y_px, angle, type) {
+            // Robot size: 300mm x 300mm
+            const ROBOT_SIZE_MM = 300;
+            const map = document.getElementById('map');
+            const mapWidth_px = map.offsetWidth;
+            const mapHeight_px = map.offsetHeight;
+            
+            // Calculate scale: pixels per mm
+            const scaleX = mapWidth_px / MAP_WIDTH_MM;
+            const scaleY = mapHeight_px / MAP_HEIGHT_MM;
+            const scale = Math.min(scaleX, scaleY);
+            
+            const robotSize_px = ROBOT_SIZE_MM * scale;
+            
+            const robot = document.createElement('div');
+            robot.className = `robot-model ${type}`;
+            robot.style.left = x_px + 'px';
+            robot.style.top = y_px + 'px';
+            robot.style.width = robotSize_px + 'px';
+            robot.style.height = robotSize_px + 'px';
+            
+            // Apply rotation
+            // Your coordinate system: 0° = down, 90° = right, counter-clockwise
+            // CSS rotate: 0° = up, positive = clockwise
+            const cssAngle = -angle + 180;
+            robot.style.transform = `translate(-50%, -50%) rotate(${cssAngle}deg)`;
+            
+            robot.innerHTML = `
+                <div class="robot-body">
+                    <div class="robot-front"></div>
+                </div>
+            `;
+            
+            mapWrapper.appendChild(robot);
+            return robot;
+        }
+
         function confirmPose() {
             if (!pendingPose) return;
 
             const theta = parseFloat(orientationInput.value) || 0;
             pendingPose.theta = theta;
+
+            // Remove old robot model for this type if it exists
+            const oldRobot = document.querySelector(`.robot-model.${pendingPose.type}`);
+            if (oldRobot) {
+                oldRobot.remove();
+            }
+
+            // Create robot model at the confirmed position
+            createRobotModel(
+                pendingPose.marker.style.left.replace('px', ''),
+                pendingPose.marker.style.top.replace('px', ''),
+                theta,
+                pendingPose.type
+            );
 
             // Store the pose
             poses[pendingPose.type] = {
