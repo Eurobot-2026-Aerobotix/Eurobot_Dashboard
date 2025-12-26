@@ -111,6 +111,11 @@
             border-color: #c0392b;
         }
 
+        .marker.goal .marker-circle {
+            background: rgba(52, 152, 219, 0.7);
+            border-color: #2980b9;
+        }
+
         .marker-arrow {
             position: absolute;
             top: 50%;
@@ -129,6 +134,10 @@
 
         .marker.enemy .marker-arrow {
             border-bottom-color: #c0392b;
+        }
+
+        .marker.goal .marker-arrow {
+            border-bottom-color: #2980b9;
         }
 
         /* Robot model styling */
@@ -159,6 +168,11 @@
             border-color: #c0392b;
         }
 
+        .robot-model.goal .robot-body {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #2980b9;
+        }
+
         .robot-front {
             position: absolute;
             top: -3px;
@@ -177,6 +191,10 @@
 
         .robot-model.enemy .robot-front {
             border-bottom-color: #c0392b;
+        }
+
+        .robot-model.goal .robot-front {
+            border-bottom-color: #2980b9;
         }
 
         .button {
@@ -208,6 +226,11 @@
 
         .button.enemy-btn {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .button.goal-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
         }
 
@@ -260,6 +283,10 @@
 
         .pose-info.enemy-pose h4 {
             color: #c0392b;
+        }
+
+        .pose-info.goal-pose h4 {
+            color: #2980b9;
         }
 
         .pose-info p {
@@ -526,6 +553,10 @@
                     <button class="button enemy-btn" id="enemyPoseBtn">
                         ⚠️ Enemy Pose
                     </button>
+
+                    <button class="button goal-btn" id="goalPoseBtn">
+                        🏁 Goal Pose
+                    </button>
                 </div>
 
                 <div class="info-panel">
@@ -543,6 +574,13 @@
                         <p id="enemyX">X: -</p>
                         <p id="enemyY">Y: -</p>
                         <p id="enemyTheta">θ: -</p>
+                    </div>
+
+                    <div class="pose-info goal-pose">
+                        <h4>Goal Position</h4>
+                        <p id="goalX">X: -</p>
+                        <p id="goalY">Y: -</p>
+                        <p id="goalTheta">θ: -</p>
                     </div>
                 </div>
 
@@ -569,11 +607,12 @@
         const MAP_HEIGHT_PX = 2000; // pixels
 
         // State
-        let currentMode = null; // 'start' or 'enemy'
+        let currentMode = null; // 'start', 'enemy', or 'goal'
         let pendingPose = null;
         let poses = {
             start: null,
-            enemy: null
+            enemy: null,
+            goal: null
         };
         let obstacles = []; // Store obstacles from YAML
         let batches = [];   // Store batch information
@@ -584,6 +623,7 @@
         const map = document.getElementById('map');
         const startPoseBtn = document.getElementById('startPoseBtn');
         const enemyPoseBtn = document.getElementById('enemyPoseBtn');
+        const goalPoseBtn = document.getElementById('goalPoseBtn');
         const orientationSelector = document.getElementById('orientationSelector');
         const orientationInput = document.getElementById('orientationInput');
         const confirmBtn = document.getElementById('confirmBtn');
@@ -597,6 +637,7 @@
         // Initialize
         startPoseBtn.addEventListener('click', () => activateMode('start'));
         enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
+        goalPoseBtn.addEventListener('click', () => activateMode('goal'));
         mapWrapper.addEventListener('click', handleMapClick);
         confirmBtn.addEventListener('click', confirmPose);
         toggleAllBtn.addEventListener('click', toggleAllBatches);
@@ -660,6 +701,23 @@
                             enemyMarker.style.top.replace('px', ''),
                             poses.enemy.theta,
                             'enemy'
+                        );
+                    }
+                }
+            }
+            
+            // Update goal robot if exists
+            if (poses.goal) {
+                const oldRobot = document.querySelector('.robot-model.goal');
+                if (oldRobot) {
+                    oldRobot.remove();
+                    const goalMarker = document.querySelector('.marker.goal');
+                    if (goalMarker) {
+                        createRobotModel(
+                            goalMarker.style.left.replace('px', ''),
+                            goalMarker.style.top.replace('px', ''),
+                            poses.goal.theta,
+                            'goal'
                         );
                     }
                 }
@@ -901,6 +959,7 @@
             // Update button states
             startPoseBtn.classList.toggle('active', mode === 'start');
             enemyPoseBtn.classList.toggle('active', mode === 'enemy');
+            goalPoseBtn.classList.toggle('active', mode === 'goal');
             
             // Hide orientation selector
             orientationSelector.style.display = 'none';
@@ -910,6 +969,18 @@
                 pendingPose.marker.remove();
             }
             pendingPose = null;
+
+            // Remove old marker for this mode
+            const oldMarker = document.querySelector(`.marker.${mode}`);
+            if (oldMarker) {
+                oldMarker.remove();
+            }
+
+            // Remove old robot model for this mode
+            const oldRobot = document.querySelector(`.robot-model.${mode}`);
+            if (oldRobot) {
+                oldRobot.remove();
+            }
         }
 
         function handleMapClick(event) {
@@ -942,6 +1013,12 @@
             // Remove old pending marker if exists
             if (pendingPose && pendingPose.marker) {
                 pendingPose.marker.remove();
+            }
+
+            // Remove old robot model for the current mode (we're replacing it)
+            const oldRobot = document.querySelector(`.robot-model.${currentMode}`);
+            if (oldRobot) {
+                oldRobot.remove();
             }
 
             // Create marker
@@ -1057,8 +1134,10 @@
             // Call appropriate function
             if (pendingPose.type === 'start') {
                 send_start();
-            } else {
+            } else if (pendingPose.type === 'enemy') {
                 send_enemy();
+            } else if (pendingPose.type === 'goal') {
+                send_goal();
             }
 
             // Clean up
@@ -1066,6 +1145,7 @@
             currentMode = null;
             startPoseBtn.classList.remove('active');
             enemyPoseBtn.classList.remove('active');
+            goalPoseBtn.classList.remove('active');
             pendingPose = null;
         }
 
@@ -1074,10 +1154,14 @@
                 document.getElementById('startX').textContent = `X: ${x.toFixed(1)} mm`;
                 document.getElementById('startY').textContent = `Y: ${y.toFixed(1)} mm`;
                 document.getElementById('startTheta').textContent = `θ: ${theta.toFixed(1)}°`;
-            } else {
+            } else if (type === 'enemy') {
                 document.getElementById('enemyX').textContent = `X: ${x.toFixed(1)} mm`;
                 document.getElementById('enemyY').textContent = `Y: ${y.toFixed(1)} mm`;
                 document.getElementById('enemyTheta').textContent = `θ: ${theta.toFixed(1)}°`;
+            } else if (type === 'goal') {
+                document.getElementById('goalX').textContent = `X: ${x.toFixed(1)} mm`;
+                document.getElementById('goalY').textContent = `Y: ${y.toFixed(1)} mm`;
+                document.getElementById('goalTheta').textContent = `θ: ${theta.toFixed(1)}°`;
             }
         }
 
@@ -1085,13 +1169,16 @@
         function send_start() {
             console.log('send_start() called');
             console.log('Start Pose:', poses.start);
-            // TODO: Implement this function
         }
 
         function send_enemy() {
             console.log('send_enemy() called');
             console.log('Enemy Pose:', poses.enemy);
-            // TODO: Implement this function
+        }
+
+        function send_goal() {
+            console.log('send_goal() called');
+            console.log('Goal Pose:', poses.goal);
         }
     </script>
 </body>
