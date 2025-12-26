@@ -36,7 +36,13 @@ async function get_selected_strategy() {
 function renderTasks() {
   actionsContainer.innerHTML = "";
   if (!selected_strategy) return;
-  
+  selected_strategy.tasks = selected_strategy.tasks.filter(task => task.sequence.length > 0);
+
+  // Optionally, renumber tasks
+  selected_strategy.tasks.forEach((task, i) => {
+    task.name = `Task ${i + 1}`;
+  });
+
   selected_strategy.tasks.forEach((task, taskIndex) => {
     const taskBox = document.createElement("div");
     taskBox.classList.add("task-box");
@@ -247,9 +253,13 @@ function populateAddList() {
     new Action("ESP_front", "pick_up"),
     new Action("ESP_front", "put_down"),
     new Action("ESP_front", "prepare"),
+    new Action("ESP_front", "kabbech"),
+    new Action("ESP_front", "dawwer"),
     new Action("ESP_back", "pick_up"),
     new Action("ESP_back", "put_down"),
     new Action("ESP_back", "prepare"),
+    new Action("ESP_back", "kabbech"),
+    new Action("ESP_back", "dawwer")
   ];
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
