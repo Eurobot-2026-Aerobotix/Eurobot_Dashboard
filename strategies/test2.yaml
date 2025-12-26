@@ -32,10 +32,10 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - '1135.87'
-    - '785.44'
-    - '1288.63'
-    - '158.75'
+    - '1139.79'
+    - '562.18'
+    - '1312.13'
+    - '213.58'
     - '1476.64'
     - '679.68'
     - 700
@@ -65,4 +65,8 @@ tasks:
     - '1695.98'
     - '1725.47'
     - 700
+    wait: false
+  - device: ESP_front
+    command: put_down
+    params: []
     wait: false

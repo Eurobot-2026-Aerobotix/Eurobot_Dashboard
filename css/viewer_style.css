@@ -318,9 +318,16 @@ input[type="checkbox"]:hover {
 .arrow {
   stroke-width: 2;
   fill: none;
+}
+.arrow.forward {
+  stroke: red;
   marker-end: url(#arrowhead-red);
 }
 
+.arrow.backward {
+  stroke: blue;
+  marker-end: url(#arrowhead-blue);
+}
 .icon {
   font-size: 16px;
   user-select: none;

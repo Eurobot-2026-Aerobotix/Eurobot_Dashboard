@@ -430,11 +430,11 @@ function renderMap() {
       }
 
       else if (action.command.includes("pick_up")) {
-        drawIcon(svg, currentPos, "⏳");
+        drawIcon(svg, currentPos, "⬆️");
       }
 
-      else if (action.command.includes("drop")) {
-        drawIcon(svg, currentPos, "📦");
+      else if (action.command.includes("down")) {
+        drawIcon(svg, currentPos, "⬇️");
       }
     });
   });
@@ -497,8 +497,8 @@ function drawIcon(svg, pos, symbol) {
   const { cx, cy } = mapToScreen(pos.x, pos.y);
 
   const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  t.setAttribute("x", cx + 10);
-  t.setAttribute("y", cy - 10);
+  t.setAttribute("x", cx + 5);
+  t.setAttribute("y", cy - 5);
   t.textContent = symbol;
   t.classList.add("icon");
 
@@ -506,7 +506,7 @@ function drawIcon(svg, pos, symbol) {
 }
 
 function drawRotateIcon(svg, pos) {
-  drawIcon(svg, pos, "↻");
+  drawIcon(svg, pos, "🔄");
 }
 function updateActionParamsFromDrag(action, paramIndexX, paramIndexY, cx, cy) {
   const { x, y } = screenToMap(cx, cy);
