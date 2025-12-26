@@ -4,6 +4,11 @@ const MAP_HEIGHT_MM = 2000; // 2000mm = 2m
 const MAP_WIDTH_PX = 3000;  // pixels
 const MAP_HEIGHT_PX = 2000; // pixels
 
+// ROS2 Bridge Configuration
+const ROSBRIDGE_URL = 'ws://localhost:9090';
+let ros = null;
+let isConnected = false;
+
 // State
 let currentMode = null; // 'start', 'enemy', or 'goal'
 let pendingPose = null;
@@ -38,6 +43,9 @@ const modalClose = document.getElementById('modalClose');
 const batchForm = document.getElementById('batchForm');
 const cancelBatchBtn = document.getElementById('cancelBatchBtn');
 const saveBatchBtn = document.getElementById('saveBatchBtn');
+
+// Initialize ROS2 Bridge
+initROS();
 
 // Load obstacles and batches on page load
 loadObstacles();
@@ -602,29 +610,282 @@ function updatePoseDisplay(type, x, y, theta) {
     }
 }
 
-// Functions to be implemented later
+// -------------------------------------------------
+// ROS2 Bridge Functions
+// -------------------------------------------------
+
+function initROS() {
+    console.log('🔌 Connecting to ROS2 Bridge...');
+    
+    ros = new ROSLIB.Ros({
+        url: ROSBRIDGE_URL
+    });
+
+    ros.on('connection', function() {
+        console.log('✅ Connected to ROS2 Bridge');
+        isConnected = true;
+        updateConnectionStatus(true);
+    });
+
+    ros.on('error', function(error) {
+        console.error('❌ ROS2 Bridge Error:', error);
+        isConnected = false;
+        updateConnectionStatus(false);
+    });
+
+    ros.on('close', function() {
+        console.warn('⚠️ ROS2 Bridge connection closed');
+        isConnected = false;
+        updateConnectionStatus(false);
+        
+        // Auto-reconnect after 3 seconds
+        setTimeout(() => {
+            console.log('🔄 Attempting to reconnect...');
+            initROS();
+        }, 3000);
+    });
+}
+
+function updateConnectionStatus(connected) {
+    // You can add a visual indicator in your HTML
+    const statusIndicator = document.getElementById('rosStatus');
+    if (statusIndicator) {
+        statusIndicator.textContent = connected ? '🟢 Connected' : '🔴 Disconnected';
+        statusIndicator.style.color = connected ? 'green' : 'red';
+    }
+}
+
 function send_start() {
-    console.log('send_start() called');
-    console.log('Start Pose:', poses.start);
+    if (!isConnected || !poses.start) {
+        console.warn('⚠️ Cannot send start pose: Not connected or pose not set');
+        return;
+    }
+    
+    console.log('📤 Sending start pose:', poses.start);
+    
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/start_pose',
+        messageType: 'std_msgs/String'
+    });
+    
+    // Convert mm to m, keep degrees
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            x: poses.start.x,  // mm
+            y: poses.start.y,  // mm
+            theta: poses.start.theta  // degrees
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Start pose sent');
 }
 
 function send_enemy() {
-    console.log('send_enemy() called');
-    console.log('Enemy Pose:', poses.enemy);
+    if (!isConnected || !poses.enemy) {
+        console.warn('⚠️ Cannot send enemy pose: Not connected or pose not set');
+        return;
+    }
+    
+    console.log('📤 Sending enemy pose:', poses.enemy);
+    
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/enemy_pose',
+        messageType: 'std_msgs/String'
+    });
+    
+    // Convert mm to m, keep degrees
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            x: poses.enemy.x,  // mm
+            y: poses.enemy.y,  // mm
+            theta: poses.enemy.theta  // degrees
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Enemy pose sent');
 }
 
 function send_goal() {
-    console.log('send_goal() called');
-    console.log('Goal Pose:', poses.goal);
+    if (!isConnected || !poses.goal) {
+        console.warn('⚠️ Cannot send goal pose: Not connected or pose not set');
+        return;
+    }
+    
+    console.log('📤 Sending goal pose:', poses.goal);
+    
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/goal_pose',
+        messageType: 'std_msgs/String'
+    });
+    
+    // Convert mm to m, keep degrees
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            x: poses.goal.x,  // mm
+            y: poses.goal.y,  // mm
+            theta: poses.goal.theta  // degrees
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Goal pose sent');
 }
 
 function findPath() {
-    // TODO: Implement pathfinding logic
-    console.log('findPath() called');
+    if (!isConnected) {
+        console.warn('⚠️ Cannot compute path: Not connected to ROS2');
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+    
+    if (!poses.start || !poses.goal) {
+        console.warn('⚠️ Cannot compute path: Start or goal pose not set');
+        alert('Please set both start and goal poses first.');
+        return;
+    }
+    
+    console.log('🔍 Computing path...');
     console.log('Start:', poses.start);
     console.log('Goal:', poses.goal);
     console.log('Enemy:', poses.enemy);
-    console.log('Obstacles:', obstacles);
+    
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/compute_path',
+        messageType: 'std_msgs/String'
+    });
+    
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            command: 'compute_path'
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Path computation requested');
+    
+    // Listen for path result
+    subscribeToPathResult();
+}
+
+function subscribeToPathResult() {
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/path_result',
+        messageType: 'std_msgs/String'
+    });
+    
+    listener.subscribe(function(message) {
+        try {
+            const result = JSON.parse(message.data);
+            console.log('📥 Path result received:', result);
+            
+            if (result.success) {
+                console.log('✅ Path found!');
+                console.log('Path length:', result.path_length_m, 'm');
+                console.log('Planning time:', result.planning_time_ms, 'ms');
+                
+                // The result has 'path' not 'waypoints'
+                const waypoints = result.path || result.waypoints || [];
+                console.log('Waypoints:', waypoints.length);
+                
+                if (waypoints.length > 0) {
+                    // Draw path on map
+                    drawPath(waypoints);
+                } else {
+                    console.warn('⚠️ No waypoints in path result');
+                }
+            } else {
+                console.error('❌ Path computation failed:', result.message);
+                alert('Path computation failed: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error parsing path result:', error);
+        }
+        
+        // Unsubscribe after receiving result
+        listener.unsubscribe();
+    });
+}
+
+function drawPath(waypoints) {
+    // Remove existing path
+    const existingPath = document.querySelector('.path-line');
+    if (existingPath) {
+        existingPath.remove();
+    }
+    
+    if (!waypoints || waypoints.length === 0) {
+        console.warn('⚠️ No waypoints to draw');
+        return;
+    }
+    
+    console.log('📊 Drawing path with', waypoints.length, 'waypoints');
+    console.log('First waypoint:', waypoints[0]);
+    console.log('Last waypoint:', waypoints[waypoints.length - 1]);
+    
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    // Create SVG for path
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('path-line');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '10';
+    
+    // Convert waypoints to path
+    let pathData = '';
+    waypoints.forEach((wp, index) => {
+        // Waypoint can be [x, y, theta] array or {x, y, theta} object
+        let x_mm, y_mm;
+        
+        if (Array.isArray(wp)) {
+            x_mm = wp[0];
+            y_mm = wp[1];
+        } else {
+            x_mm = wp.x;
+            y_mm = wp.y;
+        }
+        
+        // Waypoints are already in mm, just convert to pixels
+        // Swap x/y for coordinate system
+        const x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+        const y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+        
+        console.log(`Waypoint ${index}: [${x_mm.toFixed(1)}mm, ${y_mm.toFixed(1)}mm] -> [${x_px.toFixed(1)}px, ${y_px.toFixed(1)}px]`);
+        
+        if (index === 0) {
+            pathData += `M ${x_px} ${y_px}`;
+        } else {
+            pathData += ` L ${x_px} ${y_px}`;
+        }
+    });
+    
+    console.log('📐 SVG path data:', pathData);
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('stroke', '#00ff00');
+    path.setAttribute('stroke-width', '4');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('opacity', '0.8');
+    
+    svg.appendChild(path);
+    mapWrapper.appendChild(svg);
+    
+    console.log('✅ Path drawn on map with', waypoints.length, 'points');
 }
 
 // -------------------------------------------------
@@ -919,11 +1180,18 @@ async function saveBatch() {
 // -------------------------------------------------
 
 function sendBatches() {
+    if (!isConnected) {
+        console.warn('⚠️ Cannot send batches: Not connected to ROS2');
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+    
     // Get all selected (visible) batches
     const selectedBatches = batches.filter(batch => batchVisibility[batch.batch_id]);
     
     if (selectedBatches.length === 0) {
         console.warn('⚠️ No batches selected!');
+        alert('No batches selected. Please select at least one batch.');
         return;
     }
     
@@ -940,20 +1208,34 @@ function sendBatches() {
             members: batchMembers.map(member => ({
                 aruco_id: member.aruco_id,
                 position: {
-                    x: member.x,
-                    y: member.y
+                    x: member.x,  // mm
+                    y: member.y   // mm
                 },
                 color: member.color
             }))
         };
     });
     
-    console.log('📤 Sending batches:', batchesTable);
+    console.log('📤 Sending batches to ROS2:', batchesTable);
     console.log('Total selected batches:', selectedBatches.length);
     console.log('Total members:', batchesTable.reduce((sum, b) => sum + b.members.length, 0));
     
-    // TODO: Add your sending logic here
-    // Example: Send to ROS2 node, WebSocket, HTTP API, etc.
+    // Send to ROS2 via rosbridge
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/send_batches',
+        messageType: 'std_msgs/String'
+    });
+    
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            batches: batchesTable
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Batches sent to ROS2');
+    alert(`Successfully sent ${selectedBatches.length} batches to ROS2!`);
     
     // Return the batches table for further use
     return batchesTable;
