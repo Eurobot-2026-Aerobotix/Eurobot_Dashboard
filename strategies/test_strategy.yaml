@@ -1,0 +1,20 @@
+name: test_strategy
+selected: false
+color: yellow
+tasks:
+- description: Go to point
+  global_goal:
+  - 1
+  - 2
+  - 0
+  sequence:
+  - device: motor
+    command: move
+    params:
+    - 100
+    wait: true
+  - device: motor
+    command: rotate
+    params:
+    - 90
+    wait: false
