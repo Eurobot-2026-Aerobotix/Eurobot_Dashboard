@@ -319,6 +319,23 @@
         .instructions li {
             margin: 5px 0;
         }
+
+        .obstacle-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            border-radius: 3px;
+            border: 2px solid #333;
+            z-index: 5;
+            pointer-events: none;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -415,6 +432,7 @@
             start: null,
             enemy: null
         };
+        let obstacles = []; // Store obstacles from YAML
 
         // DOM Elements
         const mapWrapper = document.getElementById('mapWrapper');
@@ -425,6 +443,9 @@
         const orientationInput = document.getElementById('orientationInput');
         const confirmBtn = document.getElementById('confirmBtn');
         const orientationBtns = document.querySelectorAll('.orientation-btn');
+
+        // Load obstacles on page load
+        loadObstacles();
 
         // Initialize
         startPoseBtn.addEventListener('click', () => activateMode('start'));
@@ -455,6 +476,148 @@
                 updateMarkerOrientation(pendingPose.marker, orientationInput.value);
             }
         });
+
+        async function loadObstacles() {
+            try {
+                const response = await fetch('resources/obstacles.yaml');
+                const yamlText = await response.text();
+                
+                // Simple YAML parser for this specific format
+                const data = parseYAML(yamlText);
+                
+                if (data.batches) {
+                    data.batches.forEach(batch => {
+                        if (batch.members) {
+                            batch.members.forEach(member => {
+                                obstacles.push({
+                                    aruco_id: member.aruco_id,
+                                    x: member.map_pos.x,
+                                    y: member.map_pos.y,
+                                    color: member.color,
+                                    batch_id: batch.batch_id,
+                                    direction: batch.direction  // Add direction from batch
+                                });
+                            });
+                        }
+                    });
+                }
+                
+                // Draw obstacles on map
+                drawObstacles();
+                
+                console.log(`Loaded ${obstacles.length} obstacles`);
+            } catch (error) {
+                console.error('Error loading obstacles:', error);
+            }
+        }
+
+        function parseYAML(yamlText) {
+            // Simple YAML parser for the specific format
+            const data = { batches: [] };
+            const lines = yamlText.split('\n');
+            let currentBatch = null;
+            let currentMember = null;
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line || line.startsWith('#')) continue;
+                
+                if (line.includes('- batch_id:')) {
+                    currentBatch = { members: [] };
+                    currentBatch.batch_id = parseInt(line.split(':')[1]);
+                    data.batches.push(currentBatch);
+                } else if (line.includes('direction:') && currentBatch) {
+                    currentBatch.direction = line.split(':')[1].trim().replace(/"/g, '');
+                } else if (line.includes('- aruco_id:') && currentBatch) {
+                    currentMember = {};
+                    currentMember.aruco_id = parseInt(line.split(':')[1]);
+                    currentBatch.members.push(currentMember);
+                } else if (line.includes('map_pos:') && currentMember) {
+                    const match = line.match(/x:\s*([\d.]+).*y:\s*([\d.]+)/);
+                    if (match) {
+                        currentMember.map_pos = {
+                            x: parseFloat(match[1]),
+                            y: parseFloat(match[2])
+                        };
+                    }
+                } else if (line.includes('color:') && currentMember) {
+                    currentMember.color = line.split(':')[1].trim().replace(/"/g, '');
+                }
+            }
+            
+            return data;
+        }
+
+        function drawObstacles() {
+            const displayWidth = map.offsetWidth;
+            const displayHeight = map.offsetHeight;
+            
+            // Obstacle dimensions in mm
+            const OBSTACLE_LONG_MM = 150;   // Long side
+            const OBSTACLE_SHORT_MM = 50;   // Short side
+            
+            obstacles.forEach(obstacle => {
+                // Convert mm to pixel coordinates (with x/y swap)
+                // map_pos is the center position
+                const center_x_px = (obstacle.y / MAP_WIDTH_MM) * displayWidth;
+                const center_y_px = (obstacle.x / MAP_HEIGHT_MM) * displayHeight;
+                
+                // Determine width and height based on direction
+                let width_mm, height_mm;
+                if (obstacle.direction === 'vertical') {
+                    // Vertical: wide width, short height
+                    width_mm = OBSTACLE_LONG_MM;
+                    height_mm = OBSTACLE_SHORT_MM;
+                } else if (obstacle.direction === 'horizontal') {
+                    // Horizontal: narrow width, tall height
+                    width_mm = OBSTACLE_SHORT_MM;
+                    height_mm = OBSTACLE_LONG_MM;
+                } else {
+                    // Default to square if direction unknown
+                    width_mm = OBSTACLE_SHORT_MM;
+                    height_mm = OBSTACLE_SHORT_MM;
+                }
+                
+                // Calculate dimensions in pixels (with x/y swap for dimensions too)
+                const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
+                const height_px = (height_mm / MAP_HEIGHT_MM) * displayHeight;
+                
+                // Create obstacle marker
+                const obstacleMarker = document.createElement('div');
+                obstacleMarker.className = 'obstacle-marker';
+                obstacleMarker.style.left = center_x_px + 'px';
+                obstacleMarker.style.top = center_y_px + 'px';
+                obstacleMarker.style.position = 'absolute';
+                obstacleMarker.style.width = width_px + 'px';
+                obstacleMarker.style.height = height_px + 'px';
+                obstacleMarker.style.transform = 'translate(-50%, -50%)';
+                obstacleMarker.style.borderRadius = '4px'; // Slight rounding for rectangles
+                obstacleMarker.style.border = '2px solid #333';
+                obstacleMarker.style.zIndex = '5';
+                obstacleMarker.style.pointerEvents = 'none';
+                obstacleMarker.style.fontSize = '9px';
+                obstacleMarker.style.display = 'flex';
+                obstacleMarker.style.alignItems = 'center';
+                obstacleMarker.style.justifyContent = 'center';
+                obstacleMarker.style.fontWeight = 'bold';
+                obstacleMarker.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                
+                // Set color
+                if (obstacle.color === 'yellow') {
+                    obstacleMarker.style.backgroundColor = '#FFD700';
+                    obstacleMarker.style.color = '#000';
+                } else if (obstacle.color === 'blue') {
+                    obstacleMarker.style.backgroundColor = '#4169E1';
+                    obstacleMarker.style.color = '#fff';
+                }
+                
+                // Add ArUco ID
+                obstacleMarker.textContent = obstacle.aruco_id;
+                obstacleMarker.title = `ArUco ID: ${obstacle.aruco_id}\nColor: ${obstacle.color}\nPosition: (${obstacle.x}, ${obstacle.y})\nDirection: ${obstacle.direction}\nSize: ${width_mm}x${height_mm}mm`;
+                
+                mapWrapper.appendChild(obstacleMarker);
+            });
+        }
 
         function activateMode(mode) {
             currentMode = mode;
