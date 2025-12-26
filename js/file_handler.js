@@ -1,4 +1,4 @@
-import { Strategy } from "./classes/Strategy.js";
+import { Strategy } from "../classes/Strategy.js";
 
 // Base URL of your Flask server
 const BASE_URL = "http://localhost:8000/strategies";
