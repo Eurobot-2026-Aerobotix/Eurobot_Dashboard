@@ -7,6 +7,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 STRATEGIES_DIR = "strategies"
 OBSTACLES_FILE = "resources/obstacles.yaml"
+SELECTED_STRATEGY_PATH = ""
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -69,9 +70,14 @@ def save_strategy(filename):
 
     with open(path, "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False)
-
+    global SELECTED_STRATEGY_PATH
+    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+    print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}")
     return jsonify({"status": "saved", "file": filename})
 
+def safe_filename(filename: str) -> str:
+    # Basic sanitization
+    return os.path.basename(filename)
 
 # -------------------------------------------------
 # Delete a strategy file
@@ -194,10 +200,27 @@ def run_http_server():
     print("Static file server running on http://localhost:5000")
     server.serve_forever()
 
+def get_selected_strategy_path():
+    for filename in os.listdir(STRATEGIES_DIR):
+        path = os.path.join(STRATEGIES_DIR, filename)
+
+        if not os.path.isfile(path):
+            continue
+
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        if data and data.get("selected") is True:
+            return path
+
+    return None
+
 # -------------------------------------------------
 # Run server
 # -------------------------------------------------
 if __name__ == "__main__":
+    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+    print(f"Initially selected strategy: {SELECTED_STRATEGY_PATH}")
     threading.Thread(target=run_flask, daemon=True).start()
     threading.Thread(target=run_http_server, daemon=True).start()
 

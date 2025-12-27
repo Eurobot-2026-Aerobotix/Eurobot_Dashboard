@@ -51,12 +51,6 @@ export async function deleteStrategy(filename) {
   return await res.json();
 }
 
-/**
- * Update a strategy (overwrite)
- * @param {string} filename - e.g., "myStrategy.yaml"
- * @param {Strategy} strategy - Strategy object to update
- */
-
 async function calculate_global_poses(strategy) {
   if (!strategy || !strategy.tasks) return;
 
