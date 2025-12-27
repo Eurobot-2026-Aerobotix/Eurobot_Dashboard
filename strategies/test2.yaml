@@ -43,10 +43,10 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - '1139.79'
-    - '562.18'
-    - '1312.13'
-    - '213.58'
+    - '1125.05'
+    - '681.18'
+    - '1214.93'
+    - '266.54'
     - '1487.50'
     - '736.27'
     - 700
@@ -61,13 +61,13 @@ tasks:
   global_goal:
     x: '1695.98'
     y: '1725.47'
-    theta: -6.137439863898849
+    theta: 13.608105573767354
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1331.71'
-    - '1764.64'
+    - '1394.71'
+    - '1652.54'
     - 700
     wait: false
   - device: ESP_front
