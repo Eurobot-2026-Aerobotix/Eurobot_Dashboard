@@ -4,15 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pathfinding Simulation</title>
+    <link rel="stylesheet" href="../css/home.css">
     <link rel="stylesheet" href="../css/pathfinding.css">
 </head>
 <body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="strategy_selector.html" class="nav-link">Strategy</a>
+            <a href="pathfinding_simulation.html" class="nav-link active">Pathfinding</a>
+        </div>
+    </nav>
+    
+    <div class="logo-container">
+        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
+    </div>
+    
     <div class="container">
         <div class="header">
-            <h1>🤖 Pathfinding Simulation</h1>
-            <p>Interactive Map - 3m x 2m (3000 x 2000 pixels)</p>
-            <div id="rosStatus" style="position: absolute; top: 10px; right: 20px; font-weight: bold;">
-                🔴 Disconnected
+            <h1>Pathfinding Simulation</h1>
+            <div id="rosStatus" class="ros-status">
+                <span class="status-indicator"></span>
+                <span id="statusText">Disconnected</span>
             </div>
         </div>
 

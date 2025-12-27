@@ -1,5 +1,5 @@
 name: testamine
-selected: true
+selected: false
 color: blue
 tasks:
 - description: Move to plant zone and collect plants
@@ -36,4 +36,3 @@ tasks:
     - '2082.73'
     - 1000
     wait: false
-  name: Task 1

@@ -15,6 +15,7 @@ tasks:
     - '402.82'
     - 0
     wait: false
+  name: Task 1
 - description: Task 2
   global_goal:
     x: '1487.50'
@@ -31,8 +32,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 900
-    - 400
+    - '719.90'
+    - '248.69'
     - 700
     wait: true
   - device: STM
@@ -51,6 +52,7 @@ tasks:
     params:
     - 90
     wait: true
+  name: Task 2
 - description: Task 3
   global_goal:
     x: '1695.98'
@@ -79,3 +81,4 @@ tasks:
     command: put_down
     params: []
     wait: false
+  name: Task 3
