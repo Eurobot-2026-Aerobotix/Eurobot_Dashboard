@@ -210,8 +210,8 @@ def delete_batch(batch_id):
 def prepare_robot():
     global pathfinding_process, prepare_process
     try:
-        script_path = "./prepare.sh"
-        pathfinding_script = "./pathfinding.sh"
+        script_path = "./scripts/prepare.sh"
+        pathfinding_script = "./scripts/pathfinding.sh"
         
         if not os.path.exists(script_path):
             return jsonify({"status": "error", "error": "prepare.sh not found"}), 404
@@ -252,7 +252,7 @@ def prepare_robot():
 def start_strategy():
     global start_process
     try:
-        script_path = "./start.sh"
+        script_path = "./scripts/start.sh"
         if not os.path.exists(script_path):
             return jsonify({"status": "error", "error": "start.sh not found"}), 404
         
