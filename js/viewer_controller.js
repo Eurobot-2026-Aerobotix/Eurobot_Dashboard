@@ -244,6 +244,7 @@ function renderTasks() {
 // ------------------------------
 function populateAddList() {
   const options = [
+    new Action("RASP_PI", "Wait for manual start"),
     new Action("STM", "set_position"),
     new Action("STM", "go_to"),
     new Action("STM", "go_to_backwards"),
