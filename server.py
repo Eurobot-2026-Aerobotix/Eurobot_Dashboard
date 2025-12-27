@@ -270,7 +270,8 @@ def start_strategy():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            preexec_fn=os.setsid  # Create new process group
         )
         
         # Start thread to read output
@@ -304,6 +305,32 @@ def read_pathfinding_output(process):
         pathfinding_output_queue.put("[Process completed]")
     except Exception as e:
         pathfinding_output_queue.put(f"[Error reading output: {e}]")
+
+
+# -------------------------------------------------
+# Stop strategy execution
+# POST /stop
+# -------------------------------------------------
+@app.route("/stop", methods=["POST"])
+def stop_strategy():
+    global start_process
+    try:
+        if start_process and start_process.poll() is None:
+            # Process is still running, kill the entire process group
+            import signal
+            try:
+                # Send SIGTERM to the process group
+                os.killpg(os.getpgid(start_process.pid), signal.SIGTERM)
+                strategy_output_queue.put("[Strategy stopped by user]")
+                return jsonify({"status": "success", "message": "Strategy stopped"})
+            except ProcessLookupError:
+                # Process already terminated
+                strategy_output_queue.put("[Strategy already stopped]")
+                return jsonify({"status": "success", "message": "Strategy already stopped"})
+        else:
+            return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 
 # -------------------------------------------------

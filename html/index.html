@@ -53,6 +53,15 @@
             background-color: #0b7dda;
         }
         
+        #stopBtn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        #stopBtn:hover {
+            background-color: #da190b;
+        }
+        
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
@@ -144,6 +153,7 @@
     <div class="button-container">
         <button id="prepareBtn">Prepare Robot</button>
         <button id="startBtn">Start Strategy</button>
+        <button id="stopBtn">Stop Strategy</button>
     </div>
     
     <div id="status"></div>
@@ -163,6 +173,7 @@
         
         const prepareBtn = document.getElementById('prepareBtn');
         const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
         const statusDiv = document.getElementById('status');
         const outputDiv = document.getElementById('output');
         const outputSelector = document.getElementById('outputSelector');
@@ -316,8 +327,39 @@
             }
         }
         
+        async function stopStrategy() {
+            stopBtn.disabled = true;
+            showStatus('Stopping strategy...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/stop`, {
+                    method: 'POST'
+                });
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    showStatus(`Server error: ${text}`, 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(data.message || 'Strategy stopped successfully!', 'success');
+                } else {
+                    showStatus(data.error || 'Failed to stop strategy', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                stopBtn.disabled = false;
+            }
+        }
+        
         prepareBtn.addEventListener('click', prepareRobot);
         startBtn.addEventListener('click', startStrategy);
+        stopBtn.addEventListener('click', stopStrategy);
     </script>
 </body>
 </html>
