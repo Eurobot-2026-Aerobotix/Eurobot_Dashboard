@@ -1,6 +1,3 @@
-name: test_strategy
-selected: false
-color: yellow
 tasks:
 - description: Go to point
   global_goal:

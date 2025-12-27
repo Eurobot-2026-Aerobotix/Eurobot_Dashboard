@@ -1,13 +1,22 @@
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, Response
 from flask_cors import CORS
 import os
 import yaml
 import threading
+import subprocess
+import queue
+import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 STRATEGIES_DIR = "strategies"
 OBSTACLES_FILE = "resources/obstacles.yaml"
 SELECTED_STRATEGY_PATH = ""
+
+# Queues for streaming output
+strategy_output_queue = queue.Queue()
+pathfinding_output_queue = queue.Queue()
+start_process = None
+pathfinding_process = None
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -190,6 +199,135 @@ def delete_batch(batch_id):
         yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
     
     return jsonify({"status": "deleted", "batch_id": batch_id})
+
+
+# -------------------------------------------------
+# Prepare robot (will execute a shell script)
+# POST /prepare
+# -------------------------------------------------
+@app.route("/prepare", methods=["POST"])
+def prepare_robot():
+    global pathfinding_process
+    try:
+        script_path = "./prepare.sh"
+        pathfinding_script = "./pathfinding.sh"
+        
+        if not os.path.exists(script_path):
+            return jsonify({"status": "error", "error": "prepare.sh not found"}), 404
+        
+        if not os.path.exists(pathfinding_script):
+            return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
+        
+        # Execute the prepare script in the background (no output capture)
+        subprocess.Popen(["bash", script_path])
+        
+        # Clear the pathfinding queue
+        while not pathfinding_output_queue.empty():
+            pathfinding_output_queue.get()
+        
+        # Execute pathfinding script and capture output
+        pathfinding_process = subprocess.Popen(
+            ["bash", pathfinding_script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Start thread to read pathfinding output
+        threading.Thread(target=read_pathfinding_output, args=(pathfinding_process,), daemon=True).start()
+        
+        return jsonify({"status": "success", "message": "Robot preparation and pathfinding started"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+# -------------------------------------------------
+# Start strategy execution
+# POST /start
+# -------------------------------------------------
+@app.route("/start", methods=["POST"])
+def start_strategy():
+    global start_process
+    try:
+        script_path = "./start.sh"
+        if not os.path.exists(script_path):
+            return jsonify({"status": "error", "error": "start.sh not found"}), 404
+        
+        if not SELECTED_STRATEGY_PATH:
+            return jsonify({"status": "error", "error": "No strategy selected"}), 400
+        
+        # Convert to absolute path
+        strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
+        
+        # Clear the queue
+        while not strategy_output_queue.empty():
+            strategy_output_queue.get()
+        
+        # Execute the start script with the strategy path as argument
+        start_process = subprocess.Popen(
+            ["bash", script_path, strategy_abs_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Start thread to read output
+        threading.Thread(target=read_strategy_output, args=(start_process,), daemon=True).start()
+        
+        return jsonify({
+            "status": "success", 
+            "message": f"Strategy execution started (Strategy: {strategy_abs_path})"
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+def read_strategy_output(process):
+    """Read strategy process output line by line and put in queue"""
+    try:
+        for line in process.stdout:
+            strategy_output_queue.put(line.rstrip())
+        process.wait()
+        strategy_output_queue.put("[Process completed]")
+    except Exception as e:
+        strategy_output_queue.put(f"[Error reading output: {e}]")
+
+
+def read_pathfinding_output(process):
+    """Read pathfinding process output line by line and put in queue"""
+    try:
+        for line in process.stdout:
+            pathfinding_output_queue.put(line.rstrip())
+        process.wait()
+        pathfinding_output_queue.put("[Process completed]")
+    except Exception as e:
+        pathfinding_output_queue.put(f"[Error reading output: {e}]")
+
+
+# -------------------------------------------------
+# Stream output from start.sh or pathfinding.sh
+# GET /stream/<source>  where source is 'strategy' or 'pathfinding'
+# -------------------------------------------------
+@app.route("/stream/<source>", methods=["GET"])
+def stream_output(source):
+    if source not in ['strategy', 'pathfinding']:
+        abort(400, "Invalid source. Use 'strategy' or 'pathfinding'")
+    
+    output_queue = strategy_output_queue if source == 'strategy' else pathfinding_output_queue
+    
+    def generate():
+        while True:
+            try:
+                # Wait for output with timeout
+                line = output_queue.get(timeout=1)
+                yield f"data: {line}\n\n"
+            except queue.Empty:
+                # Send keepalive
+                yield ": keepalive\n\n"
+    
+    return Response(generate(), mimetype="text/event-stream")
 
 
 def run_flask():

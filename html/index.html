@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eurobot Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #prepareBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #prepareBtn:hover {
+            background-color: #45a049;
+        }
+        
+        #startBtn {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        #startBtn:hover {
+            background-color: #0b7dda;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        #status {            margin-top: 30px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 5px;
+            min-height: 50px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .output-controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .output-controls label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .output-controls select {
+            padding: 8px 15px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            cursor: pointer;
+        }
+        
+        .output-controls select:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #output:empty {
+            display: none;
+        }
+        
+        .output-line {
+            margin: 2px 0;
+        }
+        
+        .status-message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 3px;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <h1>Eurobot Dashboard</h1>
+    
+    <div class="button-container">
+        <button id="prepareBtn">Prepare Robot</button>
+        <button id="startBtn">Start Strategy</button>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="output-controls">
+        <label for="outputSelector">View Output:</label>
+        <select id="outputSelector">
+            <option value="strategy">Strategy</option>
+            <option value="pathfinding">Pathfinding</option>
+        </select>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        const prepareBtn = document.getElementById('prepareBtn');
+        const startBtn = document.getElementById('startBtn');
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+        const outputSelector = document.getElementById('outputSelector');
+        
+        let strategyEventSource = null;
+        let pathfindingEventSource = null;
+        let currentSource = 'strategy';
+        
+        // Separate output buffers for each source
+        let strategyOutput = [];
+        let pathfindingOutput = [];
+        
+        // Handle output source change
+        outputSelector.addEventListener('change', function() {
+            currentSource = outputSelector.value;
+            displayCurrentOutput();
+        });
+        
+        function displayCurrentOutput() {
+            const outputs = currentSource === 'strategy' ? strategyOutput : pathfindingOutput;
+            outputDiv.innerHTML = '';
+            
+            outputs.forEach(text => {
+                const line = document.createElement('div');
+                line.className = 'output-line';
+                line.textContent = text;
+                outputDiv.appendChild(line);
+            });
+            
+            // Auto-scroll to bottom
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+        
+        function startStreaming(source) {
+            if (source === 'strategy') {
+                if (strategyEventSource) {
+                    strategyEventSource.close();
+                }
+                
+                strategyEventSource = new EventSource(`${API_URL}/stream/strategy`);
+                
+                strategyEventSource.onmessage = function(event) {
+                    strategyOutput.push(event.data);
+                    
+                    if (currentSource === 'strategy') {
+                        const line = document.createElement('div');
+                        line.className = 'output-line';
+                        line.textContent = event.data;
+                        outputDiv.appendChild(line);
+                        outputDiv.scrollTop = outputDiv.scrollHeight;
+                    }
+                };
+                
+                strategyEventSource.onerror = function(error) {
+                    console.error('Strategy EventSource error:', error);
+                };
+            } else {
+                if (pathfindingEventSource) {
+                    pathfindingEventSource.close();
+                }
+                
+                pathfindingEventSource = new EventSource(`${API_URL}/stream/pathfinding`);
+                
+                pathfindingEventSource.onmessage = function(event) {
+                    pathfindingOutput.push(event.data);
+                    
+                    if (currentSource === 'pathfinding') {
+                        const line = document.createElement('div');
+                        line.className = 'output-line';
+                        line.textContent = event.data;
+                        outputDiv.appendChild(line);
+                        outputDiv.scrollTop = outputDiv.scrollHeight;
+                    }
+                };
+                
+                pathfindingEventSource.onerror = function(error) {
+                    console.error('Pathfinding EventSource error:', error);
+                };
+            }
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusMsg = document.createElement('div');
+            statusMsg.className = `status-message status-${type}`;
+            statusMsg.textContent = message;
+            statusDiv.appendChild(statusMsg);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                statusMsg.remove();
+            }, 5000);
+        }
+        
+        async function prepareRobot() {
+            prepareBtn.disabled = true;
+            showStatus('Preparing robot...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/prepare`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(data.message || 'Robot prepared successfully!', 'success');
+                    
+                    // Clear pathfinding output and start streaming
+                    pathfindingOutput = [];
+                    outputDiv.innerHTML = '';
+                    outputSelector.value = 'pathfinding';
+                    currentSource = 'pathfinding';
+                    startStreaming('pathfinding');
+                } else {
+                    showStatus(data.error || 'Failed to prepare robot', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                prepareBtn.disabled = false;
+            }
+        }
+        
+        async function startStrategy() {
+            startBtn.disabled = true;
+            showStatus('Starting strategy...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/start`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus(data.message || 'Strategy started successfully!', 'success');
+                    
+                    // Clear strategy output and start streaming
+                    strategyOutput = [];
+                    outputDiv.innerHTML = '';
+                    outputSelector.value = 'strategy';
+                    currentSource = 'strategy';
+                    startStreaming('strategy');
+                } else {
+                    showStatus(data.error || 'Failed to start strategy', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+        
+        prepareBtn.addEventListener('click', prepareRobot);
+        startBtn.addEventListener('click', startStrategy);
+    </script>
+</body>
+</html>
