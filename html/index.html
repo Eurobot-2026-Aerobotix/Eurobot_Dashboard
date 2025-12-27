@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eurobot Dashboard</title>
+    <link rel="stylesheet" href="../css/home.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="nav-link active">Home</a>
+            <a href="strategy_selector.html" class="nav-link">Strategy</a>
+            <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
+        </div>
+    </nav>
+    
+    <div class="logo-container">
+        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
+    </div>
+    <h1>Eurobot Dashboard</h1>
+    
+    <div class="button-container">
+        <button id="prepareBtn">Prepare Robot</button>
+        <button id="startBtn">Start Strategy</button>
+        <button id="stopBtn">Stop Strategy</button>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="output-controls">
+        <label for="outputSelector">View Output:</label>
+        <select id="outputSelector">
+            <option value="strategy">Strategy</option>
+            <option value="pathfinding">Pathfinding</option>
+        </select>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script src="../js/home.js"></script>
+</body>
+</html>

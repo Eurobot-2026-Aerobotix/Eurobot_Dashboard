@@ -1,0 +1,18 @@
+name: dzdq
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: '1358.64'
+    y: '1418.85'
+    theta: 46.2418545712436
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1358.64'
+    - '1418.85'
+    - 1000
+    wait: false
+  name: Task 1
