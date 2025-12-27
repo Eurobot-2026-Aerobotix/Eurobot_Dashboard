@@ -50,6 +50,9 @@ initROS();
 // Load obstacles and batches on page load
 loadObstacles();
 
+// Load saved state from localStorage
+loadSavedState();
+
 // Initialize
 startPoseBtn.addEventListener('click', () => activateMode('start'));
 enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
@@ -357,6 +360,9 @@ function populateBatchSelector() {
 function toggleBatchVisibility(batchId) {
     batchVisibility[batchId] = !batchVisibility[batchId];
     
+    // Save to localStorage
+    saveBatchVisibilityToStorage();
+    
     // Update obstacle markers visibility using data attribute
     const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batchId}"]`);
     obstacleMarkers.forEach(marker => {
@@ -386,6 +392,9 @@ function toggleAllBatches() {
                 marker.classList.remove('hidden');
             } else {
                 marker.classList.add('hidden');
+    
+    // Save to localStorage
+    saveBatchVisibilityToStorage();
             }
         });
     });
@@ -572,6 +581,9 @@ function confirmPose() {
         y: pendingPose.y,
         theta: theta
     };
+
+    // Save to localStorage
+    savePoseToStorage(pendingPose.type);
 
     // Update display
     updatePoseDisplay(pendingPose.type, pendingPose.x, pendingPose.y, theta);
@@ -1284,6 +1296,87 @@ async function deleteBatch(batchId, knownId) {
     } catch (error) {
         console.error('Error deleting batch:', error);
     }
+}
+
+// -------------------------------------------------
+// LocalStorage Persistence Functions
+// -------------------------------------------------
+
+function savePoseToStorage(type) {
+    if (poses[type]) {
+        localStorage.setItem(`pathfinding_${type}_pose`, JSON.stringify(poses[type]));
+    }
+}
+
+function saveBatchVisibilityToStorage() {
+    localStorage.setItem('pathfinding_batch_visibility', JSON.stringify(batchVisibility));
+}
+
+function loadSavedState() {
+    // Wait for obstacles to load first
+    setTimeout(() => {
+        // Load poses
+        ['start', 'enemy', 'goal'].forEach(type => {
+            const savedPose = localStorage.getItem(`pathfinding_${type}_pose`);
+            if (savedPose) {
+                try {
+                    const pose = JSON.parse(savedPose);
+                    poses[type] = pose;
+                    
+                    // Convert mm to px for display
+                    const displayWidth = map.offsetWidth;
+                    const displayHeight = map.offsetHeight;
+                    const x_px = (pose.y / MAP_WIDTH_MM) * displayWidth;
+                    const y_px = (pose.x / MAP_HEIGHT_MM) * displayHeight;
+                    
+                    // Create marker
+                    const marker = createMarker(x_px, y_px, type);
+                    updateMarkerOrientation(marker, pose.theta);
+                    
+                    // Create robot model
+                    createRobotModel(x_px, y_px, pose.theta, type);
+                    
+                    // Update display
+                    updatePoseDisplay(type, pose.x, pose.y, pose.theta);
+                } catch (e) {
+                    console.error(`Error loading ${type} pose:`, e);
+                }
+            }
+        });
+        
+        // Load batch visibility
+        const savedVisibility = localStorage.getItem('pathfinding_batch_visibility');
+        if (savedVisibility) {
+            try {
+                const visibility = JSON.parse(savedVisibility);
+                
+                // Apply saved visibility
+                Object.keys(visibility).forEach(batchId => {
+                    if (batchVisibility.hasOwnProperty(batchId)) {
+                        batchVisibility[batchId] = visibility[batchId];
+                        
+                        // Update checkbox
+                        const checkbox = document.getElementById(`batch-${batchId}`);
+                        if (checkbox) {
+                            checkbox.checked = visibility[batchId];
+                        }
+                        
+                        // Update markers
+                        const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batchId}"]`);
+                        obstacleMarkers.forEach(marker => {
+                            if (visibility[batchId]) {
+                                marker.classList.remove('hidden');
+                            } else {
+                                marker.classList.add('hidden');
+                            }
+                        });
+                    }
+                });
+            } catch (e) {
+                console.error('Error loading batch visibility:', e);
+            }
+        }
+    }, 500); // Wait for obstacles to be drawn
 }
 
 // -------------------------------------------------
