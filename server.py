@@ -17,6 +17,7 @@ strategy_output_queue = queue.Queue()
 pathfinding_output_queue = queue.Queue()
 start_process = None
 pathfinding_process = None
+prepare_process = None
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -207,7 +208,7 @@ def delete_batch(batch_id):
 # -------------------------------------------------
 @app.route("/prepare", methods=["POST"])
 def prepare_robot():
-    global pathfinding_process
+    global pathfinding_process, prepare_process
     try:
         script_path = "./prepare.sh"
         pathfinding_script = "./pathfinding.sh"
@@ -218,8 +219,9 @@ def prepare_robot():
         if not os.path.exists(pathfinding_script):
             return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
         
-        # Execute the prepare script in the background (no output capture)
-        subprocess.Popen(["bash", script_path])
+        # Execute the prepare script with visible output in server terminal
+        print("\n=== Starting prepare.sh ===")
+        prepare_process = subprocess.Popen(["bash", script_path], stdout=None, stderr=None)
         
         # Clear the pathfinding queue
         while not pathfinding_output_queue.empty():
@@ -381,9 +383,58 @@ def get_selected_strategy_path():
     return None
 
 # -------------------------------------------------
+# Cleanup function
+# -------------------------------------------------
+def cleanup():
+    """Kill all spawned processes on exit"""
+    import signal
+    print("\n=== Cleaning up processes ===")
+    
+    # Kill rosbridge and ROS2 processes
+    subprocess.run(["pkill", "-f", "rosbridge_websocket"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "ros2 launch hybrid_astar"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "ros2 run hybrid_astar"], stderr=subprocess.DEVNULL)
+    
+    # Kill tracked processes
+    if start_process and start_process.poll() is None:
+        try:
+            os.killpg(os.getpgid(start_process.pid), signal.SIGTERM)
+        except:
+            pass
+    
+    if pathfinding_process and pathfinding_process.poll() is None:
+        try:
+            pathfinding_process.terminate()
+        except:
+            pass
+    
+    if prepare_process and prepare_process.poll() is None:
+        try:
+            prepare_process.terminate()
+        except:
+            pass
+    
+    print("=== Cleanup complete ===")
+
+# -------------------------------------------------
 # Run server
 # -------------------------------------------------
 if __name__ == "__main__":
+    import signal
+    import atexit
+    
+    # Register cleanup on exit
+    atexit.register(cleanup)
+    
+    # Handle Ctrl+C
+    def signal_handler(sig, frame):
+        print("\n=== Received interrupt signal ===")
+        cleanup()
+        os._exit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     SELECTED_STRATEGY_PATH = get_selected_strategy_path()
     print(f"Initially selected strategy: {SELECTED_STRATEGY_PATH}")
     threading.Thread(target=run_flask, daemon=True).start()
@@ -391,4 +442,8 @@ if __name__ == "__main__":
 
     # Keep main thread alive
     print("Servers running. Press Ctrl+C to exit.")
-    threading.Event().wait()
+    try:
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        cleanup()
+        os._exit(0)

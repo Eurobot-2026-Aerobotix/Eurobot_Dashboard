@@ -11,13 +11,32 @@ let strategyEventSource = null;
 let pathfindingEventSource = null;
 let currentSource = 'strategy';
 
-// Separate output buffers for each source
-let strategyOutput = [];
-let pathfindingOutput = [];
+// Separate output buffers for each source - persist in localStorage
+let strategyOutput = JSON.parse(localStorage.getItem('strategyOutput') || '[]');
+let pathfindingOutput = JSON.parse(localStorage.getItem('pathfindingOutput') || '[]');
+
+// Load saved current source
+const savedSource = localStorage.getItem('currentSource');
+if (savedSource) {
+    currentSource = savedSource;
+    outputSelector.value = savedSource;
+}
+
+// Display existing output on page load
+displayCurrentOutput();
+
+// Auto-reconnect to streams if processes are running
+if (strategyOutput.length > 0) {
+    startStreaming('strategy');
+}
+if (pathfindingOutput.length > 0) {
+    startStreaming('pathfinding');
+}
 
 // Handle output source change
 outputSelector.addEventListener('change', function() {
     currentSource = outputSelector.value;
+    localStorage.setItem('currentSource', currentSource);
     displayCurrentOutput();
 });
 
@@ -46,6 +65,7 @@ function startStreaming(source) {
         
         strategyEventSource.onmessage = function(event) {
             strategyOutput.push(event.data);
+            localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
             
             if (currentSource === 'strategy') {
                 const line = document.createElement('div');
@@ -68,6 +88,7 @@ function startStreaming(source) {
         
         pathfindingEventSource.onmessage = function(event) {
             pathfindingOutput.push(event.data);
+            localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
             
             if (currentSource === 'pathfinding') {
                 const line = document.createElement('div');
@@ -112,9 +133,11 @@ async function prepareRobot() {
             
             // Clear pathfinding output and start streaming
             pathfindingOutput = [];
+            localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
             outputDiv.innerHTML = '';
             outputSelector.value = 'pathfinding';
             currentSource = 'pathfinding';
+            localStorage.setItem('currentSource', currentSource);
             startStreaming('pathfinding');
         } else {
             showStatus(data.error || 'Failed to prepare robot', 'error');
@@ -142,9 +165,11 @@ async function startStrategy() {
             
             // Clear strategy output and start streaming
             strategyOutput = [];
+            localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
             outputDiv.innerHTML = '';
             outputSelector.value = 'strategy';
             currentSource = 'strategy';
+            localStorage.setItem('currentSource', currentSource);
             startStreaming('strategy');
         } else {
             showStatus(data.error || 'Failed to start strategy', 'error');
