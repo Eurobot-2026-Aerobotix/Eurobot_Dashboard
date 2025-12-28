@@ -1,5 +1,5 @@
 // Use window.location.hostname to connect to the server hosting this page
-const API_HOST = window.location.hostname || 'localhost';
+const API_HOST = window.location.hostname || '10.42.0.1';
 const API_URL = `http://${API_HOST}:8000`;
 
 const prepareBtn = document.getElementById('prepareBtn');

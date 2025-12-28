@@ -5,7 +5,7 @@ const MAP_WIDTH_PX = 3000;  // pixels
 const MAP_HEIGHT_PX = 2000; // pixels
 
 // ROS2 Bridge Configuration - use dynamic hostname
-const API_HOST = window.location.hostname || 'localhost';
+const API_HOST = window.location.hostname || '10.42.0.1';
 const ROSBRIDGE_URL = `ws://${API_HOST}:9090`;
 let ros = null;
 let isConnected = false;
