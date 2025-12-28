@@ -12,11 +12,14 @@ sudo systemctl daemon-reload
 # Enable service to start on boot
 sudo systemctl enable eurobot-dashboard.service
 
-# Start the service now
-sudo systemctl start eurobot-dashboard.service
+# Restart the service with new configuration
+sudo systemctl restart eurobot-dashboard.service
 
 echo ""
 echo "✅ Service installed successfully!"
+echo ""
+echo "Checking service status..."
+sudo systemctl status eurobot-dashboard.service --no-pager
 echo ""
 echo "Useful commands:"
 echo "  Check status:  sudo systemctl status eurobot-dashboard.service"
