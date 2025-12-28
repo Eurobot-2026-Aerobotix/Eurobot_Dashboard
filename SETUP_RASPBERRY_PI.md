@@ -17,6 +17,13 @@ sudo apt install python3 python3-pip
 
 # Install required Python packages
 pip3 install flask flask-cors pyyaml
+
+# Install ROS 2 packages for pathfinding
+sudo apt install ros-jazzy-rosbridge-suite
+
+# Source ROS 2 environment
+source /opt/ros/jazzy/setup.bash
+echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
 ```
 
 #### Get the Raspberry Pi's IP Address
@@ -42,19 +49,36 @@ python3 server.py
 The server will start on:
 - **Flask API**: Port 8000
 - **Web Interface**: Port 5000
-- **ROS Bridge**: Port 9090 (if using ROS)
 
-### 3. Accessing from Your Computer
+### 3. Starting ROS Bridge for Pathfinding
+
+**IMPORTANT:** For the pathfinding visualization to work, start ROS Bridge:
+
+```bash
+# Source ROS 2
+source /opt/ros/jazzy/setup.bash
+
+# Start rosbridge with correct parameter (note the .0)
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml delay_between_messages:=0.0
+```
+
+This starts the **ROS Bridge WebSocket** on port 9090.
+
+**Why the `.0` is needed:** ROS 2 Jazzy expects a DOUBLE type for `delay_between_messages`, not an INTEGER.
+
+### 4. Accessing from Your Computer
 
 Open a web browser on your computer and navigate to:
 ```
 http://<raspberry-pi-ip>:5000
 ```
 
-For example, if your Raspberry Pi's IP is `192.168.1.100`:
+For example, if your Raspberry Pi's IP is `10.13.0.39`:
 ```
-http://192.168.1.100:5000
+http://10.13.0.39:5000
 ```
+
+The pathfinding visualization will automatically connect to `ws://<raspberry-pi-ip>:9090`
 
 ## Port Configuration
 
@@ -116,6 +140,45 @@ sudo systemctl status eurobot-dashboard.service
 ```
 
 ## Troubleshooting
+
+### Pathfinding Shows "Disconnected"
+
+**Symptoms:**
+- Browser console shows: `WebSocket connection to 'ws://....:9090/' failed`
+- Pathfinding status shows "🔴 Disconnected"
+
+**Cause:** ROS Bridge WebSocket isn't running on port 9090.
+
+**Solution:**
+
+1. **Check if rosbridge is running:**
+   ```bash
+   ps aux | grep rosbridge
+   ```
+
+2. **Check if port 9090 is listening:**
+   ```bash
+   sudo netstat -tulpn | grep 9090
+   ```
+
+3. **Start rosbridge manually:**
+   ```bash
+   source /opt/ros/jazzy/setup.bash
+   ros2 launch rosbridge_server rosbridge_websocket_launch.xml delay_between_messages:=0.0
+   ```
+
+4. **Refresh your browser** - pathfinding should connect
+
+### ROS Bridge Parameter Error
+
+**Symptoms:**
+```
+InvalidParameterTypeException: Trying to set parameter 'delay_between_messages' 
+to '0' of type 'INTEGER', expecting type 'DOUBLE'
+```
+
+**Solution:**
+Always use `delay_between_messages:=0.0` (note the `.0`)
 
 ### Can't access from computer
 - Verify both devices are on the same network
