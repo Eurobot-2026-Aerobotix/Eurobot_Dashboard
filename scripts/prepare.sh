@@ -8,5 +8,4 @@ lsof -ti:9090 | xargs -r kill -9 2>/dev/null || true
 sleep 1
 ros2 run hybrid_astar web_handler.py &
 sleep 2
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml &
-
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml delay_between_messages:=0.0

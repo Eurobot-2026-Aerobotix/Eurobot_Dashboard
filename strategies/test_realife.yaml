@@ -1,0 +1,45 @@
+name: test_realife
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: '203.10'
+    y: '244.22'
+    theta: -170.92310980209234
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - '205.68'
+    - '246.79'
+    - 0
+    wait: false
+  - device: STM
+    command: bezier
+    params:
+    - '1498.73'
+    - '434.45'
+    - '717.24'
+    - '2688.95'
+    - '1624.70'
+    - '2632.39'
+    - 500
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - -90
+    wait: false
+  - device: STM
+    command: bezier
+    params:
+    - '439.61'
+    - '1434.45'
+    - '1940.89'
+    - '521.85'
+    - '203.10'
+    - '244.22'
+    - 700
+    wait: false
+  name: Task 1

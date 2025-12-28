@@ -1,3 +1,3 @@
-cd ~/EUROBOT/ROS2-WS-EURO/
+source ~/.bashrc
 source install/setup.bash
 ros2 launch hybrid_astar hybrid_astar.launch.py

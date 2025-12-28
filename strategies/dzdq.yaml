@@ -1,5 +1,5 @@
 name: dzdq
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -15,4 +15,3 @@ tasks:
     - '1418.85'
     - 1000
     wait: false
-  name: Task 1
