@@ -1,7 +1,9 @@
 import { Strategy } from "../classes/Strategy.js";
 
 // Base URL of your Flask server
-const BASE_URL = "http://localhost:8000/strategies";
+// Use window.location.hostname to connect to the server hosting this page
+const API_HOST = window.location.hostname || 'localhost';
+const BASE_URL = `http://${API_HOST}:8000/strategies`;
 
 /**
  * Load all strategies as Strategy objects

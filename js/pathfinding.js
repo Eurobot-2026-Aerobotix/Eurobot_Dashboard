@@ -1130,7 +1130,8 @@ async function saveBatch() {
     
     // Save to server
     try {
-        const response = await fetch('http://localhost:8000/obstacles/batch', {
+        const API_HOST = window.location.hostname || 'localhost';
+        const response = await fetch(`http://${API_HOST}:8000/obstacles/batch`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1260,7 +1261,8 @@ function sendBatches() {
 async function deleteBatch(batchId, knownId) {
     try {
         // Call server to delete batch from YAML
-        const response = await fetch(`http://localhost:8000/obstacles/batch/${batchId}`, {
+        const API_HOST = window.location.hostname || 'localhost';
+        const response = await fetch(`http://${API_HOST}:8000/obstacles/batch/${batchId}`, {
             method: 'DELETE'
         });
         

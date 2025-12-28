@@ -360,11 +360,12 @@ def stream_output(source):
 
 
 def run_flask():
-    app.run(host="localhost", port=8000, debug=False)
+    app.run(host="0.0.0.0", port=8000, debug=False)
 
 def run_http_server():
-    server = HTTPServer(("localhost", 5000), SimpleHTTPRequestHandler)
-    print("Static file server running on http://localhost:5000")
+    server = HTTPServer(("0.0.0.0", 5000), SimpleHTTPRequestHandler)
+    print("Static file server running on http://0.0.0.0:5000")
+    print("Access from other devices using: http://<raspberry-pi-ip>:5000")
     server.serve_forever()
 
 def get_selected_strategy_path():
