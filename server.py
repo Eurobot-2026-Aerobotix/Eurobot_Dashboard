@@ -26,10 +26,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
 
 
-def safe_filename(name):
-    if "/" in name or ".." in name:
-        abort(400, "Invalid filename")
-    return name
+def safe_filename(filename):
+    """Sanitize filename to prevent path traversal attacks"""
+    return os.path.basename(filename)
 
 
 # -------------------------------------------------
@@ -85,9 +84,6 @@ def save_strategy(filename):
     print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}")
     return jsonify({"status": "saved", "file": filename})
 
-def safe_filename(filename: str) -> str:
-    # Basic sanitization
-    return os.path.basename(filename)
 
 # -------------------------------------------------
 # Delete a strategy file
@@ -362,8 +358,18 @@ def stream_output(source):
 def run_flask():
     app.run(host="0.0.0.0", port=8000, debug=False)
 
+class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Redirect root to /html/index.html
+        if self.path == '/' or self.path == '':
+            self.send_response(301)
+            self.send_header('Location', '/html/index.html')
+            self.end_headers()
+            return
+        return SimpleHTTPRequestHandler.do_GET(self)
+
 def run_http_server():
-    server = HTTPServer(("0.0.0.0", 5000), SimpleHTTPRequestHandler)
+    server = HTTPServer(("0.0.0.0", 5000), CustomHTTPRequestHandler)
     print("Static file server running on http://0.0.0.0:5000")
     print("Access from other devices using: http://<raspberry-pi-ip>:5000")
     server.serve_forever()
