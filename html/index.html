@@ -12,8 +12,35 @@
             <a href="index.html" class="nav-link active">Home</a>
             <a href="strategy_selector.html" class="nav-link">Strategy</a>
             <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
+            <button id="settingsBtn" class="settings-btn" title="Server Settings">⚙️</button>
         </div>
     </nav>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Server Configuration</h2>
+            <div class="settings-info">
+                <div class="info-row">
+                    <strong>Current Mode:</strong>
+                    <span id="currentMode">-</span>
+                </div>
+                <div class="info-row">
+                    <strong>Server IP:</strong>
+                    <span id="currentIP">-</span>
+                </div>
+            </div>
+            <div class="settings-form">
+                <label for="serverIP">Raspberry Pi IP Address:</label>
+                <input type="text" id="serverIP" placeholder="e.g., 192.168.1.100 or 10.42.0.1">
+                <small>Set this when running on localhost. Leave as-is when accessing remotely.</small>
+                <button id="saveIPBtn">Save IP</button>
+                <button id="autoDetectBtn">Auto-detect</button>
+            </div>
+            <div id="settingsMessage" class="settings-message"></div>
+        </div>
+    </div>
     
     <div class="logo-container">
         <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
@@ -38,6 +65,7 @@
     
     <div id="output"></div>
     
+    <script src="../js/config.js"></script>
     <script src="../js/home.js"></script>
 </body>
 </html>

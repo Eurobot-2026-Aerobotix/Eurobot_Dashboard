@@ -224,12 +224,18 @@ def prepare_robot():
             pathfinding_output_queue.get()
         
         # Execute pathfinding script and capture output
+        # Use unbuffered output for real-time streaming
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+        env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+        
         pathfinding_process = subprocess.Popen(
             ["bash", pathfinding_script],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=0,  # Unbuffered
+            env=env
         )
         
         # Start thread to read pathfinding output
@@ -297,8 +303,17 @@ def read_strategy_output(process):
 def read_pathfinding_output(process):
     """Read pathfinding process output line by line and put in queue"""
     try:
-        for line in process.stdout:
-            pathfinding_output_queue.put(line.rstrip())
+        buffer = ""
+        while True:
+            char = process.stdout.read(1)
+            if not char:
+                break
+            buffer += char
+            if char == '\n':
+                pathfinding_output_queue.put(buffer.rstrip())
+                buffer = ""
+        if buffer:
+            pathfinding_output_queue.put(buffer.rstrip())
         process.wait()
         pathfinding_output_queue.put("[Process completed]")
     except Exception as e:

@@ -4,9 +4,8 @@ const MAP_HEIGHT_MM = 2000; // 2000mm = 2m
 const MAP_WIDTH_PX = 3000;  // pixels
 const MAP_HEIGHT_PX = 2000; // pixels
 
-// ROS2 Bridge Configuration - use dynamic hostname
-const API_HOST = window.location.hostname || '10.42.0.1';
-const ROSBRIDGE_URL = `ws://${API_HOST}:9090`;
+// ROS2 Bridge Configuration - use smart IP config
+const ROSBRIDGE_URL = window.ipConfig ? window.ipConfig.getWebSocketURL() : 'ws://localhost:9090';
 let ros = null;
 let isConnected = false;
 
@@ -1131,8 +1130,7 @@ async function saveBatch() {
     
     // Save to server
     try {
-        const API_HOST = window.location.hostname || 'localhost';
-        const response = await fetch(`http://${API_HOST}:8000/obstacles/batch`, {
+        const response = await fetch(`${window.ipConfig.getAPIURL()}/obstacles/batch`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1262,8 +1260,7 @@ function sendBatches() {
 async function deleteBatch(batchId, knownId) {
     try {
         // Call server to delete batch from YAML
-        const API_HOST = window.location.hostname || 'localhost';
-        const response = await fetch(`http://${API_HOST}:8000/obstacles/batch/${batchId}`, {
+        const response = await fetch(`${window.ipConfig.getAPIURL()}/obstacles/batch/${batchId}`, {
             method: 'DELETE'
         });
         

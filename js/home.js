@@ -1,6 +1,16 @@
-// Use window.location.hostname to connect to the server hosting this page
-const API_HOST = window.location.hostname || '10.42.0.1';
-const API_URL = `http://${API_HOST}:8000`;
+// Use the smart IP configuration
+const API_URL = window.ipConfig.getAPIURL();
+
+// Settings Modal Elements
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeModal = document.querySelector('.close');
+const serverIPInput = document.getElementById('serverIP');
+const saveIPBtn = document.getElementById('saveIPBtn');
+const autoDetectBtn = document.getElementById('autoDetectBtn');
+const settingsMessage = document.getElementById('settingsMessage');
+const currentModeSpan = document.getElementById('currentMode');
+const currentIPSpan = document.getElementById('currentIP');
 
 const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
@@ -216,3 +226,115 @@ async function stopStrategy() {
 prepareBtn.addEventListener('click', prepareRobot);
 startBtn.addEventListener('click', startStrategy);
 stopBtn.addEventListener('click', stopStrategy);
+
+// ========== Settings Modal Functions ==========
+
+// Open settings modal
+settingsBtn.addEventListener('click', () => {
+    updateSettingsDisplay();
+    settingsModal.classList.add('show');
+});
+
+// Close settings modal
+closeModal.addEventListener('click', () => {
+    settingsModal.classList.remove('show');
+});
+
+// Close modal when clicking outside
+window.addEventListener('click', (event) => {
+    if (event.target === settingsModal) {
+        settingsModal.classList.remove('show');
+    }
+});
+
+// Update settings display
+function updateSettingsDisplay() {
+    const info = window.ipConfig.getConnectionInfo();
+    
+    // Show current mode
+    if (info.isLocalhost) {
+        currentModeSpan.textContent = 'Localhost (Development Mode)';
+        currentModeSpan.style.color = '#ffa726';
+    } else {
+        currentModeSpan.textContent = 'Remote Access';
+        currentModeSpan.style.color = '#4caf50';
+    }
+    
+    // Show current IP
+    currentIPSpan.textContent = info.currentIP;
+    
+    // Populate input with saved IP
+    serverIPInput.value = info.savedIP;
+}
+
+// Save IP address
+saveIPBtn.addEventListener('click', () => {
+    const ip = serverIPInput.value.trim();
+    
+    try {
+        window.ipConfig.saveIP(ip);
+        showSettingsMessage('IP address saved! Reload the page to apply changes.', 'success');
+        
+        // Update display
+        setTimeout(() => {
+            location.reload();
+        }, 1500);
+    } catch (error) {
+        showSettingsMessage(error.message, 'error');
+    }
+});
+
+// Auto-detect IP
+autoDetectBtn.addEventListener('click', async () => {
+    showSettingsMessage('Scanning network...', 'info');
+    
+    try {
+        // Try to ping common Raspberry Pi IPs
+        const commonIPs = [
+            '10.42.0.1',
+            '192.168.1.100',
+            '192.168.0.100',
+            window.location.hostname
+        ];
+        
+        for (const ip of commonIPs) {
+            try {
+                const response = await fetch(`http://${ip}:8000/strategies`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000)
+                });
+                
+                if (response.ok) {
+                    serverIPInput.value = ip;
+                    window.ipConfig.saveIP(ip);
+                    showSettingsMessage(`Found server at ${ip}! Reload to apply.`, 'success');
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                    return;
+                }
+            } catch (e) {
+                // Continue to next IP
+                continue;
+            }
+        }
+        
+        showSettingsMessage('Could not auto-detect server. Please enter IP manually.', 'error');
+    } catch (error) {
+        showSettingsMessage('Auto-detect failed: ' + error.message, 'error');
+    }
+});
+
+// Show settings message
+function showSettingsMessage(message, type) {
+    settingsMessage.textContent = message;
+    settingsMessage.className = `settings-message ${type}`;
+    settingsMessage.style.display = 'block';
+    
+    if (type !== 'info') {
+        setTimeout(() => {
+            settingsMessage.style.display = 'none';
+        }, 5000);
+    }
+}
