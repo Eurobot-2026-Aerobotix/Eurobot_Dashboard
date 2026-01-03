@@ -26,6 +26,18 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
 
 
+# -------------------------------------------------
+# Root redirect to static file server
+# GET /
+# -------------------------------------------------
+@app.route("/", methods=["GET"])
+def root():
+    """Redirect to static file server on port 5000"""
+    from flask import redirect
+    host = request.host.split(':')[0]
+    return redirect(f"http://{host}:5000/html/index.html")
+
+
 def safe_filename(filename):
     """Sanitize filename to prevent path traversal attacks"""
     return os.path.basename(filename)
