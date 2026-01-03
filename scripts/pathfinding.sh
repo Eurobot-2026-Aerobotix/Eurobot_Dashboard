@@ -1,14 +1,12 @@
 #!/bin/bash
-# Force unbuffered output and log to file
-export PYTHONUNBUFFERED=1
-export RCUTILS_CONSOLE_OUTPUT_FORMAT='[{name}] {message}'
-export RCUTILS_COLORIZED_OUTPUT=0
 
-LOG_FILE="/tmp/pathfinding_output.log"
-> "$LOG_FILE"  # Clear the log file
+echo "🧹 Cleaning up old pathfinding processes..."
+pkill -9 -f "hybrid_astar_node"
+pkill -9 -f "hybrid_astar.launch.py"
+sleep 1
 
-echo "🚀 Starting pathfinding system..."
-source ~/.bashrc
+echo "🚀 Starting pathfinding node..."
+cd ~/EUROBOT/ROS2-WS-EURO/
 source install/setup.bash
 
 # Run and tee output to both log file and stdout
