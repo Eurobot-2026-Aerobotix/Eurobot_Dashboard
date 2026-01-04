@@ -42,4 +42,8 @@ tasks:
     - '244.22'
     - 700
     wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: false
   name: Task 1

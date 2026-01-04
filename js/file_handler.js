@@ -2,7 +2,15 @@ import { Strategy } from "../classes/Strategy.js";
 
 // Base URL of your Flask server
 // Use smart IP configuration
-const BASE_URL = `${window.ipConfig.getAPIURL()}/strategies`;
+const getBaseURL = () => {
+    if (!window.ipConfig) {
+        console.warn('ipConfig not loaded, using fallback URL');
+        return 'http://10.42.0.1:8000/strategies';
+    }
+    return `${window.ipConfig.getAPIURL()}/strategies`;
+};
+
+const BASE_URL = getBaseURL();
 
 /**
  * Load all strategies as Strategy objects
