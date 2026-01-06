@@ -322,3 +322,38 @@ batches:
       y: 1448.5
       z: 0
     color: blue
+- batch_id: 11
+  known_id: testsss
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1197.8
+    y: 1501.4
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1197.8
+      y: 1426.4
+      z: 0
+    color: yellow
+  - aruco_id: 47
+    map_pos:
+      x: 1197.8
+      y: 1476.4
+      z: 0
+    color: yellow
+  - aruco_id: 47
+    map_pos:
+      x: 1197.8
+      y: 1526.4
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1197.8
+      y: 1576.4
+      z: 0
+    color: blue
