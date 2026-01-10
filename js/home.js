@@ -326,6 +326,25 @@ autoDetectBtn.addEventListener('click', async () => {
     }
 });
 
+function getSelectedStrategyName() {
+    return fetch(`${API_URL}/selected_strategy`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                return data.strategy || '-';
+            } else {
+                return '-';
+            }
+        });
+}
+
+function updateSelectedStrategyDisplay() {
+    getSelectedStrategyName().then(name => {
+        const strategySpan = document.getElementById('current-strategy');
+        strategySpan.textContent = name;
+    });
+}
+
 // Show settings message
 function showSettingsMessage(message, type) {
     settingsMessage.textContent = message;
@@ -338,3 +357,6 @@ function showSettingsMessage(message, type) {
         }, 5000);
     }
 }
+
+////////////////////////////////////
+updateSelectedStrategyDisplay()

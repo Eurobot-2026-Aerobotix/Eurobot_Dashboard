@@ -27,6 +27,7 @@ async function get_selected_strategy() {
   for (let strategy of strategies) {
     if (strategy.name === name) selected_strategy = strategy;
   }
+  document.querySelector("title").textContent = selected_strategy.name;
   renderTasks();
 }
 
@@ -195,6 +196,7 @@ function renderTasks() {
     document.getElementById("action-context-menu").classList.add("hidden");
 
     renderTasks();
+    renderMap();
     updateStrategy(selected_strategy);
   };
 
@@ -253,14 +255,8 @@ function populateAddList() {
     new Action("STM", "bezier_backwards"),
     new Action("ESP_front", "pick_up"),
     new Action("ESP_front", "put_down"),
-    new Action("ESP_front", "prepare"),
-    new Action("ESP_front", "kabbech"),
-    new Action("ESP_front", "dawwer"),
     new Action("ESP_back", "pick_up"),
     new Action("ESP_back", "put_down"),
-    new Action("ESP_back", "prepare"),
-    new Action("ESP_back", "kabbech"),
-    new Action("ESP_back", "dawwer")
   ];
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
@@ -270,105 +266,6 @@ function populateAddList() {
     actionSelect.appendChild(opt);
   });
 }
-
-document.getElementById("add-action-btn").addEventListener("click", () => {
-  const index = actionSelect.value;
-  if (index == "" || !selected_strategy) return;
-  const opt = actionSelect.options[index];
-  const [device, command] = opt.textContent.split(" - ");
-  let args_table = [];
-  document.getElementById("command_label").textContent = "Command: "+command;
-  // Decide which argument table to use
-  if (command.includes("go_to")) {
-    args_table = go_to_args;
-  } 
-  else if (command.includes("bezier")) {
-    args_table = bezier_args;
-  } 
-  else if (command.includes("orientate")) {
-    args_table = orientate_args;
-  }
-  else if (command.includes("set_position")) {
-    args_table = set_position_args;
-  }
-  const argsContainer = document.getElementById("args-container");
-  argsContainer.innerHTML = "";
-
-  // Create inputs dynamically
-  args_table.forEach(arg => {
-    const label = document.createElement("label");
-    label.textContent = arg;
-
-    const input = document.createElement("input");
-    input.type = "decimal";
-    input.dataset.argName = arg;
-
-    label.appendChild(input);
-    argsContainer.appendChild(label);
-  });
-  modal.classList.remove("hidden");
-});
-
-document.getElementById("back-btn").addEventListener("click", () => {
-  window.history.back();
-});
-
-document.getElementById("modal-cancel").addEventListener("click", () => {
-  modal.classList.add("hidden");
-  contextAction = null;
-  contextTask = null;
-});
-
-document.getElementById("modal-confirm").addEventListener("click", () => {
-  if (contextAction == null){
-    const index = actionSelect.value;
-    if (newTaskCheckBox.checked){
-      selected_strategy.tasks.push(new Task(`Task ${selected_strategy.tasks.length + 1 }`, []));
-    }
-    const opt = actionSelect.options[index];
-    const [device, command] = opt.textContent.split(" - ");
-    const params = [];
-    document.querySelectorAll("#args-container input").forEach(input => {
-      params.push(parseFloat(input.value) || 0);
-    });
-    const wait = document.getElementById("modal-wait").checked;
-
-    if (!device || !command) return;
-
-    const action = new Action(device, command, params, wait);
-
-    // Add to last task (or selected task if you add selection later)
-    if (selected_strategy.tasks.length === 0) {
-      selected_strategy.tasks.push(new Task("Task 1", []));
-    }
-
-    selected_strategy.tasks[selected_strategy.tasks.length - 1].sequence.push(action);
-  }else{
-    const wait = document.getElementById("modal-wait").checked;
-
-    const params = [];
-    document.querySelectorAll("#args-container input").forEach(input => {
-      params.push(parseFloat(input.value) || 0);
-    });
-
-    if (contextAction) {
-      // MODIFY
-      contextAction.params = params;
-      contextAction.wait = wait;
-      contextAction = null;
-      contextTask = null;
-    } else {
-      // ADD (existing behavior)
-      selected_strategy.tasks.at(-1).sequence.push(
-        new Action(device, command, params, wait)
-      );
-    }
-  }
-  modal.classList.add("hidden");
-  renderTasks();
-  renderMap();
-  updateStrategy(selected_strategy);
-});
 
 function addDefs(svg) {
   svg.innerHTML = `
@@ -479,6 +376,24 @@ function drawArrow(svg, from, to, backwards) {
 
   svg.appendChild(l);
 }
+function drawDiscountinousLine(svg, from, to) {
+  const p1 = mapToScreen(from.x, from.y);
+  const p2 = mapToScreen(to.x, to.y);
+
+  const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l.setAttribute("x1", p1.cx);
+  l.setAttribute("y1", p1.cy);
+  l.setAttribute("x2", p2.cx);
+  l.setAttribute("y2", p2.cy);
+
+  l.setAttribute("stroke", "white");
+  l.setAttribute("marker-end", "none");
+  l.setAttribute("stroke-width", "2"); // Increase the stroke width to make the line thicker
+  l.setAttribute("stroke-dasharray", "10,10"); // Set dash pattern: 10px dash, 10px gap
+  l.setAttribute("opacity", "0.5"); // Optional: make the line semi-transparent
+
+  svg.appendChild(l);
+}
 
 function drawBezier(svg, start, params, backwards, action) {
   const [x1,y1,x2,y2,x3,y3] = params;
@@ -487,6 +402,9 @@ function drawBezier(svg, start, params, backwards, action) {
   const p1 = mapToScreen(x1, y1);
   const p2 = mapToScreen(x2, y2);
   const p3 = mapToScreen(x3, y3);
+
+  drawDiscountinousLine(svg, start, { x: x1, y: y1 }); // Draw discontinuous line to first point
+  drawDiscountinousLine(svg, { x: x2, y: y2 }, { x: x3, y: y3 }); // Draw discontinuous line to last point
 
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute(
@@ -503,6 +421,9 @@ function drawBezier(svg, start, params, backwards, action) {
     if (i % 2 === 0)
       drawPoint(svg, params[i], params[i+1], "", action, i, i+1);
   });
+  // add arrowhead at end of bezier like drawArrow
+  path.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
+  path.setAttribute("stroke", backwards ? "blue" : "red");
 }
 function drawIcon(svg, pos, symbol) {
   const { cx, cy } = mapToScreen(pos.x, pos.y);
@@ -528,8 +449,33 @@ function updateActionParamsFromDrag(action, paramIndexX, paramIndexY, cx, cy) {
   renderMap();
 }
 
+function hightlightAction(action) {
+  let index = 0;
+  selected_strategy.tasks.forEach(task => {
+    task.sequence.forEach(a => {
+      if (a === action) {
+        const actionItems = document.querySelectorAll(".action-item");
+        actionItems[index].classList.add("highlighted");
+      }
+      index++;
+    });
+  });
+}
+function unHightlightActions() {
+  const actionItems = document.querySelectorAll(".action-item");
+  actionItems.forEach(item => {
+    item.classList.remove("highlighted");
+  });
+}
 function enableDrag(el, action, paramIndexX, paramIndexY) {
   let dragging = false;
+
+  el.addEventListener("mouseover", e => {
+    hightlightAction(action);
+  });
+  el.addEventListener("mouseout", e => {
+    unHightlightActions();
+  });
 
   el.addEventListener("mousedown", e => {
     dragging = true;
@@ -565,6 +511,110 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
     updateStrategy(selected_strategy); // ← CALLED ONCE
   });
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+document.getElementById("add-action-btn").addEventListener("click", () => {
+  const index = actionSelect.value;
+  if (index == "" || !selected_strategy) return;
+  const opt = actionSelect.options[index];
+  const [device, command] = opt.textContent.split(" - ");
+  let args_table = [];
+  document.getElementById("command_label").textContent = "Command: "+command;
+  // Decide which argument table to use
+  if (command.includes("go_to")) {
+    args_table = go_to_args;
+  } 
+  else if (command.includes("bezier")) {
+    args_table = bezier_args;
+  } 
+  else if (command.includes("orientate")) {
+    args_table = orientate_args;
+  }
+  else if (command.includes("set_position")) {
+    args_table = set_position_args;
+  }
+  const argsContainer = document.getElementById("args-container");
+  argsContainer.innerHTML = "";
+
+  // Create inputs dynamically
+  args_table.forEach(arg => {
+    const label = document.createElement("label");
+    label.textContent = arg;
+
+    const input = document.createElement("input");
+    input.type = "decimal";
+    input.dataset.argName = arg;
+    if (arg === "speed") {
+      input.value = "700"; // default speed
+    }
+    label.appendChild(input);
+    argsContainer.appendChild(label);
+  });
+  modal.classList.remove("hidden");
+});
+
+document.getElementById("back-btn").addEventListener("click", () => {
+  window.history.back();
+});
+
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  modal.classList.add("hidden");
+  contextAction = null;
+  contextTask = null;
+});
+
+document.getElementById("modal-confirm").addEventListener("click", () => {
+  if (contextAction == null){
+    const index = actionSelect.value;
+    if (newTaskCheckBox.checked){
+      selected_strategy.tasks.push(new Task(`Task ${selected_strategy.tasks.length + 1 }`, []));
+    }
+    const opt = actionSelect.options[index];
+    const [device, command] = opt.textContent.split(" - ");
+    const params = [];
+    document.querySelectorAll("#args-container input").forEach(input => {
+      const value = parseFloat(input.value) || 1000;
+      params.push(value != 0 ? value : 1200);
+    });
+    const wait = document.getElementById("modal-wait").checked;
+
+    if (!device || !command) return;
+
+    const action = new Action(device, command, params, wait);
+
+    // Add to last task (or selected task if you add selection later)
+    if (selected_strategy.tasks.length === 0) {
+      selected_strategy.tasks.push(new Task("Task 1", []));
+    }
+
+    selected_strategy.tasks[selected_strategy.tasks.length - 1].sequence.push(action);
+  }else{
+    const wait = document.getElementById("modal-wait").checked;
+
+    const params = [];
+    document.querySelectorAll("#args-container input").forEach(input => {
+      params.push(parseFloat(input.value) || 1000);
+    });
+
+    if (contextAction) {
+      // MODIFY
+      contextAction.params = params;
+      contextAction.wait = wait;
+      contextAction = null;
+      contextTask = null;
+    } else {
+      // ADD (existing behavior)
+      selected_strategy.tasks.at(-1).sequence.push(
+        new Action(device, command, params, wait)
+      );
+    }
+  }
+  modal.classList.add("hidden");
+  renderTasks();
+  renderMap();
+  updateStrategy(selected_strategy);
+});
 await get_selected_strategy();
 populateAddList();
 renderMap();

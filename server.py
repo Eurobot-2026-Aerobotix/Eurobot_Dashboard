@@ -356,7 +356,35 @@ def stop_strategy():
             return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
+# -------------------------------------------------
+# Get currently selected strategy
+# GET /selected_strategy
+# -------------------------------------------------
+@app.route("/selected_strategy", methods=["GET"])
+def get_selected_strategy_service():
+    """
+    Returns the currently selected strategy file path and its parsed YAML content.
+    Updates the global SELECTED_STRATEGY_PATH from disk before returning.
+    """
+    global SELECTED_STRATEGY_PATH
+    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
 
+    if not SELECTED_STRATEGY_PATH:
+        return jsonify({"status": "error", "error": "No strategy selected"}), 404
+
+    data = SELECTED_STRATEGY_PATH
+    name = ""
+    try:
+        with open(SELECTED_STRATEGY_PATH, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        name = data.get("name", "-")
+    except Exception as e:
+        name = "-"
+
+    return jsonify({
+        "status": "success",
+        "strategy": name
+    })
 
 # -------------------------------------------------
 # Stream output from start.sh or pathfinding.sh

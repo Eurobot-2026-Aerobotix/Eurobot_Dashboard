@@ -4,26 +4,26 @@ color: yellow
 tasks:
 - description: Task 1
   global_goal:
-    x: '203.10'
-    y: '244.22'
-    theta: -170.92310980209234
+    x: '1126.96'
+    y: '923.92'
+    theta: -176.81991411291366
   sequence:
   - device: STM
     command: set_position
     params:
-    - '205.68'
-    - '246.79'
+    - '252.27'
+    - '344.94'
     - 0
     wait: false
   - device: STM
     command: bezier
     params:
-    - '1498.73'
-    - '434.45'
-    - '717.24'
-    - '2688.95'
-    - '1624.70'
-    - '2632.39'
+    - '589.33'
+    - '347.00'
+    - '1184.62'
+    - '2457.69'
+    - '1600.46'
+    - '2398.88'
     - 500
     wait: false
   - device: STM
@@ -34,12 +34,12 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - '439.61'
-    - '1434.45'
-    - '1940.89'
-    - '521.85'
-    - '203.10'
-    - '244.22'
+    - 1692.31
+    - 1738.46
+    - '1499.17'
+    - '944.60'
+    - '1126.96'
+    - '923.92'
     - 700
     wait: false
   - device: ESP_front

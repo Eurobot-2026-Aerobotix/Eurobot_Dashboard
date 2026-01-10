@@ -12,7 +12,7 @@ const deleteBtn = document.getElementById("delete-btn");
 const selectBtn = document.getElementById("select-btn");
 
 let strategies = [];
-let selectedIndex = null;
+let clickedIndex = null;
 
 // -------------------------------------------------
 // Helpers
@@ -23,13 +23,58 @@ function renderList() {
   strategies.forEach((s, i) => {
     const div = document.createElement("div");
     div.classList.add("strategy-item");
-    if (i === selectedIndex) div.classList.add("selected");
+    if (i === clickedIndex) div.classList.add("selected");
     div.textContent = s.name;
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center"; // Center the text and image
+    if (s.selected){
+      const img = document.createElement("img");
+      img.src = "../resources/harissa.png";
+      img.classList.add("selected-icon");
+      img.style.height = "30px";
+      img.style.marginLeft = "8px";
+      div.appendChild(img);
+    }
     div.addEventListener("click", () => {
-      selectedIndex = i;
+      clickedIndex = i;
       renderList();
       updateButtons();
     });
+    div.addEventListener("dblclick", () => {
+      window.location.href = `strategy_viewer.html?name=${s.name}`;
+    });
+    // long-press / hold detection to mark this strategy as selected
+    const HOLD_MS = 400;
+    let holdTimer = null;
+
+    const startHold = (e) => {
+      // prevent text selection / native behavior on touch
+      if (e && e.preventDefault) e.preventDefault();
+      holdTimer = setTimeout(async () => {
+        // mark only this strategy as selected and persist
+        for (let j = 0; j < strategies.length; j++) {
+          strategies[j].selected = (j === i);
+          await updateStrategy(strategies[j]);
+        }
+        await loadStrategies();
+      }, HOLD_MS);
+    };
+
+    const cancelHold = () => {
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+    };
+
+    div.addEventListener("mousedown", startHold);
+    div.addEventListener("touchstart", startHold, { passive: false });
+
+    div.addEventListener("mouseup", cancelHold);
+    div.addEventListener("mouseleave", cancelHold);
+    div.addEventListener("touchend", cancelHold);
+    div.addEventListener("touchcancel", cancelHold);
     if (s.color == "yellow"){
         listDivYellow.appendChild(div);
     }else{
@@ -39,7 +84,7 @@ function renderList() {
 }
 
 function updateButtons() {
-  const enabled = selectedIndex !== null;
+  const enabled = clickedIndex !== null;
   openBtn.disabled = !enabled;
   deleteBtn.disabled = !enabled;
   selectBtn.disabled = !enabled;
@@ -50,7 +95,7 @@ function updateButtons() {
 // -------------------------------------------------
 async function loadStrategies() {
   strategies = await loadAllStrategies();
-  selectedIndex = null;
+  clickedIndex = null;
   renderList();
   updateButtons();
 }
@@ -78,8 +123,8 @@ createBtn.addEventListener("click", async () => {
 });
 
 deleteBtn.addEventListener("click", async () => {
-  if (selectedIndex === null) return;
-  const strategy = strategies[selectedIndex];
+  if (clickedIndex === null) return;
+  const strategy = strategies[clickedIndex];
   if (!confirm(`Delete strategy "${strategy.name}"?`)) return;
 
   const filename = strategy.name.replace(/\s+/g, "_") + ".yaml";
@@ -88,21 +133,22 @@ deleteBtn.addEventListener("click", async () => {
 });
 
 openBtn.addEventListener("click", () => {
-  if (selectedIndex === null) return;
-  const strategy = strategies[selectedIndex];
+  if (clickedIndex === null) return;
+  const strategy = strategies[clickedIndex];
   window.location.href = `strategy_viewer.html?name=${strategy.name}`;
 });
 
 selectBtn.addEventListener("click", () => {
-  if (selectedIndex === null) return;
+  if (clickedIndex === null) return;
   for(let i = 0; i<strategies.length; i++){
-    if (i == selectedIndex){
+    if (i == clickedIndex){
         strategies[i].selected = true
     }else{
         strategies[i].selected = false;
     }
     updateStrategy(strategies[i])
   }
+  loadStrategies();
 });
 
 // -------------------------------------------------
