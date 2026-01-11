@@ -1,5 +1,5 @@
 name: test_realife
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -46,4 +46,3 @@ tasks:
     command: pick_up
     params: []
     wait: false
-  name: Task 1

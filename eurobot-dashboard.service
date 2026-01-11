@@ -9,7 +9,7 @@ WorkingDirectory=/home/ubuntu/Eurobot_Dashboard
 Environment="ROS_DISTRO=jazzy"
 Environment="ROS_VERSION=2"
 Environment="ROS_PYTHON_VERSION=3"
-ExecStart=/bin/bash -c 'source /opt/ros/jazzy/setup.bash && source /home/ubuntu/ROS2-WS-EURO/install/setup.bash && exec python3 /home/ubuntu/Eurobot_Dashboard/server.py'
+ExecStart=/bin/bash -c 'source /home/ubuntu/.bashrc  &&cd /home/ubuntu/EUROBOT/Eurobot_Dashboard && exec python3 /home/ubuntu/EUROBOT/Eurobot_Dashboard/server.py'
 Restart=always
 RestartSec=10
 StandardOutput=journal
