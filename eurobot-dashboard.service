@@ -4,12 +4,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/EUROBOT/Eurobot_Dashboard
+User=harissa
+WorkingDirectory=/home/harissa/Eurobot_Dashboard
 Environment="ROS_DISTRO=jazzy"
 Environment="ROS_VERSION=2"
 Environment="ROS_PYTHON_VERSION=3"
-ExecStart=/bin/bash -c 'source /home/ubuntu/.bashrc  &&cd /home/ubuntu/EUROBOT/Eurobot_Dashboard && exec python3 /home/ubuntu/EUROBOT/Eurobot_Dashboard/server.py'
+ExecStart=/bin/bash -c 'source /home/harissa/.bashrc && cd /home/harissa/Eurobot_Dashboard && exec python3 /home/harissa/Eurobot_Dashboard/server.py'
 Restart=always
 RestartSec=10
 StandardOutput=journal
