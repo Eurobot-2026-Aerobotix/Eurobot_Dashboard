@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/Eurobot_Dashboard
+WorkingDirectory=/home/ubuntu/EUROBOT/Eurobot_Dashboard
 Environment="ROS_DISTRO=jazzy"
 Environment="ROS_VERSION=2"
 Environment="ROS_PYTHON_VERSION=3"
