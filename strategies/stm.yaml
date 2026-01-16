@@ -1,0 +1,64 @@
+name: stm
+selected: false
+color: blue
+tasks:
+- description: Task 1
+  global_goal:
+    x: '1639.53'
+    y: '2025.58'
+    theta: 59.65880918075544
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 1734.91
+    - 2025.58
+    - 180
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 1309.56
+    - 2185.4
+    - 1000
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1209.03
+    - 1765.22
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1392.05'
+    - '1981.75'
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 940.93
+    - 2012.69
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '940.93'
+    - '832.04'
+    - 400
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 180
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1639.53'
+    - '2025.58'
+    - 400
+    wait: false

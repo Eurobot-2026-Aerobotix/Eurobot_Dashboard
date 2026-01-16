@@ -14,13 +14,12 @@ lsof -ti:9090 | xargs -r kill -9 2>/dev/null || true
 sleep 1
 
 echo "🌐 Starting web_handler..."
-cd ~/EUROBOT/ROS2-WS-EURO/
-source install/setup.bash
+source ~/ROS2-WS-EURO/install/setup.bash
 ros2 run hybrid_astar web_handler.py &
 sleep 2
 
 echo "🔌 Starting rosbridge..."
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml &
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml   delay_between_messages:=0.0 &
 
 echo "✅ Nodes started! Launch pathfinding with pathfinding.sh"
 

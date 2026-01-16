@@ -1,0 +1,87 @@
+name: test_reel
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 1700
+    - 2300
+    - 180
+    wait: false
+- description: Task 3
+  global_goal:
+    x: '1429.60'
+    y: '1850.23'
+    theta: 180
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1544.07'
+    - '1850.23'
+    - 800
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 180
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1429.60'
+    - '1850.23'
+    - 800
+    wait: false
+- description: Task 4
+  global_goal:
+    x: '1429.60'
+    y: '1850.23'
+    theta: 180
+  sequence:
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 4
+  global_goal:
+    x: '1198.12'
+    y: '316.36'
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1198.12'
+    - '316.36'
+    - 800
+    wait: true
+  - device: STM
+    command: orientate
+    params:
+    - 90
+    wait: true
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+- description: Task 5
+  global_goal:
+    x: '305.27'
+    y: '303.64'
+    theta: 44.84662446415948
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '305.27'
+    - '303.64'
+    - 700
+    wait: true

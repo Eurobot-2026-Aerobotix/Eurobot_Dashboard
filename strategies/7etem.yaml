@@ -1,0 +1,21 @@
+name: 7etem
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 1500
+    - 1800
+    - 1000
+    wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: false
