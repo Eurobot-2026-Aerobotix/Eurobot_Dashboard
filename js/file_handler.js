@@ -150,9 +150,9 @@ async function calculate_global_poses(strategy) {
   });
 }
 
-
 export async function updateStrategy(strategy) {
-  await calculate_global_poses(strategy)
+  await calculate_global_poses(strategy);
+  console.log("Updated strategy:", strategy);
   // saveStrategy works for both create and update
   return await saveStrategy(strategy);
 }

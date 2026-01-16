@@ -4,19 +4,27 @@ color: yellow
 tasks:
 - description: Task 1
   global_goal:
-    x: null
-    y: null
-    theta: null
+    x: '726.10'
+    y: '445.64'
+    theta: 7.315021381298846
   sequence:
-  - device: ESP_back
-    command: pick_up
-    params: []
-    wait: false
   - device: STM
     command: set_position
     params:
-    - '301.59'
-    - '450.85'
+    - '340.65'
+    - '396.16'
     - 0
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '726.10'
+    - '445.64'
+    - 700
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
     wait: false
   name: Task 1

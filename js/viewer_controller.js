@@ -33,6 +33,48 @@ async function get_selected_strategy() {
   renderTasks();
 }
 
+async function update_smooth_or_not(strategy) {
+  strategy.tasks.forEach(task => {
+    for (let i = 0; i < task.sequence.length; i++) {
+      if (task.sequence[i].command.includes("go_to")) {
+        let next = null;
+        if (i + 1 < task.sequence.length){
+          next = task.sequence[i + 1];
+        }
+
+        if (next && next.command.includes("pick")) {
+          if (task.sequence[i].params.length == 3) {
+            task.sequence[i].params.push(1);
+          }else{
+            task.sequence[i].params[3] = 1;
+          }
+        }else{
+          if (task.sequence[i].params.length > 3) {
+            task.sequence[i].params[3] = 0;
+          }
+        }
+      }else if (task.sequence[i].command.includes("bezier")) {
+        let next = null;
+        if (i + 1 < task.sequence.length){
+          next = task.sequence[i + 1];
+        }
+
+        if (next && next.command.includes("pick")) {
+          if (task.sequence[i].params.length == 7) {
+            task.sequence[i].params.push(1);
+          }else{
+            task.sequence[i].params[7] = 1;
+          }
+        }else{
+          if (task.sequence[i].params.length > 7) {
+            task.sequence[i].params[7] = 0;
+          }
+        }
+      }
+    }
+  });
+}
+
 // ------------------------------
 // Render tasks and actions
 // ------------------------------
@@ -122,9 +164,11 @@ function renderTasks() {
           movedAction
         );
 
-        renderTasks();
-        renderMap();
-        updateStrategy(selected_strategy);
+        update_smooth_or_not(selected_strategy).then(() => {
+          renderTasks();
+          renderMap();
+          updateStrategy(selected_strategy);
+        });
       });
 
       /* ---------- CONTEXT MENU ---------- */
@@ -159,9 +203,11 @@ function renderTasks() {
 
       selected_strategy.tasks[taskIndex].sequence.push(movedAction);
 
-      renderTasks();
-      renderMap();
-      updateStrategy(selected_strategy);
+      update_smooth_or_not(selected_strategy).then(() => {
+        renderTasks();
+        renderMap();
+        updateStrategy(selected_strategy);
+      });
     });
 
     taskBox.appendChild(actionList);
@@ -197,9 +243,11 @@ function renderTasks() {
 
     document.getElementById("action-context-menu").classList.add("hidden");
 
-    renderTasks();
-    renderMap();
-    updateStrategy(selected_strategy);
+    update_smooth_or_not(selected_strategy).then(() => {
+      renderTasks();
+      renderMap();
+      updateStrategy(selected_strategy);
+    });
   };
 
   document.getElementById("ctx-modify").onclick = () => {
@@ -252,7 +300,6 @@ function renderTasks() {
     inputs[0].focus();
   };
 }
-
 
 // ------------------------------
 // Populate Add Action dropdown
@@ -482,7 +529,7 @@ function unHightlightActions() {
   });
 }
 function draw_robot_on_map(svg, x, y, angle) {
-  clear_robot_on_map(svg);
+  clear_robot_off_map(svg);
 
   const { cx, cy } = mapToScreen(x, y);
 
@@ -522,7 +569,7 @@ function draw_robot_on_map(svg, x, y, angle) {
   svg.appendChild(robot);
   robot_on_map = robot;
 }
-function clear_robot_on_map(svg) {
+function clear_robot_off_map(svg) {
   if (robot_on_map) {
     try {
       svg.removeChild(robot_on_map);
@@ -577,7 +624,7 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
   el.addEventListener("mouseout", e => {
     unHightlightActions();
     if (el.classList.contains("secondary")) return;
-    clear_robot_on_map(document.getElementById("map-overlay"));
+    clear_robot_off_map(document.getElementById("map-overlay"));
   });
 
   el.addEventListener("mousedown", e => {
@@ -616,8 +663,10 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
     if (!dragging) return;
 
     dragging = false;          // ← drag is over
-    renderTasks();
-    updateStrategy(selected_strategy); // ← CALLED ONCE
+    update_smooth_or_not(selected_strategy).then(() => {
+      renderTasks();
+      updateStrategy(selected_strategy);
+    }); // ← CALLED ONCE
   });
 }
 
@@ -748,9 +797,11 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     }
   }
   modal.classList.add("hidden");
-  renderTasks();
-  renderMap();
-  updateStrategy(selected_strategy);
+  update_smooth_or_not(selected_strategy).then(() => {
+    renderTasks();
+    renderMap();
+    updateStrategy(selected_strategy);
+  });
 });
 await get_selected_strategy();
 populateAddList();
