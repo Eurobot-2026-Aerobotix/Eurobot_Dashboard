@@ -6,8 +6,12 @@ const MAP_HEIGHT_PX = 2000; // pixels
 
 // ROS2 Bridge Configuration - use smart IP config
 const ROSBRIDGE_URL = window.ipConfig ? window.ipConfig.getWebSocketURL() : 'ws://localhost:9090';
+const API_URL = window.ipConfig ? window.ipConfig.getAPIURL() : 'http://localhost:5000';
 let ros = null;
 let isConnected = false;
+
+// EventSource for pathfinding logs
+let pathfindingEventSource = null;
 
 // State
 let currentMode = null; // 'start', 'enemy', or 'goal'
@@ -1378,6 +1382,47 @@ function loadSavedState() {
         }
     }, 500); // Wait for obstacles to be drawn
 }
+
+// -------------------------------------------------
+// EventSource Streaming for Logs
+// -------------------------------------------------
+
+function startPathfindingStream() {
+    // Connect to the pathfinding stream to keep logs synchronized
+    // even when navigating away from this page
+    if (pathfindingEventSource) {
+        pathfindingEventSource.close();
+    }
+    
+    pathfindingEventSource = new EventSource(`${API_URL}/stream/pathfinding`);
+    
+    pathfindingEventSource.onmessage = function(event) {
+        // Store in localStorage for the home page
+        let pathfindingOutput = JSON.parse(localStorage.getItem('pathfindingOutput') || '[]');
+        pathfindingOutput.push(event.data);
+        localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+    };
+    
+    pathfindingEventSource.onerror = function(error) {
+        console.error('Pathfinding EventSource error:', error);
+        // Auto-reconnect after a delay
+        setTimeout(() => {
+            startPathfindingStream();
+        }, 5000);
+    };
+    
+    console.log('Pathfinding stream started');
+}
+
+// Start streaming when page loads
+startPathfindingStream();
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    if (pathfindingEventSource) {
+        pathfindingEventSource.close();
+    }
+});
 
 // -------------------------------------------------
 // Batch Creation Functions
