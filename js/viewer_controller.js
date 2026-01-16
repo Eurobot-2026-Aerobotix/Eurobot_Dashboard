@@ -694,7 +694,7 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     const opt = actionSelect.options[index];
     const [device, command] = opt.textContent.split(" - ");
     const params = [];
-    if (command.includes("go_to") || command.includes("bezier") || command.includes("set_position")){
+    if (command.includes("go_to") || command.includes("bezier")){
       document.querySelectorAll("#args-container input").forEach(input => {
         const value = parseFloat(input.value) || 1000;
         params.push(value != 0 ? value : 1200);
@@ -722,7 +722,7 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
     const params = [];
     const command = contextAction.command;
-    if (command.includes("go_to") || command.includes("bezier") || command.includes("set_position")){
+    if (command.includes("go_to") || command.includes("bezier")){
       document.querySelectorAll("#args-container input").forEach(input => {
         const value = parseFloat(input.value) || 1000;
         params.push(value != 0 ? value : 1200);
