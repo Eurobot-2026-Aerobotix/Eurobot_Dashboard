@@ -28,13 +28,12 @@ let isAddingBatch = false; // Track if we're in "add batch" mode
 let isEditingBatch = false; // Track if we're editing an existing batch
 let editingBatchId = null; // Store ID of batch being edited
 let pendingBatch = null; // Store batch being created
+let contextMenuBatchId = null; // Store batch ID for context menu actions
+let contextMenuPosition = null; // Store click position for context menu
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
-const startPoseBtn = document.getElementById('startPoseBtn');
-const enemyPoseBtn = document.getElementById('enemyPoseBtn');
-const goalPoseBtn = document.getElementById('goalPoseBtn');
 const findPathBtn = document.getElementById('findPathBtn');
 const orientationSelector = document.getElementById('orientationSelector');
 const orientationInput = document.getElementById('orientationInput');
@@ -42,13 +41,14 @@ const confirmBtn = document.getElementById('confirmBtn');
 const orientationBtns = document.querySelectorAll('.orientation-btn');
 const batchList = document.getElementById('batchList');
 const toggleAllBtn = document.getElementById('toggleAllBtn');
-const addBatchBtn = document.getElementById('addBatchBtn');
 const sendBatchesBtn = document.getElementById('sendBatchesBtn');
 const batchModal = document.getElementById('batchModal');
 const modalClose = document.getElementById('modalClose');
 const batchForm = document.getElementById('batchForm');
 const cancelBatchBtn = document.getElementById('cancelBatchBtn');
 const saveBatchBtn = document.getElementById('saveBatchBtn');
+const contextMenu = document.getElementById('contextMenu');
+const batchContextMenu = document.getElementById('batchContextMenu');
 
 // Initialize ROS2 Bridge
 initROS();
@@ -59,19 +59,31 @@ loadObstacles();
 // Load saved state from localStorage
 loadSavedState();
 
-// Initialize
-startPoseBtn.addEventListener('click', () => activateMode('start'));
-enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
-goalPoseBtn.addEventListener('click', () => activateMode('goal'));
+// Initialize event listeners
 findPathBtn.addEventListener('click', findPath);
 mapWrapper.addEventListener('click', handleMapClick);
+mapWrapper.addEventListener('contextmenu', handleContextMenu);
 confirmBtn.addEventListener('click', confirmPose);
 toggleAllBtn.addEventListener('click', toggleAllBatches);
-addBatchBtn.addEventListener('click', startAddBatch);
 sendBatchesBtn.addEventListener('click', sendBatches);
 modalClose.addEventListener('click', closeModal);
 cancelBatchBtn.addEventListener('click', cancelBatch);
 saveBatchBtn.addEventListener('click', saveBatch);
+
+// Context menu event listeners
+document.querySelectorAll('#contextMenu .context-menu-item').forEach(item => {
+    item.addEventListener('click', handleContextMenuAction);
+});
+
+document.querySelectorAll('#batchContextMenu .context-menu-item').forEach(item => {
+    item.addEventListener('click', handleBatchContextMenuAction);
+});
+
+// Close context menus when clicking anywhere
+document.addEventListener('click', () => {
+    contextMenu.classList.remove('active');
+    batchContextMenu.classList.remove('active');
+});
 
 // Orientation button handlers
 orientationBtns.forEach(btn => {
@@ -297,7 +309,8 @@ function drawObstacles() {
         obstacleMarker.style.borderRadius = '4px'; // Slight rounding for rectangles
         obstacleMarker.style.border = '2px solid #333';
         obstacleMarker.style.zIndex = '5';
-        obstacleMarker.style.pointerEvents = 'none';
+        obstacleMarker.style.pointerEvents = 'auto'; // Enable pointer events for context menu
+        obstacleMarker.style.cursor = 'context-menu';
         obstacleMarker.style.fontSize = '9px';
         obstacleMarker.style.display = 'flex';
         obstacleMarker.style.alignItems = 'center';
@@ -345,29 +358,9 @@ function populateBatchSelector() {
         count.className = 'batch-count';
         count.textContent = `${batch.count} items`;
         
-        const editBtn = document.createElement('button');
-        editBtn.className = 'batch-edit-btn';
-        editBtn.innerHTML = '✏️';
-        editBtn.title = 'Edit batch colors';
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            editBatch(batch.batch_id);
-        });
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'batch-delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete batch';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteBatch(batch.batch_id, batch.known_id);
-        });
-        
         batchItem.appendChild(checkbox);
         batchItem.appendChild(label);
         batchItem.appendChild(count);
-        batchItem.appendChild(editBtn);
-        batchItem.appendChild(deleteBtn);
         
         batchList.appendChild(batchItem);
     });
@@ -419,11 +412,6 @@ function toggleAllBatches() {
 function activateMode(mode) {
     currentMode = mode;
     
-    // Update button states
-    startPoseBtn.classList.toggle('active', mode === 'start');
-    enemyPoseBtn.classList.toggle('active', mode === 'enemy');
-    goalPoseBtn.classList.toggle('active', mode === 'goal');
-    
     // Hide orientation selector
     orientationSelector.style.display = 'none';
     
@@ -445,6 +433,220 @@ function activateMode(mode) {
         oldRobot.remove();
     }
 }
+
+// -------------------------------------------------
+// Context Menu Functions
+// -------------------------------------------------
+
+function handleContextMenu(event) {
+    event.preventDefault(); // Prevent default context menu
+    
+    // Close any open context menus first
+    contextMenu.classList.remove('active');
+    batchContextMenu.classList.remove('active');
+    
+    // Check if clicking on an obstacle marker (batch)
+    const clickedObstacle = event.target.closest('.obstacle-marker');
+    
+    if (clickedObstacle && clickedObstacle.dataset.batchId) {
+        // Right-clicked on a batch - show batch context menu
+        const batchId = parseInt(clickedObstacle.dataset.batchId);
+        contextMenuBatchId = batchId;
+        
+        // Update toggle text based on current visibility
+        const toggleText = document.getElementById('batchToggleText');
+        if (batchVisibility[batchId]) {
+            toggleText.textContent = 'Hide';
+        } else {
+            toggleText.textContent = 'Show';
+        }
+        
+        // Position and show batch context menu (add small offset from cursor)
+        batchContextMenu.style.left = (event.clientX + 2) + 'px';
+        batchContextMenu.style.top = (event.clientY + 2) + 'px';
+        batchContextMenu.classList.add('active');
+    } else {
+        // Right-clicked on empty map - show main context menu
+        const rect = map.getBoundingClientRect();
+        const x_px = event.clientX - rect.left;
+        const y_px = event.clientY - rect.top;
+        
+        // Store click position for later use
+        contextMenuPosition = {
+            x_px: x_px,
+            y_px: y_px,
+            clientX: event.clientX,
+            clientY: event.clientY
+        };
+        
+        // Position and show main context menu (add small offset from cursor)
+        contextMenu.style.left = (event.clientX + 2) + 'px';
+        contextMenu.style.top = (event.clientY + 2) + 'px';
+        contextMenu.classList.add('active');
+    }
+    
+    return false;
+}
+
+function handleContextMenuAction(event) {
+    const action = event.target.dataset.action;
+    
+    // Close context menu
+    contextMenu.classList.remove('active');
+    
+    if (!contextMenuPosition) return;
+    
+    switch (action) {
+        case 'start':
+            activateModeAtPosition('start', contextMenuPosition);
+            break;
+        case 'goal':
+            activateModeAtPosition('goal', contextMenuPosition);
+            break;
+        case 'enemy':
+            activateModeAtPosition('enemy', contextMenuPosition);
+            break;
+        case 'batch':
+            startAddBatchAtPosition(contextMenuPosition);
+            break;
+    }
+    
+    contextMenuPosition = null;
+}
+
+function handleBatchContextMenuAction(event) {
+    const action = event.target.dataset.action;
+    
+    // Close context menu
+    batchContextMenu.classList.remove('active');
+    
+    if (contextMenuBatchId === null) return;
+    
+    const batchId = contextMenuBatchId;
+    const batch = batches.find(b => b.batch_id === batchId);
+    
+    switch (action) {
+        case 'edit':
+            editBatch(batchId);
+            break;
+        case 'toggle':
+            toggleSingleBatch(batchId);
+            break;
+        case 'delete':
+            if (batch) {
+                deleteBatch(batchId, batch.known_id);
+            }
+            break;
+    }
+    
+    contextMenuBatchId = null;
+}
+
+function activateModeAtPosition(mode, position) {
+    currentMode = mode;
+    
+    // Convert to map coordinates
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    const x_mm = (position.y_px / displayHeight) * MAP_HEIGHT_MM;
+    const y_mm = (position.x_px / displayWidth) * MAP_WIDTH_MM;
+    
+    const x = Math.round(x_mm * 10) / 10;
+    const y = Math.round(y_mm * 10) / 10;
+    
+    // Remove old pending marker if exists
+    if (pendingPose && pendingPose.marker) {
+        pendingPose.marker.remove();
+    }
+    
+    // Remove old robot model for the current mode
+    const oldRobot = document.querySelector(`.robot-model.${mode}`);
+    if (oldRobot) {
+        oldRobot.remove();
+    }
+    
+    // Create marker
+    const marker = createMarker(position.x_px, position.y_px, mode);
+    
+    // Store pending pose
+    pendingPose = {
+        x: x,
+        y: y,
+        theta: 0,
+        marker: marker,
+        type: mode
+    };
+    
+    // Show orientation selector at cursor position
+    orientationSelector.style.display = 'block';
+    orientationSelector.style.left = (position.clientX + 2) + 'px';
+    orientationSelector.style.top = (position.clientY + 2) + 'px';
+    orientationInput.value = '0';
+    orientationBtns.forEach(b => b.classList.remove('selected'));
+}
+
+function startAddBatchAtPosition(position) {
+    isAddingBatch = true;
+    
+    // Deactivate other modes
+    currentMode = null;
+    orientationSelector.style.display = 'none';
+    
+    // Convert to map coordinates
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    const x_mm = (position.y_px / displayHeight) * MAP_HEIGHT_MM;
+    const y_mm = (position.x_px / displayWidth) * MAP_WIDTH_MM;
+    
+    const x = Math.round(x_mm * 10) / 10;
+    const y = Math.round(y_mm * 10) / 10;
+    
+    // Store batch center position
+    pendingBatch = {
+        center: { x, y, z: 0.0 },
+        center_px: { x: position.x_px, y: position.y_px }
+    };
+    
+    // Show batch preview
+    showBatchPreview(position.x_px, position.y_px, 'vertical');
+    
+    // Show modal
+    batchModal.classList.add('active');
+    batchForm.style.display = 'flex';
+    document.querySelector('.modal-instruction').textContent = 'Configure batch properties:';
+    document.querySelector('.modal-instruction').style.display = 'block';
+    
+    console.log('Adding batch at position:', x, y);
+}
+
+function toggleSingleBatch(batchId) {
+    batchVisibility[batchId] = !batchVisibility[batchId];
+    
+    // Update checkbox
+    const checkbox = document.getElementById(`batch-${batchId}`);
+    if (checkbox) {
+        checkbox.checked = batchVisibility[batchId];
+    }
+    
+    // Save to localStorage
+    saveBatchVisibilityToStorage();
+    
+    // Update obstacle markers visibility
+    const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batchId}"]`);
+    obstacleMarkers.forEach(marker => {
+        if (batchVisibility[batchId]) {
+            marker.classList.remove('hidden');
+        } else {
+            marker.classList.add('hidden');
+        }
+    });
+}
+
+// -------------------------------------------------
+// Map Click Handler
+// -------------------------------------------------
 
 function handleMapClick(event) {
     // Handle batch placement
@@ -503,8 +705,10 @@ function handleMapClick(event) {
         type: currentMode
     };
 
-    // Show orientation selector
+    // Show orientation selector at cursor position
     orientationSelector.style.display = 'block';
+    orientationSelector.style.left = (event.clientX + 2) + 'px';
+    orientationSelector.style.top = (event.clientY + 2) + 'px';
     orientationInput.value = '0';
     orientationBtns.forEach(b => b.classList.remove('selected'));
 }
@@ -577,6 +781,12 @@ function confirmPose() {
     const theta = parseFloat(orientationInput.value) || 0;
     pendingPose.theta = theta;
 
+    // Remove old marker for this type if it exists
+    const oldMarker = document.querySelector(`.marker.${pendingPose.type}`);
+    if (oldMarker && oldMarker !== pendingPose.marker) {
+        oldMarker.remove();
+    }
+
     // Remove old robot model for this type if it exists
     const oldRobot = document.querySelector(`.robot-model.${pendingPose.type}`);
     if (oldRobot) {
@@ -616,9 +826,6 @@ function confirmPose() {
     // Clean up
     orientationSelector.style.display = 'none';
     currentMode = null;
-    startPoseBtn.classList.remove('active');
-    enemyPoseBtn.classList.remove('active');
-    goalPoseBtn.classList.remove('active');
     pendingPose = null;
 }
 
@@ -927,9 +1134,6 @@ function startAddBatch() {
     
     // Deactivate other modes
     currentMode = null;
-    startPoseBtn.classList.remove('active');
-    enemyPoseBtn.classList.remove('active');
-    goalPoseBtn.classList.remove('active');
     orientationSelector.style.display = 'none';
     
     // Show instruction
