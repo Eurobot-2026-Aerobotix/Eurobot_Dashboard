@@ -498,6 +498,27 @@ h1 {
     border-radius: 3px;
 }
 
+.batch-edit-btn {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.batch-edit-btn:hover {
+    background: rgba(52, 152, 219, 0.1);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.batch-edit-btn:active {
+    transform: scale(0.95);
+}
+
 .batch-delete-btn {
     background: none;
     border: none;

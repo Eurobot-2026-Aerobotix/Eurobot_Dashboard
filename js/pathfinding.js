@@ -25,6 +25,8 @@ let obstacles = []; // Store obstacles from YAML
 let batches = [];   // Store batch information
 let batchVisibility = {}; // Track which batches are visible
 let isAddingBatch = false; // Track if we're in "add batch" mode
+let isEditingBatch = false; // Track if we're editing an existing batch
+let editingBatchId = null; // Store ID of batch being edited
 let pendingBatch = null; // Store batch being created
 
 // DOM Elements
@@ -343,6 +345,15 @@ function populateBatchSelector() {
         count.className = 'batch-count';
         count.textContent = `${batch.count} items`;
         
+        const editBtn = document.createElement('button');
+        editBtn.className = 'batch-edit-btn';
+        editBtn.innerHTML = '✏️';
+        editBtn.title = 'Edit batch colors';
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editBatch(batch.batch_id);
+        });
+        
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'batch-delete-btn';
         deleteBtn.innerHTML = '🗑️';
@@ -355,6 +366,7 @@ function populateBatchSelector() {
         batchItem.appendChild(checkbox);
         batchItem.appendChild(label);
         batchItem.appendChild(count);
+        batchItem.appendChild(editBtn);
         batchItem.appendChild(deleteBtn);
         
         batchList.appendChild(batchItem);
@@ -930,6 +942,8 @@ function startAddBatch() {
 function closeModal() {
     batchModal.classList.remove('active');
     isAddingBatch = false;
+    isEditingBatch = false;
+    editingBatchId = null;
     mapWrapper.style.cursor = 'crosshair';
     
     // Clear pending batch preview
@@ -940,13 +954,19 @@ function closeModal() {
     
     // Reset form
     document.getElementById('batchKnownId').value = '';
+    document.getElementById('batchKnownId').disabled = false;
     document.getElementById('batchDirection').value = 'vertical';
+    document.getElementById('batchDirection').disabled = false;
     document.getElementById('color1').value = 'yellow';
     document.getElementById('color2').value = 'blue';
     document.getElementById('color3').value = 'yellow';
     document.getElementById('color4').value = 'blue';
     document.querySelector('.modal-instruction').style.display = 'block';
     document.querySelector('.modal-instruction').textContent = 'Click on the map to place the batch center';
+    const modalTitle = document.querySelector('.modal-header h3');
+    if (modalTitle) modalTitle.textContent = 'Add New Batch';
+    const saveBtn = document.getElementById('saveBatchBtn');
+    if (saveBtn) saveBtn.textContent = 'Save Batch';
     batchForm.style.display = 'none';
 }
 
@@ -1070,6 +1090,12 @@ document.getElementById('batchDirection').addEventListener('change', (e) => {
 });
 
 async function saveBatch() {
+    // Check if we're editing or creating
+    if (isEditingBatch) {
+        await updateBatchColors();
+        return;
+    }
+    
     // Validate form
     const knownId = document.getElementById('batchKnownId').value.trim();
     const direction = document.getElementById('batchDirection').value;
@@ -1299,6 +1325,160 @@ async function deleteBatch(batchId, knownId) {
         
     } catch (error) {
         console.error('Error deleting batch:', error);
+    }
+}
+
+// -------------------------------------------------
+// Edit Batch Function
+// -------------------------------------------------
+
+function editBatch(batchId) {
+    // Find the batch
+    const batch = batches.find(b => b.batch_id === batchId);
+    if (!batch) {
+        console.error('Batch not found:', batchId);
+        return;
+    }
+    
+    // Get the batch members (obstacles)
+    const batchMembers = obstacles.filter(obs => obs.batch_id === batchId);
+    if (batchMembers.length !== 4) {
+        console.error('Batch must have exactly 4 members');
+        return;
+    }
+    
+    // Set edit mode
+    isEditingBatch = true;
+    editingBatchId = batchId;
+    
+    // Populate the form with current values
+    document.getElementById('batchKnownId').value = batch.known_id;
+    document.getElementById('batchKnownId').disabled = true; // Don't allow changing ID
+    document.getElementById('batchDirection').value = batch.direction;
+    document.getElementById('batchDirection').disabled = true; // Don't allow changing direction
+    
+    // Set color dropdowns based on current member colors
+    batchMembers.sort((a, b) => {
+        // Sort by position to ensure correct order
+        if (batch.direction === 'vertical') {
+            return b.y - a.y; // Top to bottom
+        } else {
+            return a.x - b.x; // Left to right
+        }
+    });
+    
+    document.getElementById('color1').value = batchMembers[0].color;
+    document.getElementById('color2').value = batchMembers[1].color;
+    document.getElementById('color3').value = batchMembers[2].color;
+    document.getElementById('color4').value = batchMembers[3].color;
+    
+    // Update modal UI
+    const modalTitle = document.querySelector('.modal-header h3');
+    if (modalTitle) modalTitle.textContent = 'Edit Batch Colors';
+    
+    const modalInstruction = document.querySelector('.modal-instruction');
+    modalInstruction.textContent = `Editing batch: ${batch.known_id}`;
+    modalInstruction.style.display = 'block';
+    
+    const saveBtn = document.getElementById('saveBatchBtn');
+    saveBtn.textContent = 'Update Colors';
+    
+    // Show modal
+    batchModal.classList.add('active');
+    batchForm.style.display = 'flex';
+    
+    console.log(`Editing batch: ${batch.known_id} (ID: ${batchId})`);
+}
+
+async function updateBatchColors() {
+    if (!editingBatchId) {
+        console.error('No batch being edited');
+        return;
+    }
+    
+    // Get new colors
+    const colors = [
+        document.getElementById('color1').value,
+        document.getElementById('color2').value,
+        document.getElementById('color3').value,
+        document.getElementById('color4').value
+    ];
+    
+    // Get batch info
+    const batch = batches.find(b => b.batch_id === editingBatchId);
+    if (!batch) {
+        console.error('Batch not found');
+        return;
+    }
+    
+    // Get current members
+    const batchMembers = obstacles.filter(obs => obs.batch_id === editingBatchId);
+    
+    // Sort members by position
+    batchMembers.sort((a, b) => {
+        if (batch.direction === 'vertical') {
+            return b.y - a.y; // Top to bottom
+        } else {
+            return a.x - b.x; // Left to right
+        }
+    });
+    
+    // Update member colors and ArUco IDs
+    const updatedMembers = batchMembers.map((member, index) => ({
+        aruco_id: colors[index] === 'yellow' ? 47 : 36,
+        map_pos: {
+            x: member.x,
+            y: member.y,
+            z: 0.0
+        },
+        color: colors[index]
+    }));
+    
+    // Prepare update payload
+    const updateData = {
+        batch_id: editingBatchId,
+        known_id: batch.known_id,
+        direction: batch.direction,
+        count: 4,
+        members: updatedMembers
+    };
+    
+    try {
+        // Call server to update batch
+        const response = await fetch(`${window.ipConfig.getAPIURL()}/obstacles/batch/${editingBatchId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update batch');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Batch updated:', result);
+        
+        // Update local obstacles
+        batchMembers.forEach((member, index) => {
+            member.color = colors[index];
+            member.aruco_id = colors[index] === 'yellow' ? 47 : 36;
+        });
+        
+        // Redraw obstacles
+        const existingObstacles = document.querySelectorAll('.obstacle-marker');
+        existingObstacles.forEach(marker => marker.remove());
+        drawObstacles();
+        
+        // Close modal
+        closeModal();
+        
+        console.log(`✅ Batch "${batch.known_id}" colors updated successfully!`);
+        
+    } catch (error) {
+        console.error('Error updating batch:', error);
+        alert('Error updating batch. Please try again.');
     }
 }
 
