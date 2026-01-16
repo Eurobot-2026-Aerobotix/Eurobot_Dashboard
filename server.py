@@ -328,6 +328,7 @@ def start_strategy():
             ["bash", script_path, strategy_abs_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,  # Enable stdin to send 'q'
             text=True,
             bufsize=1,
             preexec_fn=os.setsid  # Create new process group
@@ -384,17 +385,17 @@ def stop_strategy():
     global start_process
     try:
         if start_process and start_process.poll() is None:
-            # Process is still running, kill the entire process group
-            import signal
+            # Send 'q' to stdin to trigger robot stop (without closing process)
             try:
-                # Send SIGTERM to the process group
-                os.killpg(os.getpgid(start_process.pid), signal.SIGTERM)
-                strategy_output_queue.put("[Strategy stopped by user]")
-                return jsonify({"status": "success", "message": "Strategy stopped"})
-            except ProcessLookupError:
-                # Process already terminated
-                strategy_output_queue.put("[Strategy already stopped]")
-                return jsonify({"status": "success", "message": "Strategy already stopped"})
+                start_process.stdin.write('q\n')
+                start_process.stdin.flush()
+                strategy_output_queue.put("[Sent 'q' - Robot stopped (process still running)]")
+                return jsonify({"status": "success", "message": "Robot stopped"})
+            except Exception as e:
+                strategy_output_queue.put(f"[Failed to send 'q': {e}]")
+                return jsonify({"status": "error", "error": f"Failed to send stop command: {e}"}), 500
+        elif start_process and start_process.poll() is not None:
+            return jsonify({"status": "success", "message": "Strategy already stopped"})
         else:
             return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
     except Exception as e:

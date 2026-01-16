@@ -62,4 +62,3 @@ tasks:
     - '2025.58'
     - 400
     wait: false
-  name: Task 1
