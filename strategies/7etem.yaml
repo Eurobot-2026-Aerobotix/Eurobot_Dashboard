@@ -1,5 +1,5 @@
 name: 7etem
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -19,4 +19,3 @@ tasks:
     - '450.85'
     - 0
     wait: false
-  name: Task 1

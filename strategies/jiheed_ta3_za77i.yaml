@@ -59,4 +59,3 @@ tasks:
     - '789.42'
     - 700
     wait: false
-  name: Task 1
