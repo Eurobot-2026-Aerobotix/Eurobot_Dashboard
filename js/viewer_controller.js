@@ -16,6 +16,8 @@ const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"];
 const set_position_args = ["x", "y", "angle"]
 let contextAction = null;
 let contextTask = null;
+let hovered_point_index = null;
+let robot_on_map = null;
 
 // ------------------------------
 // Load selected strategy
@@ -231,12 +233,23 @@ function renderTasks() {
     });
 
     const inputs = document.querySelectorAll("#args-container input");
+    inputs.forEach(input => input.addEventListener("keydown",(e) => {
+      if (e.key === "Enter") {
+        const nextInput = input.parentElement.nextElementSibling;
+        if (nextInput && nextInput.querySelector("input")) {
+          nextInput.querySelector("input").focus();
+        } else {
+          document.getElementById("modal-confirm").click();
+        }
+      }
+    }));
     inputs.forEach((input, i) => {
       input.value = contextAction.params[i] ?? "";
     });
 
     modal.classList.remove("hidden");
     document.getElementById("action-context-menu").classList.add("hidden");
+    inputs[0].focus();
   };
 }
 
@@ -348,7 +361,7 @@ function renderMap() {
   });
 }
 
-function drawPoint(svg, x, y, cls = "", action, paramIndexX, paramIndexY) {
+function drawPoint(svg, x, y, cls = "", action, paramIndexX, paramIndexY, secondary=false) {
   const { cx, cy } = mapToScreen(x, y);
 
   const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -356,6 +369,9 @@ function drawPoint(svg, x, y, cls = "", action, paramIndexX, paramIndexY) {
   c.setAttribute("cy", cy);
   c.setAttribute("r", 6);
   c.classList.add("map-point");
+  if (secondary){
+    c.classList.add("secondary");
+  }
   if (cls) c.classList.add(cls);
 
   enableDrag(c, action , paramIndexX, paramIndexY);
@@ -417,10 +433,9 @@ function drawBezier(svg, start, params, backwards, action) {
 
   svg.appendChild(path);
 
-  [x1,y1,x2,y2,x3,y3].forEach((_, i) => {
-    if (i % 2 === 0)
-      drawPoint(svg, params[i], params[i+1], "", action, i, i+1);
-  });
+  drawPoint(svg, params[0], params[1], "", action, 0, 1, true);
+  drawPoint(svg, params[2], params[3], "", action, 2, 3, true);
+  drawPoint(svg, params[4], params[5], "", action, 4, 5);
   // add arrowhead at end of bezier like drawArrow
   path.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
   path.setAttribute("stroke", backwards ? "blue" : "red");
@@ -448,7 +463,6 @@ function updateActionParamsFromDrag(action, paramIndexX, paramIndexY, cx, cy) {
 
   renderMap();
 }
-
 function hightlightAction(action) {
   let index = 0;
   selected_strategy.tasks.forEach(task => {
@@ -467,19 +481,111 @@ function unHightlightActions() {
     item.classList.remove("highlighted");
   });
 }
+function draw_robot_on_map(svg, x, y, angle) {
+  clear_robot_on_map(svg);
+
+  const { cx, cy } = mapToScreen(x, y);
+
+  const color =
+    selected_strategy.color === "yellow"
+      ? "rgb(255, 255, 0)"
+      : "rgb(50, 162, 199)";
+
+  const robot = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  robot.setAttribute(
+    "transform",
+    `translate(${cx}, ${cy}) rotate(${90 - angle})`
+  );
+
+  /* Robot body */
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("width", svg.clientWidth * 0.1);
+  rect.setAttribute("height", svg.clientWidth * 0.1);
+  rect.setAttribute("x", -rect.getAttribute("width") / 2);
+  rect.setAttribute("y", -rect.getAttribute("height") / 2);
+  rect.setAttribute("fill", color);
+  rect.setAttribute("fill-opacity", "0.5");
+  rect.setAttribute("stroke", color);
+  rect.setAttribute("stroke-width", "2");
+
+  /* Centered direction arrow */
+  const arrow = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+  arrow.setAttribute(
+    "points",
+    "18,0 -12,-12 -12,12"   // centered arrow, pointing +X, 3 times bigger
+  );
+  arrow.setAttribute("fill", color);
+  arrow.setAttribute("fill-opacity", "1");
+
+  robot.appendChild(rect);
+  robot.appendChild(arrow);
+  svg.appendChild(robot);
+  robot_on_map = robot;
+}
+function clear_robot_on_map(svg) {
+  if (robot_on_map) {
+    try {
+      svg.removeChild(robot_on_map);
+    } catch (e) {}
+    robot_on_map = null;
+  }
+}
+function rad_to_deg(rad) {
+  return rad * (180 / Math.PI);
+}
+function calculate_x_y_phi_after_action(point, action) {
+  const svg = document.getElementById("map-overlay");
+  const points = svg.querySelectorAll(".map-point");
+  let x = point.getAttribute("cx");
+  let y = point.getAttribute("cy");
+  let phi = 0;
+  if (action.command.includes("position")) { 
+    phi = action.params[2];
+  } else{
+    const prevPoint = points[Array.from(points).indexOf(point) - 1];
+    const prevX = prevPoint ? parseFloat(prevPoint.getAttribute("cx")) : point.getAttribute("cx");
+    const prevY = prevPoint ? parseFloat(prevPoint.getAttribute("cy")) : point.getAttribute("cy");
+
+    phi = rad_to_deg(Math.atan2(x - prevX, y - prevY)) + (action.command.includes("backwards") ? 180 : 0);
+  }
+
+  selected_strategy.tasks.forEach(task => {
+    for (let i = 0; i < task.sequence.length - 1; i++) {
+      if (task.sequence[i] === action) {
+        const next = task.sequence[i + 1];
+
+        if (next.command.includes("orientate")) {
+          phi = next.params[0];
+        }
+
+        return; // stop after first match
+      }
+    }
+  });
+  const xy = screenToMap(x, y);
+  return [xy.x, xy.y, phi];
+}
 function enableDrag(el, action, paramIndexX, paramIndexY) {
   let dragging = false;
 
   el.addEventListener("mouseover", e => {
     hightlightAction(action);
+    if (el.classList.contains("secondary")) return;
+    let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
+    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
   });
   el.addEventListener("mouseout", e => {
     unHightlightActions();
+    if (el.classList.contains("secondary")) return;
+    clear_robot_on_map(document.getElementById("map-overlay"));
   });
 
   el.addEventListener("mousedown", e => {
     dragging = true;
     e.stopPropagation();
+    if (el.classList.contains("secondary")) return;
+    let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
+    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
   });
 
   window.addEventListener("mousemove", e => {
@@ -501,6 +607,9 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
       y,
       x
     );
+    if (el.classList.contains("secondary")) return;
+    let [x1, y1, phi] = calculate_x_y_phi_after_action(el, action);
+    draw_robot_on_map(document.getElementById("map-overlay"), x1, y1, phi);
   });
 
   window.addEventListener("mouseup", () => {
@@ -551,7 +660,19 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     label.appendChild(input);
     argsContainer.appendChild(label);
   });
+  let inputs = document.querySelectorAll("#args-container input");
+  inputs.forEach(input => input.addEventListener("keydown",(e) => {
+    if (e.key === "Enter") {
+      const nextInput = input.parentElement.nextElementSibling;
+      if (nextInput && nextInput.querySelector("input")) {
+        nextInput.querySelector("input").focus();
+      } else {
+        document.getElementById("modal-confirm").click();
+      }
+    }
+  }));
   modal.classList.remove("hidden");
+  inputs[0].focus();
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
@@ -573,10 +694,17 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     const opt = actionSelect.options[index];
     const [device, command] = opt.textContent.split(" - ");
     const params = [];
-    document.querySelectorAll("#args-container input").forEach(input => {
-      const value = parseFloat(input.value) || 1000;
-      params.push(value != 0 ? value : 1200);
-    });
+    if (command.includes("go_to") || command.includes("bezier") || command.includes("set_position")){
+      document.querySelectorAll("#args-container input").forEach(input => {
+        const value = parseFloat(input.value) || 1000;
+        params.push(value != 0 ? value : 1200);
+      });
+    } else{
+      document.querySelectorAll("#args-container input").forEach(input => {
+        const value = parseFloat(input.value) || 0;
+        params.push(value != 0 ? value : 0);
+      });
+    }
     const wait = document.getElementById("modal-wait").checked;
 
     if (!device || !command) return;
@@ -593,9 +721,18 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     const wait = document.getElementById("modal-wait").checked;
 
     const params = [];
-    document.querySelectorAll("#args-container input").forEach(input => {
-      params.push(parseFloat(input.value) || 1000);
-    });
+    const command = contextAction.command;
+    if (command.includes("go_to") || command.includes("bezier") || command.includes("set_position")){
+      document.querySelectorAll("#args-container input").forEach(input => {
+        const value = parseFloat(input.value) || 1000;
+        params.push(value != 0 ? value : 1200);
+      });
+    } else{
+      document.querySelectorAll("#args-container input").forEach(input => {
+        const value = parseFloat(input.value) || 0;
+        params.push(value != 0 ? value : 0);
+      });
+    }
 
     if (contextAction) {
       // MODIFY

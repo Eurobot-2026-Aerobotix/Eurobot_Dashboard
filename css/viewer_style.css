@@ -67,6 +67,7 @@ body {
     justify-content: start;
     padding: 0;
     margin-left: 22%;
+    user-select: none;
 }
 
 .navbar {
@@ -85,6 +86,7 @@ body {
     padding: 0;
     box-shadow: none;
     border: none;
+    user-select: none;
 }
 
 img {
@@ -95,6 +97,7 @@ img {
 #map-container img {
     max-width: 100%;
     max-height: 100%;
+    user-select: none;
 }
 #controls {
     display: flex;
@@ -359,6 +362,7 @@ input[type="checkbox"]:hover {
   display: flex;
   justify-content: center;
   align-items: center;
+  user-select: none;
 }
 
 #map {
@@ -381,6 +385,11 @@ input[type="checkbox"]:hover {
   fill: red;
   cursor: pointer;
   pointer-events: all;
+}
+.map-point.secondary {
+  fill: red;
+  stroke: rgb(25, 9, 9);
+  stroke-width: 1.5;
 }
 
 .backward {

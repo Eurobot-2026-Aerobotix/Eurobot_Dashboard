@@ -4,39 +4,59 @@ color: yellow
 tasks:
 - description: Task 1
   global_goal:
-    x: '1251.20'
-    y: '2788.92'
-    theta: 60.42201940854494
+    x: '947.47'
+    y: '789.42'
+    theta: -92.94638806447963
   sequence:
   - device: STM
     command: set_position
     params:
-    - '1210.41'
-    - '2778.72'
+    - '1470.95'
+    - '2745.29'
     - 180
     wait: false
   - device: STM
     command: go_to
     params:
-    - '1348.08'
-    - '1840.58'
+    - '1428.24'
+    - '1852.00'
     - 700
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 180
     wait: false
   - device: STM
     command: bezier
     params:
-    - '1167.08'
-    - '1404.66'
-    - '644.47'
-    - '1725.87'
-    - '876.45'
-    - '2128.65'
+    - '1254.79'
+    - '1349.35'
+    - '702.66'
+    - '1445.72'
+    - '801.63'
+    - '1745.22'
     - 700
     wait: false
   - device: STM
     command: go_to_backwards
     params:
-    - '1251.20'
-    - '2788.92'
+    - '1017.79'
+    - '1883.25'
     - 500
     wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '965.70'
+    - '1143.61'
+    - 700
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '947.47'
+    - '789.42'
+    - 700
+    wait: false
+  name: Task 1

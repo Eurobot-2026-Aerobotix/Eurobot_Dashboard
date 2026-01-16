@@ -6,7 +6,7 @@ tasks:
   global_goal:
     x: '1639.53'
     y: '2025.58'
-    theta: 59.65880918075544
+    theta: 75.50673711821702
   sequence:
   - device: STM
     command: set_position
@@ -39,15 +39,15 @@ tasks:
   - device: STM
     command: go_to_backwards
     params:
-    - 940.93
-    - 2012.69
+    - '1098.53'
+    - '2018.68'
     - 1000
     wait: false
   - device: STM
     command: go_to
     params:
-    - '940.93'
-    - '832.04'
+    - '1416.26'
+    - '1161.84'
     - 400
     wait: false
   - device: STM
@@ -62,3 +62,4 @@ tasks:
     - '2025.58'
     - 400
     wait: false
+  name: Task 1
