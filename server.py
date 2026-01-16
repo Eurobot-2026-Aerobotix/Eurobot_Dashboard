@@ -211,6 +211,49 @@ def delete_batch(batch_id):
 
 
 # -------------------------------------------------
+# Update a batch (edit colors/members)
+# PUT /obstacles/batch/<batch_id>
+# Body: JSON (updated batch object)
+# -------------------------------------------------
+@app.route("/obstacles/batch/<int:batch_id>", methods=["PUT"])
+def update_batch(batch_id):
+    if not request.is_json:
+        abort(400, "Expected JSON body")
+    
+    update_data = request.get_json()
+    
+    if not os.path.exists(OBSTACLES_FILE):
+        abort(404, "Obstacles file not found")
+    
+    # Load existing data
+    with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    
+    if "batches" not in data or not data["batches"]:
+        abort(404, "No batches found")
+    
+    # Find the batch to update
+    batch_index = None
+    for i, batch in enumerate(data["batches"]):
+        if batch.get("batch_id") == batch_id:
+            batch_index = i
+            break
+    
+    if batch_index is None:
+        abort(404, f"Batch with ID {batch_id} not found")
+    
+    # Update the batch members (colors and aruco_ids)
+    # Keep the same structure but update member info
+    data["batches"][batch_index]["members"] = update_data.get("members")
+    
+    # Save back to file
+    with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+    
+    return jsonify({"status": "updated", "batch_id": batch_id})
+
+
+# -------------------------------------------------
 # Prepare robot (will execute a shell script)
 # POST /prepare
 # -------------------------------------------------

@@ -6,8 +6,12 @@ const MAP_HEIGHT_PX = 2000; // pixels
 
 // ROS2 Bridge Configuration - use smart IP config
 const ROSBRIDGE_URL = window.ipConfig ? window.ipConfig.getWebSocketURL() : 'ws://localhost:9090';
+const API_URL = window.ipConfig ? window.ipConfig.getAPIURL() : 'http://localhost:5000';
 let ros = null;
 let isConnected = false;
+
+// EventSource for pathfinding logs
+let pathfindingEventSource = null;
 
 // State
 let currentMode = null; // 'start', 'enemy', or 'goal'
@@ -21,14 +25,15 @@ let obstacles = []; // Store obstacles from YAML
 let batches = [];   // Store batch information
 let batchVisibility = {}; // Track which batches are visible
 let isAddingBatch = false; // Track if we're in "add batch" mode
+let isEditingBatch = false; // Track if we're editing an existing batch
+let editingBatchId = null; // Store ID of batch being edited
 let pendingBatch = null; // Store batch being created
+let contextMenuBatchId = null; // Store batch ID for context menu actions
+let contextMenuPosition = null; // Store click position for context menu
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
-const startPoseBtn = document.getElementById('startPoseBtn');
-const enemyPoseBtn = document.getElementById('enemyPoseBtn');
-const goalPoseBtn = document.getElementById('goalPoseBtn');
 const findPathBtn = document.getElementById('findPathBtn');
 const orientationSelector = document.getElementById('orientationSelector');
 const orientationInput = document.getElementById('orientationInput');
@@ -36,13 +41,14 @@ const confirmBtn = document.getElementById('confirmBtn');
 const orientationBtns = document.querySelectorAll('.orientation-btn');
 const batchList = document.getElementById('batchList');
 const toggleAllBtn = document.getElementById('toggleAllBtn');
-const addBatchBtn = document.getElementById('addBatchBtn');
 const sendBatchesBtn = document.getElementById('sendBatchesBtn');
 const batchModal = document.getElementById('batchModal');
 const modalClose = document.getElementById('modalClose');
 const batchForm = document.getElementById('batchForm');
 const cancelBatchBtn = document.getElementById('cancelBatchBtn');
 const saveBatchBtn = document.getElementById('saveBatchBtn');
+const contextMenu = document.getElementById('contextMenu');
+const batchContextMenu = document.getElementById('batchContextMenu');
 
 // Initialize ROS2 Bridge
 initROS();
@@ -53,19 +59,31 @@ loadObstacles();
 // Load saved state from localStorage
 loadSavedState();
 
-// Initialize
-startPoseBtn.addEventListener('click', () => activateMode('start'));
-enemyPoseBtn.addEventListener('click', () => activateMode('enemy'));
-goalPoseBtn.addEventListener('click', () => activateMode('goal'));
+// Initialize event listeners
 findPathBtn.addEventListener('click', findPath);
 mapWrapper.addEventListener('click', handleMapClick);
+mapWrapper.addEventListener('contextmenu', handleContextMenu);
 confirmBtn.addEventListener('click', confirmPose);
 toggleAllBtn.addEventListener('click', toggleAllBatches);
-addBatchBtn.addEventListener('click', startAddBatch);
 sendBatchesBtn.addEventListener('click', sendBatches);
 modalClose.addEventListener('click', closeModal);
 cancelBatchBtn.addEventListener('click', cancelBatch);
 saveBatchBtn.addEventListener('click', saveBatch);
+
+// Context menu event listeners
+document.querySelectorAll('#contextMenu .context-menu-item').forEach(item => {
+    item.addEventListener('click', handleContextMenuAction);
+});
+
+document.querySelectorAll('#batchContextMenu .context-menu-item').forEach(item => {
+    item.addEventListener('click', handleBatchContextMenuAction);
+});
+
+// Close context menus when clicking anywhere
+document.addEventListener('click', () => {
+    contextMenu.classList.remove('active');
+    batchContextMenu.classList.remove('active');
+});
 
 // Orientation button handlers
 orientationBtns.forEach(btn => {
@@ -291,7 +309,8 @@ function drawObstacles() {
         obstacleMarker.style.borderRadius = '4px'; // Slight rounding for rectangles
         obstacleMarker.style.border = '2px solid #333';
         obstacleMarker.style.zIndex = '5';
-        obstacleMarker.style.pointerEvents = 'none';
+        obstacleMarker.style.pointerEvents = 'auto'; // Enable pointer events for context menu
+        obstacleMarker.style.cursor = 'context-menu';
         obstacleMarker.style.fontSize = '9px';
         obstacleMarker.style.display = 'flex';
         obstacleMarker.style.alignItems = 'center';
@@ -339,19 +358,9 @@ function populateBatchSelector() {
         count.className = 'batch-count';
         count.textContent = `${batch.count} items`;
         
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'batch-delete-btn';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete batch';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteBatch(batch.batch_id, batch.known_id);
-        });
-        
         batchItem.appendChild(checkbox);
         batchItem.appendChild(label);
         batchItem.appendChild(count);
-        batchItem.appendChild(deleteBtn);
         
         batchList.appendChild(batchItem);
     });
@@ -403,11 +412,6 @@ function toggleAllBatches() {
 function activateMode(mode) {
     currentMode = mode;
     
-    // Update button states
-    startPoseBtn.classList.toggle('active', mode === 'start');
-    enemyPoseBtn.classList.toggle('active', mode === 'enemy');
-    goalPoseBtn.classList.toggle('active', mode === 'goal');
-    
     // Hide orientation selector
     orientationSelector.style.display = 'none';
     
@@ -429,6 +433,220 @@ function activateMode(mode) {
         oldRobot.remove();
     }
 }
+
+// -------------------------------------------------
+// Context Menu Functions
+// -------------------------------------------------
+
+function handleContextMenu(event) {
+    event.preventDefault(); // Prevent default context menu
+    
+    // Close any open context menus first
+    contextMenu.classList.remove('active');
+    batchContextMenu.classList.remove('active');
+    
+    // Check if clicking on an obstacle marker (batch)
+    const clickedObstacle = event.target.closest('.obstacle-marker');
+    
+    if (clickedObstacle && clickedObstacle.dataset.batchId) {
+        // Right-clicked on a batch - show batch context menu
+        const batchId = parseInt(clickedObstacle.dataset.batchId);
+        contextMenuBatchId = batchId;
+        
+        // Update toggle text based on current visibility
+        const toggleText = document.getElementById('batchToggleText');
+        if (batchVisibility[batchId]) {
+            toggleText.textContent = 'Hide';
+        } else {
+            toggleText.textContent = 'Show';
+        }
+        
+        // Position and show batch context menu (add small offset from cursor)
+        batchContextMenu.style.left = (event.clientX + 2) + 'px';
+        batchContextMenu.style.top = (event.clientY + 2) + 'px';
+        batchContextMenu.classList.add('active');
+    } else {
+        // Right-clicked on empty map - show main context menu
+        const rect = map.getBoundingClientRect();
+        const x_px = event.clientX - rect.left;
+        const y_px = event.clientY - rect.top;
+        
+        // Store click position for later use
+        contextMenuPosition = {
+            x_px: x_px,
+            y_px: y_px,
+            clientX: event.clientX,
+            clientY: event.clientY
+        };
+        
+        // Position and show main context menu (add small offset from cursor)
+        contextMenu.style.left = (event.clientX + 2) + 'px';
+        contextMenu.style.top = (event.clientY + 2) + 'px';
+        contextMenu.classList.add('active');
+    }
+    
+    return false;
+}
+
+function handleContextMenuAction(event) {
+    const action = event.target.dataset.action;
+    
+    // Close context menu
+    contextMenu.classList.remove('active');
+    
+    if (!contextMenuPosition) return;
+    
+    switch (action) {
+        case 'start':
+            activateModeAtPosition('start', contextMenuPosition);
+            break;
+        case 'goal':
+            activateModeAtPosition('goal', contextMenuPosition);
+            break;
+        case 'enemy':
+            activateModeAtPosition('enemy', contextMenuPosition);
+            break;
+        case 'batch':
+            startAddBatchAtPosition(contextMenuPosition);
+            break;
+    }
+    
+    contextMenuPosition = null;
+}
+
+function handleBatchContextMenuAction(event) {
+    const action = event.target.dataset.action;
+    
+    // Close context menu
+    batchContextMenu.classList.remove('active');
+    
+    if (contextMenuBatchId === null) return;
+    
+    const batchId = contextMenuBatchId;
+    const batch = batches.find(b => b.batch_id === batchId);
+    
+    switch (action) {
+        case 'edit':
+            editBatch(batchId);
+            break;
+        case 'toggle':
+            toggleSingleBatch(batchId);
+            break;
+        case 'delete':
+            if (batch) {
+                deleteBatch(batchId, batch.known_id);
+            }
+            break;
+    }
+    
+    contextMenuBatchId = null;
+}
+
+function activateModeAtPosition(mode, position) {
+    currentMode = mode;
+    
+    // Convert to map coordinates
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    const x_mm = (position.y_px / displayHeight) * MAP_HEIGHT_MM;
+    const y_mm = (position.x_px / displayWidth) * MAP_WIDTH_MM;
+    
+    const x = Math.round(x_mm * 10) / 10;
+    const y = Math.round(y_mm * 10) / 10;
+    
+    // Remove old pending marker if exists
+    if (pendingPose && pendingPose.marker) {
+        pendingPose.marker.remove();
+    }
+    
+    // Remove old robot model for the current mode
+    const oldRobot = document.querySelector(`.robot-model.${mode}`);
+    if (oldRobot) {
+        oldRobot.remove();
+    }
+    
+    // Create marker
+    const marker = createMarker(position.x_px, position.y_px, mode);
+    
+    // Store pending pose
+    pendingPose = {
+        x: x,
+        y: y,
+        theta: 0,
+        marker: marker,
+        type: mode
+    };
+    
+    // Show orientation selector at cursor position
+    orientationSelector.style.display = 'block';
+    orientationSelector.style.left = (position.clientX + 2) + 'px';
+    orientationSelector.style.top = (position.clientY + 2) + 'px';
+    orientationInput.value = '0';
+    orientationBtns.forEach(b => b.classList.remove('selected'));
+}
+
+function startAddBatchAtPosition(position) {
+    isAddingBatch = true;
+    
+    // Deactivate other modes
+    currentMode = null;
+    orientationSelector.style.display = 'none';
+    
+    // Convert to map coordinates
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    const x_mm = (position.y_px / displayHeight) * MAP_HEIGHT_MM;
+    const y_mm = (position.x_px / displayWidth) * MAP_WIDTH_MM;
+    
+    const x = Math.round(x_mm * 10) / 10;
+    const y = Math.round(y_mm * 10) / 10;
+    
+    // Store batch center position
+    pendingBatch = {
+        center: { x, y, z: 0.0 },
+        center_px: { x: position.x_px, y: position.y_px }
+    };
+    
+    // Show batch preview
+    showBatchPreview(position.x_px, position.y_px, 'vertical');
+    
+    // Show modal
+    batchModal.classList.add('active');
+    batchForm.style.display = 'flex';
+    document.querySelector('.modal-instruction').textContent = 'Configure batch properties:';
+    document.querySelector('.modal-instruction').style.display = 'block';
+    
+    console.log('Adding batch at position:', x, y);
+}
+
+function toggleSingleBatch(batchId) {
+    batchVisibility[batchId] = !batchVisibility[batchId];
+    
+    // Update checkbox
+    const checkbox = document.getElementById(`batch-${batchId}`);
+    if (checkbox) {
+        checkbox.checked = batchVisibility[batchId];
+    }
+    
+    // Save to localStorage
+    saveBatchVisibilityToStorage();
+    
+    // Update obstacle markers visibility
+    const obstacleMarkers = document.querySelectorAll(`.obstacle-marker[data-batch-id="${batchId}"]`);
+    obstacleMarkers.forEach(marker => {
+        if (batchVisibility[batchId]) {
+            marker.classList.remove('hidden');
+        } else {
+            marker.classList.add('hidden');
+        }
+    });
+}
+
+// -------------------------------------------------
+// Map Click Handler
+// -------------------------------------------------
 
 function handleMapClick(event) {
     // Handle batch placement
@@ -487,8 +705,10 @@ function handleMapClick(event) {
         type: currentMode
     };
 
-    // Show orientation selector
+    // Show orientation selector at cursor position
     orientationSelector.style.display = 'block';
+    orientationSelector.style.left = (event.clientX + 2) + 'px';
+    orientationSelector.style.top = (event.clientY + 2) + 'px';
     orientationInput.value = '0';
     orientationBtns.forEach(b => b.classList.remove('selected'));
 }
@@ -561,6 +781,12 @@ function confirmPose() {
     const theta = parseFloat(orientationInput.value) || 0;
     pendingPose.theta = theta;
 
+    // Remove old marker for this type if it exists
+    const oldMarker = document.querySelector(`.marker.${pendingPose.type}`);
+    if (oldMarker && oldMarker !== pendingPose.marker) {
+        oldMarker.remove();
+    }
+
     // Remove old robot model for this type if it exists
     const oldRobot = document.querySelector(`.robot-model.${pendingPose.type}`);
     if (oldRobot) {
@@ -600,9 +826,6 @@ function confirmPose() {
     // Clean up
     orientationSelector.style.display = 'none';
     currentMode = null;
-    startPoseBtn.classList.remove('active');
-    enemyPoseBtn.classList.remove('active');
-    goalPoseBtn.classList.remove('active');
     pendingPose = null;
 }
 
@@ -911,9 +1134,6 @@ function startAddBatch() {
     
     // Deactivate other modes
     currentMode = null;
-    startPoseBtn.classList.remove('active');
-    enemyPoseBtn.classList.remove('active');
-    goalPoseBtn.classList.remove('active');
     orientationSelector.style.display = 'none';
     
     // Show instruction
@@ -926,6 +1146,8 @@ function startAddBatch() {
 function closeModal() {
     batchModal.classList.remove('active');
     isAddingBatch = false;
+    isEditingBatch = false;
+    editingBatchId = null;
     mapWrapper.style.cursor = 'crosshair';
     
     // Clear pending batch preview
@@ -936,13 +1158,19 @@ function closeModal() {
     
     // Reset form
     document.getElementById('batchKnownId').value = '';
+    document.getElementById('batchKnownId').disabled = false;
     document.getElementById('batchDirection').value = 'vertical';
+    document.getElementById('batchDirection').disabled = false;
     document.getElementById('color1').value = 'yellow';
     document.getElementById('color2').value = 'blue';
     document.getElementById('color3').value = 'yellow';
     document.getElementById('color4').value = 'blue';
     document.querySelector('.modal-instruction').style.display = 'block';
     document.querySelector('.modal-instruction').textContent = 'Click on the map to place the batch center';
+    const modalTitle = document.querySelector('.modal-header h3');
+    if (modalTitle) modalTitle.textContent = 'Add New Batch';
+    const saveBtn = document.getElementById('saveBatchBtn');
+    if (saveBtn) saveBtn.textContent = 'Save Batch';
     batchForm.style.display = 'none';
 }
 
@@ -1066,6 +1294,12 @@ document.getElementById('batchDirection').addEventListener('change', (e) => {
 });
 
 async function saveBatch() {
+    // Check if we're editing or creating
+    if (isEditingBatch) {
+        await updateBatchColors();
+        return;
+    }
+    
     // Validate form
     const knownId = document.getElementById('batchKnownId').value.trim();
     const direction = document.getElementById('batchDirection').value;
@@ -1299,6 +1533,160 @@ async function deleteBatch(batchId, knownId) {
 }
 
 // -------------------------------------------------
+// Edit Batch Function
+// -------------------------------------------------
+
+function editBatch(batchId) {
+    // Find the batch
+    const batch = batches.find(b => b.batch_id === batchId);
+    if (!batch) {
+        console.error('Batch not found:', batchId);
+        return;
+    }
+    
+    // Get the batch members (obstacles)
+    const batchMembers = obstacles.filter(obs => obs.batch_id === batchId);
+    if (batchMembers.length !== 4) {
+        console.error('Batch must have exactly 4 members');
+        return;
+    }
+    
+    // Set edit mode
+    isEditingBatch = true;
+    editingBatchId = batchId;
+    
+    // Populate the form with current values
+    document.getElementById('batchKnownId').value = batch.known_id;
+    document.getElementById('batchKnownId').disabled = true; // Don't allow changing ID
+    document.getElementById('batchDirection').value = batch.direction;
+    document.getElementById('batchDirection').disabled = true; // Don't allow changing direction
+    
+    // Set color dropdowns based on current member colors
+    batchMembers.sort((a, b) => {
+        // Sort by position to ensure correct order
+        if (batch.direction === 'vertical') {
+            return b.y - a.y; // Top to bottom
+        } else {
+            return a.x - b.x; // Left to right
+        }
+    });
+    
+    document.getElementById('color1').value = batchMembers[0].color;
+    document.getElementById('color2').value = batchMembers[1].color;
+    document.getElementById('color3').value = batchMembers[2].color;
+    document.getElementById('color4').value = batchMembers[3].color;
+    
+    // Update modal UI
+    const modalTitle = document.querySelector('.modal-header h3');
+    if (modalTitle) modalTitle.textContent = 'Edit Batch Colors';
+    
+    const modalInstruction = document.querySelector('.modal-instruction');
+    modalInstruction.textContent = `Editing batch: ${batch.known_id}`;
+    modalInstruction.style.display = 'block';
+    
+    const saveBtn = document.getElementById('saveBatchBtn');
+    saveBtn.textContent = 'Update Colors';
+    
+    // Show modal
+    batchModal.classList.add('active');
+    batchForm.style.display = 'flex';
+    
+    console.log(`Editing batch: ${batch.known_id} (ID: ${batchId})`);
+}
+
+async function updateBatchColors() {
+    if (!editingBatchId) {
+        console.error('No batch being edited');
+        return;
+    }
+    
+    // Get new colors
+    const colors = [
+        document.getElementById('color1').value,
+        document.getElementById('color2').value,
+        document.getElementById('color3').value,
+        document.getElementById('color4').value
+    ];
+    
+    // Get batch info
+    const batch = batches.find(b => b.batch_id === editingBatchId);
+    if (!batch) {
+        console.error('Batch not found');
+        return;
+    }
+    
+    // Get current members
+    const batchMembers = obstacles.filter(obs => obs.batch_id === editingBatchId);
+    
+    // Sort members by position
+    batchMembers.sort((a, b) => {
+        if (batch.direction === 'vertical') {
+            return b.y - a.y; // Top to bottom
+        } else {
+            return a.x - b.x; // Left to right
+        }
+    });
+    
+    // Update member colors and ArUco IDs
+    const updatedMembers = batchMembers.map((member, index) => ({
+        aruco_id: colors[index] === 'yellow' ? 47 : 36,
+        map_pos: {
+            x: member.x,
+            y: member.y,
+            z: 0.0
+        },
+        color: colors[index]
+    }));
+    
+    // Prepare update payload
+    const updateData = {
+        batch_id: editingBatchId,
+        known_id: batch.known_id,
+        direction: batch.direction,
+        count: 4,
+        members: updatedMembers
+    };
+    
+    try {
+        // Call server to update batch
+        const response = await fetch(`${window.ipConfig.getAPIURL()}/obstacles/batch/${editingBatchId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update batch');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Batch updated:', result);
+        
+        // Update local obstacles
+        batchMembers.forEach((member, index) => {
+            member.color = colors[index];
+            member.aruco_id = colors[index] === 'yellow' ? 47 : 36;
+        });
+        
+        // Redraw obstacles
+        const existingObstacles = document.querySelectorAll('.obstacle-marker');
+        existingObstacles.forEach(marker => marker.remove());
+        drawObstacles();
+        
+        // Close modal
+        closeModal();
+        
+        console.log(`✅ Batch "${batch.known_id}" colors updated successfully!`);
+        
+    } catch (error) {
+        console.error('Error updating batch:', error);
+        alert('Error updating batch. Please try again.');
+    }
+}
+
+// -------------------------------------------------
 // LocalStorage Persistence Functions
 // -------------------------------------------------
 
@@ -1378,6 +1766,47 @@ function loadSavedState() {
         }
     }, 500); // Wait for obstacles to be drawn
 }
+
+// -------------------------------------------------
+// EventSource Streaming for Logs
+// -------------------------------------------------
+
+function startPathfindingStream() {
+    // Connect to the pathfinding stream to keep logs synchronized
+    // even when navigating away from this page
+    if (pathfindingEventSource) {
+        pathfindingEventSource.close();
+    }
+    
+    pathfindingEventSource = new EventSource(`${API_URL}/stream/pathfinding`);
+    
+    pathfindingEventSource.onmessage = function(event) {
+        // Store in localStorage for the home page
+        let pathfindingOutput = JSON.parse(localStorage.getItem('pathfindingOutput') || '[]');
+        pathfindingOutput.push(event.data);
+        localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+    };
+    
+    pathfindingEventSource.onerror = function(error) {
+        console.error('Pathfinding EventSource error:', error);
+        // Auto-reconnect after a delay
+        setTimeout(() => {
+            startPathfindingStream();
+        }, 5000);
+    };
+    
+    console.log('Pathfinding stream started');
+}
+
+// Start streaming when page loads
+startPathfindingStream();
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    if (pathfindingEventSource) {
+        pathfindingEventSource.close();
+    }
+});
 
 // -------------------------------------------------
 // Batch Creation Functions

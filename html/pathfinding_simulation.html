@@ -64,68 +64,71 @@
             </div>
 
             <div class="controls">
-                <div class="button-group">
-                    <button class="button start-btn" id="startPoseBtn">
-                        🎯 Start Pose
-                    </button>
+                <div class="info-panel">
+                    <h3>Current Poses</h3>
+                    
+                    <div class="poses-grid">
+                        <div class="pose-info start-pose">
+                            <h4>Start Position</h4>
+                            <p id="startX">X: -</p>
+                            <p id="startY">Y: -</p>
+                            <p id="startTheta">θ: -</p>
+                        </div>
 
-                    <button class="button enemy-btn" id="enemyPoseBtn">
-                        ⚠️ Enemy Pose
-                    </button>
+                        <div class="pose-info goal-pose">
+                            <h4>Goal Position</h4>
+                            <p id="goalX">X: -</p>
+                            <p id="goalY">Y: -</p>
+                            <p id="goalTheta">θ: -</p>
+                        </div>
 
-                    <button class="button goal-btn" id="goalPoseBtn">
-                        🏁 Goal Pose
-                    </button>
+                        <div class="pose-info enemy-pose">
+                            <h4>Enemy Position</h4>
+                            <p id="enemyX">X: -</p>
+                            <p id="enemyY">Y: -</p>
+                            <p id="enemyTheta">θ: -</p>
+                        </div>
+                    </div>
 
                     <button class="button find-path-btn" id="findPathBtn">
                         🔍 Find Path
                     </button>
                 </div>
 
-                <div class="info-panel">
-                    <h3>Current Poses</h3>
+                <div class="batch-actions">
+                    <h4>🔢 Batch Actions</h4>
                     
-                    <div class="pose-info start-pose">
-                        <h4>Start Position</h4>
-                        <p id="startX">X: -</p>
-                        <p id="startY">Y: -</p>
-                        <p id="startTheta">θ: -</p>
+                    <div class="batch-buttons">
+                        <button class="batch-toggle-all" id="toggleAllBtn">
+                            👁️ Toggle All Batches
+                        </button>
+                        
+                        <button class="batch-send-btn" id="sendBatchesBtn">
+                            📤 Send Selected Batches
+                        </button>
                     </div>
-
-                    <div class="pose-info enemy-pose">
-                        <h4>Enemy Position</h4>
-                        <p id="enemyX">X: -</p>
-                        <p id="enemyY">Y: -</p>
-                        <p id="enemyTheta">θ: -</p>
-                    </div>
-
-                    <div class="pose-info goal-pose">
-                        <h4>Goal Position</h4>
-                        <p id="goalX">X: -</p>
-                        <p id="goalY">Y: -</p>
-                        <p id="goalTheta">θ: -</p>
-                    </div>
-                </div>
-
-                <div class="batch-selector">
-                    <h4>🔢 Batch Selector</h4>
-                    
-                    <button class="batch-toggle-all" id="toggleAllBtn">
-                        Toggle All Batches
-                    </button>
-                    
-                    <button class="batch-add-btn" id="addBatchBtn">
-                        ➕ Add New Batch
-                    </button>
-                    
-                    <button class="batch-send-btn" id="sendBatchesBtn">
-                        📤 Send Selected Batches
-                    </button>
 
                     <div class="batch-list" id="batchList">
                         <!-- Batch items will be populated by JavaScript -->
                     </div>
                 </div>
+            </div>
+
+            <!-- Context Menu -->
+            <div id="contextMenu" class="context-menu">
+                <div class="context-menu-item" data-action="start">🎯 Set Start Pose</div>
+                <div class="context-menu-item" data-action="goal">🏁 Set Goal Pose</div>
+                <div class="context-menu-item" data-action="enemy">⚠️ Set Enemy Pose</div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="batch">➕ Add New Batch</div>
+            </div>
+
+            <!-- Batch Context Menu -->
+            <div id="batchContextMenu" class="context-menu">
+                <div class="context-menu-item" data-action="edit">✏️ Change Pattern</div>
+                <div class="context-menu-item" data-action="toggle">👁️ <span id="batchToggleText">Hide</span> Batch</div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item" data-action="delete">🗑️ Delete Batch</div>
             </div>
         </div>
     </div>
