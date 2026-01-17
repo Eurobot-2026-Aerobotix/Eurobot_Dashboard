@@ -42,7 +42,7 @@ export async function loadAllStrategies() {
   return strategies;
 }
 
-export async function loadPAMIStrategies(strategy_name) {
+export async function loadPAMIStrategies() {
   const res = await fetch(PAMI_STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
@@ -52,8 +52,6 @@ export async function loadPAMIStrategies(strategy_name) {
     const fileRes = await fetch(`${PAMI_STRATEGY_BASE_URL}/${file}`);
     if (!fileRes.ok) continue; // skip failed files
     const data = await fileRes.json();
-    let pami_strategy = Pami_Strategy.fromObject(data);
-    if (pami_strategy.strategy_name !== strategy_name) continue;
     strategies.push(Pami_Strategy.fromObject(data));
   }
 

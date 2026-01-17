@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy Viewer</title>
+<link href="../css/home.css" rel="stylesheet">
+<link href="../css/viewer_style.css" rel="stylesheet">
+<link rel="icon" type="image/png" href="../resources/harissa.png">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-content">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="strategy_selector.html" class="nav-link active">Strategy</a>
+      <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
+      <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="nav-logo">
+    </div>
+  </nav>
+
+  <!-- Side panel: all actions -->
+  <div id="side-panel"></div>
+
+  <!-- Main area -->
+  <div id="main-area">  
+    <div id="map-container">
+      <div id="map-wrapper">
+        <img src="../resources/map.png" id="map" alt="Map">
+        <svg id="map-overlay"></svg>
+      </div>
+    </div>
+    <div id="controls">
+      <input type="checkbox" id="task-checkbox">New Task &nbsp;&nbsp;&nbsp;&nbsp; Action :
+      <select id="action-select">
+        <option value="">Add</option>
+      </select>
+      <button id="add-action-btn">Add</button>
+      <button id="back-btn">Back</button>
+    </div>
+  </div>
+  <div id="action-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Add Action</h3>
+
+      <label id="command_label">
+        Command
+      </label>
+
+      <div id="args-container"></div>
+
+      <label class="checkbox">
+        <input id="modal-wait" type="checkbox">
+        Wait
+      </label>
+
+      <div class="modal-buttons">
+        <button id="modal-cancel">Cancel</button>
+        <button id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="action-context-menu" class="context-menu hidden">
+    <div id="ctx-modify">Modify</div>
+    <div id="ctx-delete">Delete</div>
+  </div>
+<script src="../js/config.js"></script>
+<script src="../js/lib/js-yaml.min.js"></script>
+<script type="module" src="../js/viewer_controller.js"></script>
+</body>
+</html>

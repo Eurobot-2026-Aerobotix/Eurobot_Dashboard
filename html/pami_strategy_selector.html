@@ -5,38 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strategy Selector</title>
     <link rel="stylesheet" href="../css/home.css">
-    <link rel="stylesheet" href="../css/selector_style.css">
+    <link rel="stylesheet" href="../css/pami_selector_style.css">
     <link rel="icon" type="image/png" href="../resources/harissa.png">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-content">
-            <a href="index.html" class="nav-link">Home</a>
-            <a href="strategy_selector.html" class="nav-link active">Strategy</a>
-            <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
-        </div>
-    </nav>
-    
+    <button class="back-button" onclick="window.location.href='strategy_selector.html'">&#8592; Back</button>
     <div class="logo-container">
-        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
+        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">        
     </div>
-    
+    <center>
+        <label id="current-strategy" style="font-weight: 700; color: #ffcc00;font-size:1.75em">-</label>
+    </center>
     <div class="container">
-        <h1>lampa lampa</h1>
-        <div class="strategy-lists-container">
-            <div id="strategy-list-yellow"></div>
-            <div id="strategy-list-blue"></div>
-        </div>
-
-        <div class="buttons">
-            <button id="create-btn">Create</button>
-            <button id="Pami-btn" disabled>Strategy Pamiyeet</button>
-            <button id="delete-btn" disabled>Delete</button>
-            <button id="select-btn" disabled>Select</button>
+        <div class="grid">
+            <div class="square">1</div>
+            <div class="square">2</div>
+            <div class="square">3</div>
+            <div class="square">4</div>
+            <div class="square">5</div>
+            <div class="square">6</div>
         </div>
     </div>
     <script src="../js/config.js"></script>
     <script src="../js/lib/js-yaml.min.js"></script>
-    <script type="module" src="../js/selector_controller.js"></script>
+    <script type="module" src="../js/pami_strategy_selector_controller.js"></script>
 </body>
 </html>
