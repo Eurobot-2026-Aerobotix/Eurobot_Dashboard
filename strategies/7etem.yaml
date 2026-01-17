@@ -2,11 +2,11 @@ name: 7etem
 selected: true
 color: yellow
 tasks:
-- description: Task 1
+- description: netwakklou
   global_goal:
     x: '1223.54'
     y: '958.70'
-    theta: -10.467611727343433
+    theta: -37.59998570162
   sequence:
   - device: STM
     command: set_position
@@ -30,10 +30,10 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - 1000
-    - 1000
-    - 1000
-    - 1000
+    - '827.67'
+    - '989.95'
+    - '996.96'
+    - '1133.19'
     - '1223.54'
     - '958.70'
     - 700

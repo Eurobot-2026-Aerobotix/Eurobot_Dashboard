@@ -146,6 +146,11 @@ button:hover {
     margin-bottom: 8px;
     color: #e0e0e0;
     font-size: 16px;
+    background-color: #161b2200;
+    border: none;
+}
+.task-legend:focus {
+    outline: none;
 }
 
 .action-list {

@@ -82,19 +82,29 @@ function renderTasks() {
   actionsContainer.innerHTML = "";
   if (!selected_strategy) return;
   selected_strategy.tasks = selected_strategy.tasks.filter(task => task.sequence.length > 0);
-
-  // Optionally, renumber tasks
-  selected_strategy.tasks.forEach((task, i) => {
-    task.name = `Task ${i + 1}`;
-  });
-
+  
   selected_strategy.tasks.forEach((task, taskIndex) => {
     const taskBox = document.createElement("div");
     taskBox.classList.add("task-box");
 
-    const legend = document.createElement("div");
-    legend.textContent = task.name || `Task ${taskIndex + 1}`;
+    const legend = document.createElement("input");
+    legend.type = "text";
+    legend.value = task.description || `Task ${taskIndex + 1}`;
     legend.classList.add("task-legend");
+
+    legend.addEventListener("change", (e) => {
+      // put your logic here
+      if (e.target.value.trim() != "") {
+        selected_strategy.tasks[taskIndex].description = e.target.value;
+        updateStrategy(selected_strategy);
+      }
+    });
+    legend.addEventListener("keydown",(e) => {
+      if (e.key === "Enter") {
+        legend.blur();
+      }
+    });
+
     taskBox.appendChild(legend);
 
     const actionList = document.createElement("div");
@@ -233,9 +243,7 @@ function renderTasks() {
       if (taskIndex !== -1) {
         selected_strategy.tasks.splice(taskIndex, 1);
       }
-      selected_strategy.tasks.forEach((task, i) => {
-        task.name = `Task ${i + 1}`;
-      });
+      
     }
 
     contextAction = null;
