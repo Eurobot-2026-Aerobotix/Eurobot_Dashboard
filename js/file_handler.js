@@ -1,8 +1,9 @@
+import { Pami_Strategy } from "../classes/Pami_Strategy.js";
 import { Strategy } from "../classes/Strategy.js";
 
 // Base URL of your Flask server
 // Use smart IP configuration
-const getBaseURL = () => {
+const getStrategiesBaseURL = () => {
     if (!window.ipConfig) {
         console.warn('ipConfig not loaded, using fallback URL');
         return 'http://10.42.0.1:8000/strategies';
@@ -10,19 +11,29 @@ const getBaseURL = () => {
     return `${window.ipConfig.getAPIURL()}/strategies`;
 };
 
-const BASE_URL = getBaseURL();
+const STRATEGY_BASE_URL = getStrategiesBaseURL();
+
+const getPamiStrategiesBaseURL = () => {
+    if (!window.ipConfig) {
+        console.warn('ipConfig not loaded, using fallback URL');
+        return 'http://10.42.0.1:8000/pami_strategies';
+    }
+    return `${window.ipConfig.getAPIURL()}/pami_strategies`;
+};
+
+const PAMI_STRATEGY_BASE_URL = getPamiStrategiesBaseURL();
 
 /**
  * Load all strategies as Strategy objects
  */
 export async function loadAllStrategies() {
-  const res = await fetch(BASE_URL);
+  const res = await fetch(STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
 
   const strategies = [];
   for (const file of files) {
-    const fileRes = await fetch(`${BASE_URL}/${file}`);
+    const fileRes = await fetch(`${STRATEGY_BASE_URL}/${file}`);
     if (!fileRes.ok) continue; // skip failed files
     const data = await fileRes.json();
     strategies.push(Strategy.fromObject(data));
@@ -31,13 +42,32 @@ export async function loadAllStrategies() {
   return strategies;
 }
 
+export async function loadPAMIStrategies(strategy_name) {
+  const res = await fetch(PAMI_STRATEGY_BASE_URL);
+  if (!res.ok) throw new Error("Failed to fetch strategies");
+  const files = await res.json();
+
+  const strategies = [];
+  for (const file of files) {
+    const fileRes = await fetch(`${PAMI_STRATEGY_BASE_URL}/${file}`);
+    if (!fileRes.ok) continue; // skip failed files
+    const data = await fileRes.json();
+    let pami_strategy = Pami_Strategy.fromObject(data);
+    if (pami_strategy.strategy_name !== strategy_name) continue;
+    strategies.push(Pami_Strategy.fromObject(data));
+  }
+
+  return strategies;
+}
+
+
 /**
  * Create or update a strategy
  * @param {string} filename - e.g., "myStrategy.yaml"
  * @param {Strategy} strategy - Strategy object to save
  */
 export async function saveStrategy(strategy) {
-  const res = await fetch(`${BASE_URL}/${strategy.name}.yaml`, {
+  const res = await fetch(`${STRATEGY_BASE_URL}/${strategy.name}.yaml`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(strategy),
@@ -52,7 +82,7 @@ export async function saveStrategy(strategy) {
  * @param {string} filename - e.g., "myStrategy.yaml"
  */
 export async function deleteStrategy(filename) {
-  const res = await fetch(`${BASE_URL}/${filename}`, {
+  const res = await fetch(`${STRATEGY_BASE_URL}/${filename}`, {
     method: "DELETE",
   });
 

@@ -314,17 +314,18 @@ function renderTasks() {
 // ------------------------------
 function populateAddList() {
   const options = [
-    new Action("RASP_PI", "Wait for manual start"),
     new Action("STM", "set_position"),
     new Action("STM", "go_to"),
     new Action("STM", "go_to_backwards"),
-    new Action("STM", "orientate"),
     new Action("STM", "bezier"),
     new Action("STM", "bezier_backwards"),
+    new Action("STM", "orientate"),
     new Action("ESP_front", "pick_up"),
     new Action("ESP_front", "put_down"),
     new Action("ESP_back", "pick_up"),
     new Action("ESP_back", "put_down"),
+    new Action("RASP_PI", "Wait for manual start"),
+    new Action("RASP_PI", "Start pamiyeet")
   ];
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {

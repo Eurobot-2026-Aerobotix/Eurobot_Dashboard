@@ -7,7 +7,7 @@ import { Action } from "../classes/Action.js";
 const listDivYellow = document.getElementById("strategy-list-yellow");
 const listDivBlue = document.getElementById("strategy-list-blue");
 const createBtn = document.getElementById("create-btn");
-const openBtn = document.getElementById("open-btn");
+const pamiBtn = document.getElementById("pami-btn");
 const deleteBtn = document.getElementById("delete-btn");
 const selectBtn = document.getElementById("select-btn");
 
@@ -85,7 +85,7 @@ function renderList() {
 
 function updateButtons() {
   const enabled = clickedIndex !== null;
-  openBtn.disabled = !enabled;
+  pamiBtn.disabled = !enabled;
   deleteBtn.disabled = !enabled;
   selectBtn.disabled = !enabled;
 }
@@ -132,10 +132,10 @@ deleteBtn.addEventListener("click", async () => {
   await loadStrategies();
 });
 
-openBtn.addEventListener("click", () => {
+pamiBtn.addEventListener("click", () => {
   if (clickedIndex === null) return;
   const strategy = strategies[clickedIndex];
-  window.location.href = `strategy_viewer.html?name=${strategy.name}`;
+  window.location.href = `pami_strategy_selector.html?name=${strategy.name}`;
 });
 
 selectBtn.addEventListener("click", () => {

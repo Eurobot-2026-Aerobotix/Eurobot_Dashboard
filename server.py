@@ -9,6 +9,7 @@ import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 STRATEGIES_DIR = "strategies"
+PAMI_STRATEGIES_DIR = "pami_strategies"
 OBSTACLES_FILE = "resources/obstacles.yaml"
 SELECTED_STRATEGY_PATH = ""
 
@@ -55,6 +56,13 @@ def list_strategies():
     ]
     return jsonify(files)
 
+@app.route("/pami_strategies", methods=["GET"])
+def list_pami_strategies():
+    files = [
+        f for f in os.listdir(PAMI_STRATEGIES_DIR)
+        if f.endswith(".yaml")
+    ]
+    return jsonify(files)
 
 # -------------------------------------------------
 # Read a strategy file
