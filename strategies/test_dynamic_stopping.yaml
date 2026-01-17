@@ -1,5 +1,5 @@
 name: test_dynamic_stopping
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1

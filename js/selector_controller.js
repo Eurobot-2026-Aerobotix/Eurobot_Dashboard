@@ -151,7 +151,16 @@ selectBtn.addEventListener("click", () => {
   loadStrategies();
 });
 
+window.addEventListener("pageshow", (e) => {
+  if (sessionStorage.getItem("refreshOnce")) {
+    sessionStorage.removeItem("refreshOnce");
+    location.reload();
+  }
+});
+
 // -------------------------------------------------
 // Initial load
 // -------------------------------------------------
+
 loadStrategies();
+

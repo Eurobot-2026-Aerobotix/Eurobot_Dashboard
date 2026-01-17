@@ -725,6 +725,7 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
+  sessionStorage.setItem("refreshOnce", "1");
   window.history.back();
 });
 

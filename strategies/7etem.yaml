@@ -1,12 +1,12 @@
 name: 7etem
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
   global_goal:
-    x: '726.10'
-    y: '445.64'
-    theta: 7.315021381298846
+    x: '1223.54'
+    y: '958.70'
+    theta: -10.467611727343433
   sequence:
   - device: STM
     command: set_position
@@ -27,4 +27,14 @@ tasks:
     command: pick_up
     params: []
     wait: false
-  name: Task 1
+  - device: STM
+    command: bezier
+    params:
+    - 1000
+    - 1000
+    - 1000
+    - 1000
+    - '1223.54'
+    - '958.70'
+    - 700
+    wait: false
