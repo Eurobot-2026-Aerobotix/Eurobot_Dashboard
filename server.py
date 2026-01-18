@@ -98,11 +98,6 @@ def read_pami_strategy(filename):
 
     return jsonify(data)
 
-def get_pami_strategies():
-    import os
-import yaml
-from flask import jsonify
-
 #ha bens3id awahi l fonction li ta3tik tableau ta3 pami strategies
 def get_pami_strategies():
     SELECTED_STRATEGY_PATH = get_selected_strategy_path()
