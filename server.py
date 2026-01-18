@@ -81,6 +81,23 @@ def read_strategy(filename):
 
     return jsonify(data)
 
+# -------------------------------------------------
+# Read a pami strategy file
+# GET /pami_strategies/<filename>
+# -------------------------------------------------
+@app.route("/pami_strategies/<filename>", methods=["GET"])
+def read_pami_strategy(filename):
+    filename = safe_filename(filename)
+    path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+
+    if not os.path.exists(path):
+        abort(404, "File not found")
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    return jsonify(data)
+
 
 # -------------------------------------------------
 # Save (create / overwrite) a strategy file
@@ -104,6 +121,25 @@ def save_strategy(filename):
     print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}")
     return jsonify({"status": "saved", "file": filename})
 
+
+# -------------------------------------------------
+# Save (create / overwrite) a pami strategy file
+# POST /pami_strategies/<strategy_name>/<pami_number>
+# Body: JSON (strategy object)
+# -------------------------------------------------
+@app.route("/pami_strategies/<strategy_name>/<pami_number>", methods=["POST"])
+def save_pami_strategy(strategy_name, pami_number):
+    filename = safe_filename(strategy_name + "_pami_" + str(pami_number) + ".yaml")
+    path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+
+    if not request.is_json:
+        abort(400, "Expected JSON body")
+
+    data = request.get_json()
+
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False)
+    return jsonify({"status": "saved", "file": filename})
 
 # -------------------------------------------------
 # Delete a strategy file

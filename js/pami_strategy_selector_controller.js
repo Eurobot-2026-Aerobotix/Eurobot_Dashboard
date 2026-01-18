@@ -17,10 +17,10 @@ window.addEventListener("pageshow", (e) => {
 // -------------------------------------------------
 // Initial load
 // -------------------------------------------------
+const params = new URLSearchParams(window.location.search);
 for (let i = 0; i < pamiBtns.length; i++) {
   pamiBtns[i].addEventListener("click", () => {
-    window.location.href = `pami_strategy_viewer.html?pami=${i+1}`;
+    window.location.href =`pami_strategy_viewer.html?pami=${i + 1}&name=${params.get("name")}`;
   });
 }
-const params = new URLSearchParams(window.location.search);
 document.getElementById("current-strategy").innerText = "pamiyeet " + (params.get("name") || "-");

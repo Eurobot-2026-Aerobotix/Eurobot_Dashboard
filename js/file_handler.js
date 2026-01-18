@@ -76,6 +76,22 @@ export async function saveStrategy(strategy) {
 }
 
 /**
+ * Create or update a pami strategy
+ * @param {string} filename - e.g., "myStrategy.yaml"
+ * @param {Strategy} strategy - Strategy object to save
+ */
+export async function savePamiStrategy(strategy) {
+  const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${strategy.strategy_name}/${strategy.pami_number}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(strategy),
+  });
+
+  if (!res.ok) throw new Error("Failed to save strategy");
+  return await res.json();
+}
+
+/**
  * Delete a strategy file
  * @param {string} filename - e.g., "myStrategy.yaml"
  */

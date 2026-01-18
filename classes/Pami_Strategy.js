@@ -15,3 +15,4 @@ export class Pami_Strategy {
 }
 // 0 means go_to
 // 1 means orientate
+// 2 means set_position
