@@ -98,6 +98,56 @@ def read_pami_strategy(filename):
 
     return jsonify(data)
 
+def get_pami_strategies():
+    import os
+import yaml
+from flask import jsonify
+
+#ha bens3id awahi l fonction li ta3tik tableau ta3 pami strategies
+def get_pami_strategies():
+    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+
+    # extract strategy name from path (last part, no .yaml)
+    strategy_name = os.path.splitext(os.path.basename(SELECTED_STRATEGY_PATH))[0]
+
+    # dict to ensure pami 1..6 existence
+    pami_map = {i: None for i in range(1, 7)}
+
+    for filename in os.listdir(PAMI_STRATEGIES_DIR):
+        if not filename.endswith(".yaml"):
+            continue
+
+        file_path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+
+        with open(file_path, "r") as f:
+            try:
+                data = yaml.safe_load(f)
+            except Exception:
+                continue
+
+        if not data:
+            continue
+
+        # check belonging via field, NOT filename
+        if data.get("strategy_name") != strategy_name:
+            continue
+
+        pami_number = data.get("pami_number")
+
+        if isinstance(pami_number, int) and 1 <= pami_number <= 6:
+            pami_map[pami_number] = data
+
+    # build ordered result 1..6
+    pami_list = [
+        pami_map[i] if pami_map[i] is not None else {
+            "strategy_name": strategy_name,
+            "pami_number": i,
+            "sequence": []
+        }
+        for i in range(1, 7)
+    ]
+
+    return pami_list
 
 # -------------------------------------------------
 # Save (create / overwrite) a strategy file

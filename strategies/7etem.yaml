@@ -4,9 +4,9 @@ color: yellow
 tasks:
 - description: netwakklou
   global_goal:
-    x: '991.75'
-    y: '1081.10'
-    theta: -19.477215275906815
+    x: '973.52'
+    y: '1154.03'
+    theta: -0.7626080462705356
   sequence:
   - device: STM
     command: set_position
@@ -34,7 +34,7 @@ tasks:
     - '1016.00'
     - '778.19'
     - '1156.63'
-    - '991.75'
-    - '1081.10'
+    - '973.52'
+    - '1154.03'
     - 700
     wait: false
