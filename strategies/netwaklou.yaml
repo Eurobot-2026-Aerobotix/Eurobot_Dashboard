@@ -1,6 +1,6 @@
-name: test_reel
+name: netwaklou
 selected: false
-color: yellow
+color: blue
 tasks:
 - description: Task 1
   global_goal:
@@ -11,77 +11,81 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - 1700
-    - 2300
+    - 1700.24
+    - 1800.53
     - 180
     wait: false
-- description: Task 3
-  global_goal:
-    x: '1429.60'
-    y: '1850.23'
-    theta: 180
-  sequence:
-  - device: STM
-    command: go_to_backwards
-    params:
-    - '1544.07'
-    - '1850.23'
-    - 800
-    wait: false
-  - device: STM
-    command: orientate
-    params:
-    - 180
-    wait: false
-  - device: STM
-    command: go_to_backwards
-    params:
-    - '1429.60'
-    - '1850.23'
-    - 800
-    wait: false
-- description: Task 4
-  global_goal:
-    x: '1429.60'
-    y: '1850.23'
-    theta: 180
-  sequence:
-  - device: ESP_back
-    command: pick_up
+  - device: RASP_PI
+    command: Wait for manual start
     params: []
-    wait: true
-- description: Task 4
+    wait: false
+- description: Task 2
   global_goal:
-    x: '1198.12'
-    y: '316.36'
-    theta: 90
+    x: 1429.6
+    y: 1847.69
+    theta: 180
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1198.12'
-    - '316.36'
-    - 800
+    - '1508.46'
+    - '1847.69'
+    - 700
     wait: true
   - device: STM
     command: orientate
     params:
-    - 90
+    - 0
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1429.6
+    - 1847.69
+    - 700
+    - 1
+    wait: true
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: 803.84
+    y: 1748.48
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 803.84
+    - 1748.48
+    - 1000
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 0
     wait: true
   - device: ESP_back
     command: put_down
     params: []
     wait: true
-- description: Task 5
+- description: Task 4
   global_goal:
-    x: '305.27'
-    y: '303.64'
-    theta: 44.84662446415948
+    x: 1700
+    y: 1800
+    theta: 180
   sequence:
   - device: STM
     command: go_to
     params:
-    - '305.27'
-    - '303.64'
-    - 700
-    wait: true
+    - 1700
+    - 1800
+    - 1100
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 180
+    wait: false

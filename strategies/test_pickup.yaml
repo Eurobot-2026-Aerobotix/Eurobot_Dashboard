@@ -1,4 +1,4 @@
-name: testesp
+name: test_pickup
 selected: false
 color: blue
 tasks:
@@ -8,19 +8,24 @@ tasks:
     y: null
     theta: null
   sequence:
-  - device: ESP_front
-    command: put_down
+  - device: STM
+    command: set_position
+    params:
+    - '1841.14'
+    - '1500.79'
+    - 0
+    wait: false
+  - device: ESP_back
+    command: pick_up
     params: []
     wait: false
+- description: Task 2
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
   - device: ESP_back
     command: put_down
-    params: []
-    wait: false
-  - device: ESP_back
-    command: dawwer
-    params: []
-    wait: false
-  - device: ESP_back
-    command: dawwer
     params: []
     wait: false
