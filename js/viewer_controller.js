@@ -14,10 +14,25 @@ const go_to_args = ["x", "y", "speed"];
 const orientate_args = ["angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"];
 const set_position_args = ["x", "y", "angle"]
+const options = [
+    new Action("STM", "set_position"),
+    new Action("STM", "go_to"),
+    new Action("STM", "go_to_backwards"),
+    new Action("STM", "bezier"),
+    new Action("STM", "bezier_backwards"),
+    new Action("STM", "orientate"),
+    new Action("ESP_front", "pick_up"),
+    new Action("ESP_front", "put_down"),
+    new Action("ESP_back", "pick_up"),
+    new Action("ESP_back", "put_down"),
+    new Action("RASP_PI", "Wait for manual start"),
+    new Action("RASP_PI", "Start pamiyeet")
+  ];
 let contextAction = null;
 let contextTask = null;
 let hovered_point_index = null;
 let robot_on_map = null;
+
 
 // ------------------------------
 // Load selected strategy
@@ -305,7 +320,70 @@ function renderTasks() {
 
     modal.classList.remove("hidden");
     document.getElementById("action-context-menu").classList.add("hidden");
-    inputs[0].focus();
+    if (inputs.length > 0){
+      inputs[0].focus();
+    }
+  };
+
+  document.getElementById("ctx-add-after").onclick = () => {
+
+    let taskIndex = selected_strategy.tasks.indexOf(contextTask);
+    let actionIndex = contextTask.sequence.indexOf(contextAction);
+    const isLastAction = actionIndex === contextTask.sequence.length - 1;
+    if (isLastAction){
+      selected_strategy.tasks.splice(
+        taskIndex+1, 
+        0, 
+        new Task(`Task ${selected_strategy.tasks.length + 1}`, [])
+      );
+      actionIndex = 0;
+      taskIndex++;
+    }else{
+      actionIndex++;
+    }
+    const modalContent = document.createElement("div");
+    modalContent.classList.add("modal-content");
+
+    const backdrop = document.createElement("div");
+    backdrop.classList.add("backdrop");
+
+    const title = document.createElement("h3");
+    title.textContent = "wach tebbi tzid";
+    modalContent.appendChild(title);
+
+    const buttonsContainer = document.createElement("div");
+    buttonsContainer.style.display = "flex";
+    buttonsContainer.style.flexDirection = "column";
+    buttonsContainer.style.gap = "10px";
+
+    options.forEach((option, idx) => {
+      const btn = document.createElement("button");
+      btn.textContent = `${option.device} - ${option.command}`;
+      btn.style.padding = "10px";
+      btn.style.cursor = "pointer";
+      
+      btn.addEventListener("click", () => {
+        const newAction = new Action(option.device, option.command, [], false);
+        selected_strategy.tasks[taskIndex].sequence.splice(actionIndex + 1, 0, newAction);
+        
+        document.body.removeChild(backdrop);
+        document.body.removeChild(modalContent);
+        
+        contextAction = selected_strategy.tasks[taskIndex].sequence[actionIndex];
+        document.getElementById("ctx-modify").click();
+      });
+      
+      buttonsContainer.appendChild(btn);
+    });
+
+    modalContent.appendChild(buttonsContainer);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modalContent);
+
+    backdrop.addEventListener("click", () => {
+      document.body.removeChild(backdrop);
+      document.body.removeChild(modalContent);
+    });
   };
 }
 
@@ -313,20 +391,6 @@ function renderTasks() {
 // Populate Add Action dropdown
 // ------------------------------
 function populateAddList() {
-  const options = [
-    new Action("STM", "set_position"),
-    new Action("STM", "go_to"),
-    new Action("STM", "go_to_backwards"),
-    new Action("STM", "bezier"),
-    new Action("STM", "bezier_backwards"),
-    new Action("STM", "orientate"),
-    new Action("ESP_front", "pick_up"),
-    new Action("ESP_front", "put_down"),
-    new Action("ESP_back", "pick_up"),
-    new Action("ESP_back", "put_down"),
-    new Action("RASP_PI", "Wait for manual start"),
-    new Action("RASP_PI", "Start pamiyeet")
-  ];
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
     const opt = document.createElement("option");
@@ -713,7 +777,7 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     input.type = "decimal";
     input.dataset.argName = arg;
     if (arg === "speed") {
-      input.value = "700"; // default speed
+      input.value = "1100"; // default speed
     }
     label.appendChild(input);
     argsContainer.appendChild(label);
@@ -730,7 +794,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     }
   }));
   modal.classList.remove("hidden");
-  inputs[0].focus();
+  if (inputs.length > 0){
+    inputs[0].focus();
+  }
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
@@ -750,6 +816,7 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     if (newTaskCheckBox.checked){
       selected_strategy.tasks.push(new Task(`Task ${selected_strategy.tasks.length + 1 }`, []));
     }
+    newTaskCheckBox.checked = false;
     const opt = actionSelect.options[index];
     const [device, command] = opt.textContent.split(" - ");
     const params = [];

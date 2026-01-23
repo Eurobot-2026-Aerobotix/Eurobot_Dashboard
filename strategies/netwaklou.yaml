@@ -28,8 +28,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - '1508.46'
-    - '1847.69'
+    - 1508.46
+    - 1847.69
     - 700
     wait: true
   - device: STM
