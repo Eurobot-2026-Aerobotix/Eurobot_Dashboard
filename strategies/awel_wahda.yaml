@@ -76,15 +76,15 @@ tasks:
     wait: true
 - description: Task 3
   global_goal:
-    x: '1213.39'
-    y: '1232.10'
+    x: 1213.39
+    y: 1260.1
     theta: 90
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1213.39'
-    - '1232.10'
+    - 1213.39
+    - 1260.1
     - 1100
     wait: true
   - device: STM

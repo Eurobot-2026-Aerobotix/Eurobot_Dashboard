@@ -1,0 +1,28 @@
+name: test_wait
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: 1340.57
+    y: 1936.72
+    theta: -179.51924989379552
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 1643.28
+    - 1939.26
+    - 180
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1340.57
+    - 1936.72
+    - 1100
+    wait: true

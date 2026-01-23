@@ -266,9 +266,15 @@ batches:
   - aruco_id: 47
     map_pos:
       x: 1593.7
-      y: 1423.3
+      y: 1573.3
       z: 0
     color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1593.7
+      y: 1523.3
+      z: 0
+    color: blue
   - aruco_id: 36
     map_pos:
       x: 1593.7
@@ -278,12 +284,41 @@ batches:
   - aruco_id: 47
     map_pos:
       x: 1593.7
-      y: 1523.3
+      y: 1423.3
+      z: 0
+    color: yellow
+- batch_id: 9
+  known_id: mid1
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1192
+    y: 1154.9
+    z: 0
+  members:
+  - aruco_id: 36
+    map_pos:
+      x: 1192
+      y: 1229.9
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1192
+      y: 1179.9
+      z: 0
+    color: yellow
+  - aruco_id: 47
+    map_pos:
+      x: 1192
+      y: 1129.9
       z: 0
     color: yellow
   - aruco_id: 36
     map_pos:
-      x: 1593.7
-      y: 1573.3
+      x: 1192
+      y: 1079.9
       z: 0
     color: blue
