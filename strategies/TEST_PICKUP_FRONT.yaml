@@ -1,5 +1,5 @@
 name: TEST_PICKUP_FRONT
-selected: true
+selected: false
 color: blue
 tasks:
 - description: Task 1

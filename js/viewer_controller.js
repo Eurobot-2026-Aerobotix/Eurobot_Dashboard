@@ -88,8 +88,28 @@ async function update_smooth_or_not(strategy) {
       }
     }
   });
+  await update_waiting_or_not(strategy);
 }
 
+async function update_waiting_or_not(strategy){
+  let espSeen = false;
+  strategy.tasks.forEach(task => {
+
+    task.sequence.forEach(action => {
+      if (action.device.includes("ESP")) {
+        action.wait = true;
+        espSeen = true;
+      } 
+      else if (action.device.includes("STM") && espSeen) {
+        action.wait = true;
+        espSeen = false;
+      } 
+      else {
+        action.wait = false;
+      }
+    });
+  });
+}
 // ------------------------------
 // Render tasks and actions
 // ------------------------------

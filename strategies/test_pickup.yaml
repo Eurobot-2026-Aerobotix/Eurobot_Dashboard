@@ -1,12 +1,12 @@
 name: test_pickup
-selected: false
+selected: true
 color: blue
 tasks:
 - description: Task 1
   global_goal:
-    x: null
-    y: null
-    theta: null
+    x: 400
+    y: 500
+    theta: -145.22221333729613
   sequence:
   - device: STM
     command: set_position
@@ -18,14 +18,22 @@ tasks:
   - device: ESP_back
     command: pick_up
     params: []
-    wait: false
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 400
+    - 500
+    - 700
+    - 0
+    wait: true
 - description: Task 2
   global_goal:
-    x: null
-    y: null
-    theta: null
+    x: 400
+    y: 500
+    theta: -145.22221333729613
   sequence:
   - device: ESP_back
     command: put_down
     params: []
-    wait: false
+    wait: true
