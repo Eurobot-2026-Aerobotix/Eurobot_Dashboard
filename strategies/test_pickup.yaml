@@ -18,22 +18,4 @@ tasks:
   - device: ESP_back
     command: pick_up
     params: []
-    wait: true
-  - device: STM
-    command: go_to
-    params:
-    - '1472.00'
-    - '1266.63'
-    - 700
-    - 0
-    wait: true
-- description: Task 2
-  global_goal:
-    x: '1472.00'
-    y: '1266.63'
-    theta: 37.17082056012374
-  sequence:
-  - device: ESP_back
-    command: put_down
-    params: []
-    wait: true
+    wait: false

@@ -25,13 +25,3 @@ tasks:
     command: pick_up
     params: []
     wait: false
-- description: Task 3
-  global_goal:
-    x: null
-    y: null
-    theta: null
-  sequence:
-  - device: ESP_front
-    command: put_down
-    params: []
-    wait: false
