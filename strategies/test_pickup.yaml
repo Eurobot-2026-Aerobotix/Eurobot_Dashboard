@@ -4,15 +4,15 @@ color: blue
 tasks:
 - description: Task 1
   global_goal:
-    x: 400
-    y: 500
-    theta: -145.22221333729613
+    x: '1472.00'
+    y: '1266.63'
+    theta: 37.17082056012374
   sequence:
   - device: STM
     command: set_position
     params:
-    - '1841.14'
-    - '1500.79'
+    - '306.80'
+    - '383.13'
     - 0
     wait: false
   - device: ESP_back
@@ -22,16 +22,16 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 400
-    - 500
+    - '1472.00'
+    - '1266.63'
     - 700
     - 0
     wait: true
 - description: Task 2
   global_goal:
-    x: 400
-    y: 500
-    theta: -145.22221333729613
+    x: '1472.00'
+    y: '1266.63'
+    theta: 37.17082056012374
   sequence:
   - device: ESP_back
     command: put_down

@@ -33,6 +33,9 @@ let contextTask = null;
 let hovered_point_index = null;
 let robot_on_map = null;
 
+let undoStack = [];
+let redoStack = [];
+
 
 // ------------------------------
 // Load selected strategy
@@ -46,6 +49,44 @@ async function get_selected_strategy() {
   }
   document.querySelector("title").textContent = selected_strategy.name;
   renderTasks();
+}
+
+function update(){
+  update_smooth_or_not(selected_strategy).then(() => {
+    renderTasks();
+    renderMap();
+    updateStrategy(selected_strategy);
+  });
+  if (undoStack.length > 100) undoStack.shift();
+  undoStack.push(JSON.stringify(selected_strategy));
+  redoStack.length = 0;
+}
+
+function undo() {
+  if (undoStack.length < 2) return;
+
+  redoStack.push(undoStack.pop());
+
+  selected_strategy = JSON.parse(
+    undoStack[undoStack.length - 1]
+  );
+
+  renderTasks();
+  renderMap();
+  updateStrategy(selected_strategy);
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+
+  const state = redoStack.pop();
+  undoStack.push(state);
+
+  selected_strategy = JSON.parse(state);
+
+  renderTasks();
+  renderMap();
+  updateStrategy(selected_strategy);
 }
 
 async function update_smooth_or_not(strategy) {
@@ -131,7 +172,7 @@ function renderTasks() {
       // put your logic here
       if (e.target.value.trim() != "") {
         selected_strategy.tasks[taskIndex].description = e.target.value;
-        updateStrategy(selected_strategy);
+        update();
       }
     });
     legend.addEventListener("keydown",(e) => {
@@ -209,11 +250,7 @@ function renderTasks() {
           movedAction
         );
 
-        update_smooth_or_not(selected_strategy).then(() => {
-          renderTasks();
-          renderMap();
-          updateStrategy(selected_strategy);
-        });
+        update();
       });
 
       /* ---------- CONTEXT MENU ---------- */
@@ -248,11 +285,7 @@ function renderTasks() {
 
       selected_strategy.tasks[taskIndex].sequence.push(movedAction);
 
-      update_smooth_or_not(selected_strategy).then(() => {
-        renderTasks();
-        renderMap();
-        updateStrategy(selected_strategy);
-      });
+      update();
     });
 
     taskBox.appendChild(actionList);
@@ -286,11 +319,7 @@ function renderTasks() {
 
     document.getElementById("action-context-menu").classList.add("hidden");
 
-    update_smooth_or_not(selected_strategy).then(() => {
-      renderTasks();
-      renderMap();
-      updateStrategy(selected_strategy);
-    });
+    update();
   };
 
   document.getElementById("ctx-modify").onclick = () => {
@@ -640,7 +669,7 @@ function draw_robot_on_map(svg, x, y, angle) {
   /* Robot body */
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   rect.setAttribute("width", svg.clientWidth * 0.1);
-  rect.setAttribute("height", svg.clientWidth * 0.1);
+  rect.setAttribute("height", svg.clientWidth * 0.096);
   rect.setAttribute("x", -rect.getAttribute("width") / 2);
   rect.setAttribute("y", -rect.getAttribute("height") / 2);
   rect.setAttribute("fill", color);
@@ -756,10 +785,7 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
     if (!dragging) return;
 
     dragging = false;          // ← drag is over
-    update_smooth_or_not(selected_strategy).then(() => {
-      renderTasks();
-      updateStrategy(selected_strategy);
-    }); // ← CALLED ONCE
+    update();
   });
 }
 
@@ -894,12 +920,23 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     }
   }
   modal.classList.add("hidden");
-  update_smooth_or_not(selected_strategy).then(() => {
-    renderTasks();
-    renderMap();
-    updateStrategy(selected_strategy);
-  });
+  update();
 });
+
+document.addEventListener("keydown", (e) => {
+  const isCtrl = e.ctrlKey || e.metaKey;
+
+  if (isCtrl && e.key === "z") {
+    e.preventDefault();
+    undo();
+  }
+
+  if (isCtrl && e.key === "y") {
+    e.preventDefault();
+    redo();
+  }
+});
+
 await get_selected_strategy();
 populateAddList();
 renderMap();
