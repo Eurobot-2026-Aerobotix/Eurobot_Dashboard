@@ -135,12 +135,12 @@ batches:
       y: 1575
       z: 0
     color: yellow
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 600
       y: 1525
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 47
     map_pos:
       x: 600

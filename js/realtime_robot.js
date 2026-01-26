@@ -17,7 +17,6 @@ let robotMarker = null;
 let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
-let receivingRosObstacles = false; // Track if we're receiving ROS obstacle data
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
@@ -34,21 +33,13 @@ const lastUpdateDisplay = document.getElementById('lastUpdate');
 initROS();
 
 // Initialize on page load
-window.addEventListener('load', async () => {
+window.addEventListener('load', () => {
     // Wait for map to load before creating robot marker
     if (map.complete) {
         initializeRobotMarker();
-        // Load obstacles after map is ready
-        setTimeout(async () => {
-            await loadObstaclesFromServer();
-        }, 500);
     } else {
-        map.addEventListener('load', async () => {
+        map.addEventListener('load', () => {
             initializeRobotMarker();
-            // Load obstacles after map is ready
-            setTimeout(async () => {
-                await loadObstaclesFromServer();
-            }, 500);
         });
     }
 });
@@ -144,9 +135,6 @@ function subscribeToObstacles() {
             console.log('📥 Received obstacle data from ROS topic (/obstacles/current)');
             console.log('Message structure:', message);
             
-            // Mark that we're receiving ROS obstacles (disable server polling)
-            receivingRosObstacles = true;
-            
             // Clear all existing obstacles
             obstacles = [];
             
@@ -179,49 +167,6 @@ function subscribeToObstacles() {
             console.error('Error parsing obstacle data from ROS:', error);
         }
     });
-    
-    // Also load obstacles from the server API initially
-    loadObstaclesFromServer();
-}
-
-async function loadObstaclesFromServer() {
-    try {
-        console.log('🔄 Fetching obstacles from server...');
-        const response = await fetch(`${API_URL}/obstacles`);
-        if (!response.ok) {
-            throw new Error('Failed to load obstacles');
-        }
-        
-        const data = await response.json();
-        
-        // Clear all existing obstacles first
-        obstacles = [];
-        
-        // Process batches into flat obstacle array
-        if (data.batches) {
-            data.batches.forEach(batch => {
-                if (batch.members) {
-                    batch.members.forEach(member => {
-                        obstacles.push({
-                            aruco_id: member.aruco_id,
-                            x: member.map_pos.x,
-                            y: member.map_pos.y,
-                            color: member.color,
-                            batch_id: batch.batch_id,
-                            direction: batch.direction
-                        });
-                    });
-                }
-            });
-        }
-        
-        console.log(`✅ Loaded ${obstacles.length} obstacles from server`);
-        drawObstacles();
-        updateObstacleCount();
-        
-    } catch (error) {
-        console.error('❌ Error loading obstacles:', error);
-    }
 }
 
 function initializeRobotMarker() {
@@ -397,14 +342,6 @@ function updateLastUpdateDisplay() {
 
 // Update last update display every second
 setInterval(updateLastUpdateDisplay, 1000);
-
-// Reload obstacles from server only if NOT receiving ROS data (fallback)
-setInterval(async () => {
-    if (isConnected && !receivingRosObstacles) {
-        console.log('📡 No ROS obstacle data, falling back to server polling...');
-        await loadObstaclesFromServer();
-    }
-}, 1000);
 
 // Handle window resize
 window.addEventListener('resize', () => {
