@@ -60,7 +60,7 @@ function initROS() {
         subscribeToRobotPose();
         
         // Subscribe to obstacles
-        subscribeToObstacles();
+        subscribeTpoObstacles();
     });
 
     ros.on('error', function(error) {
@@ -105,7 +105,7 @@ function subscribeToRobotPose() {
         // Update robot pose from Vector3 (x, y, z where z is orientation)
         robotPose.x = message.x;
         robotPose.y = message.y;
-        robotPose.theta = message.z; // z is the orientation in radians
+        robotPose.theta = message.z;
         
         // Update display
         updateRobotDisplay();
@@ -217,7 +217,7 @@ function updateRobotMarker() {
     robotMarker.style.top = y_px + 'px';
     robotMarker.style.width = robotSize_px + 'px';
     robotMarker.style.height = robotSize_px + 'px';
-    robotMarker.style.transform = `translate(-50%, -50%) rotate(${-robotPose.theta}rad)`;
+    robotMarker.style.transform =`translate(-50%, -50%) rotate(${-robotPose.theta + Math.PI / 2}rad)`;
     robotMarker.style.display = 'flex';
     
     // Add trail effect
@@ -309,8 +309,7 @@ function drawObstacles() {
         obstacleMarker.style.transform = 'none';
         obstacleMarker.style.zIndex = '50';
         obstacleMarker.style.pointerEvents = 'none';
-        obstacleMarker.textContent = obstacle.aruco_id || '';
-        obstacleMarker.title = `ArUco ID: ${obstacle.aruco_id}\nColor: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)`;
+        obstacleMarker.title = `Color: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)`;
         
         console.log(`Creating obstacle element:`, obstacleMarker);
         mapWrapper.appendChild(obstacleMarker);
