@@ -13,7 +13,9 @@ let isConnected = false;
 // State
 let robotPose = { x: 0, y: 0, theta: 0 };
 let obstacles = [];
+let enemyRobot = null;  // Track enemy robot position
 let robotMarker = null;
+let enemyRobotMarker = null;  // Marker for enemy robot
 let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
@@ -61,6 +63,9 @@ function initROS() {
         
         // Subscribe to obstacles
         subscribeToObstacles();
+        
+        // Subscribe to enemy robot
+        subscribeToEnemyRobot();
     });
 
     ros.on('error', function(error) {
@@ -119,6 +124,51 @@ function subscribeToRobotPose() {
     });
 }
 
+function subscribeToEnemyRobot() {
+    console.log('📡 Subscribing to /obstacle_relative (enemy robot)');
+    
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/obstacle_relative',
+        messageType: 'geometry_msgs/PoseStamped'
+    });
+    
+    listener.subscribe(function(message) {
+        // Check if the message frame_id indicates base_link or map frame
+        const frameId = message.header.frame_id;
+        const posX = message.pose.position.x;
+        const posY = message.pose.position.y;
+        
+        let globalX, globalY;
+        
+        if (frameId === 'base_link' || frameId === 'base_footprint') {
+            // Transform from robot frame to global coordinates
+            const cosTheta = Math.cos(robotPose.theta);
+            const sinTheta = Math.sin(robotPose.theta);
+            
+            globalX = robotPose.x + (posX * cosTheta - posY * sinTheta);
+            globalY = robotPose.y + (posX * sinTheta + posY * cosTheta);
+            
+            console.log(`🤖 Enemy robot detected at relative (${posX.toFixed(3)}, ${posY.toFixed(3)}) in base_link -> global (${globalX.toFixed(3)}, ${globalY.toFixed(3)})`);
+        } else {
+            // Already in global/map frame
+            globalX = posX;
+            globalY = posY;
+            
+            console.log(`🤖 Enemy robot detected at global (${globalX.toFixed(3)}, ${globalY.toFixed(3)}) in frame: ${frameId}`);
+        }
+        
+        enemyRobot = {
+            x: globalX,  // in meters
+            y: globalY,  // in meters
+            theta: 0  // We don't have orientation info from the message
+        };
+        
+        // Update enemy robot marker
+        updateEnemyRobotMarker();
+    });
+}
+
 function subscribeToObstacles() {
     console.log('📡 Subscribing to obstacle data from ROS topic');
     
@@ -143,8 +193,8 @@ function subscribeToObstacles() {
                 message.obstacles.forEach(obs => {
                     // Check if the obstacle has valid data
                     if (obs.pose && typeof obs.pose.x !== 'undefined' && typeof obs.pose.y !== 'undefined') {
-                        // Only add non-wall obstacles
-                        if (obs.color !== 'wall') {
+                        // Only add yellow or blue obstacles (not walls or generic obstacles)
+                        if (obs.color === 'yellow' || obs.color === 'blue') {
                             obstacles.push({
                                 aruco_id: obs.id || '',
                                 x: obs.pose.x, // Already in mm
@@ -181,7 +231,18 @@ function initializeRobotMarker() {
     
     mapWrapper.appendChild(robotMarker);
     
-    console.log('✅ Robot marker initialized');
+    // Create enemy robot marker
+    if (enemyRobotMarker) {
+        enemyRobotMarker.remove();
+    }
+    
+    enemyRobotMarker = document.createElement('div');
+    enemyRobotMarker.className = 'enemy-robot-marker';
+    enemyRobotMarker.style.display = 'none'; // Hide until we detect enemy
+    
+    mapWrapper.appendChild(enemyRobotMarker);
+    
+    console.log('✅ Robot markers initialized');
 }
 
 function updateRobotDisplay() {
@@ -224,6 +285,37 @@ function updateRobotMarker() {
     if (trailEnabled) {
         addTrailPoint(x_px, y_px);
     }
+}
+
+function updateEnemyRobotMarker() {
+    if (!enemyRobotMarker || !enemyRobot) return;
+    
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    // Convert enemy robot position from meters to mm
+    const x_mm = enemyRobot.x * 1000;
+    const y_mm = enemyRobot.y * 1000;
+    
+    // Convert to pixel coordinates (with x/y swap for map coordinate system)
+    const x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+    const y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+    
+    // Use enemy robot dimensions: 350mm x 350mm
+    const enemyWidth_mm = 350;
+    const enemyHeight_mm = 350;
+    
+    // Calculate enemy robot size in pixels (scaled)
+    const robotWidth_px = (enemyWidth_mm / MAP_WIDTH_MM) * displayWidth;
+    const robotHeight_px = (enemyHeight_mm / MAP_HEIGHT_MM) * displayHeight;
+    
+    // Position enemy robot marker
+    enemyRobotMarker.style.left = x_px + 'px';
+    enemyRobotMarker.style.top = y_px + 'px';
+    enemyRobotMarker.style.width = robotWidth_px + 'px';
+    enemyRobotMarker.style.height = robotHeight_px + 'px';
+    enemyRobotMarker.style.transform = 'translate(-50%, -50%)';
+    enemyRobotMarker.style.display = 'flex';
 }
 
 function addTrailPoint(x, y) {
@@ -324,7 +416,7 @@ function updateObstacleCount() {
 }
 
 function updateLastUpdateDisplay() {
-    if (!lastUpdateTime) return;
+    if (!lastUpdateTime || !lastUpdateDisplay) return;
     
     const now = new Date();
     const diff = Math.floor((now - lastUpdateTime) / 1000);
@@ -346,6 +438,9 @@ setInterval(updateLastUpdateDisplay, 1000);
 window.addEventListener('resize', () => {
     if (robotMarker && robotPose.x !== 0) {
         updateRobotMarker();
+    }
+    if (enemyRobotMarker && enemyRobot) {
+        updateEnemyRobotMarker();
     }
     if (obstacles.length > 0) {
         drawObstacles();

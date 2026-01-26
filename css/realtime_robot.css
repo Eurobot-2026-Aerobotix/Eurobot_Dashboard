@@ -152,6 +152,31 @@ h1 {
     font-size: 20px;
 }
 
+/* Enemy robot marker */
+.enemy-robot-marker {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: #f44336;
+    border: 3px solid #c62828;
+    border-radius: 8px;
+    transform-origin: center;
+    z-index: 100;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.enemy-robot-marker::after {
+    content: '⚠️';
+    font-size: 20px;
+}
+
 /* Obstacle markers */
 .obstacle-marker { !important;
     background: #ff9800 !important;
