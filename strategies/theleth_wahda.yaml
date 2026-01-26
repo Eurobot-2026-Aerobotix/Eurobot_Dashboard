@@ -1,0 +1,165 @@
+name: theleth_wahda
+selected: false
+color: yellow
+tasks:
+- description: Task 0
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 400
+    - 0
+    wait: false
+- description: Task 1
+  global_goal:
+    x: 300
+    y: 400
+    theta: 180
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - '900.51'
+    - '374.86'
+    - '806.39'
+    - '578.36'
+    - '808.93'
+    - '700.46'
+    - 500
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '801.30'
+    - '405.39'
+    - 500
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '941.21'
+    - '474.07'
+    - '1195.58'
+    - '720.81'
+    - '1195.58'
+    - '351.97'
+    - 500
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1246.46'
+    - '718.27'
+    - '1610.21'
+    - '906.50'
+    - '1607.67'
+    - '397.76'
+    - 500
+    - 1
+    wait: true
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1460.13'
+    - '585.99'
+    - '1508.46'
+    - '705.55'
+    - '1648.37'
+    - '705.55'
+    - 500
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1404.17'
+    - '881.07'
+    - '1386.36'
+    - '1097.28'
+    - '1602.58'
+    - '1097.28'
+    - 500
+    - 1
+    wait: true
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1661.09'
+    - '914.14'
+    - '1645.82'
+    - '797.12'
+    - '1475.39'
+    - '797.12'
+    - 500
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1589.86'
+    - '942.12'
+    - '1592.40'
+    - '1145.62'
+    - '1427.06'
+    - '1145.62'
+    - 500
+    - 1
+    wait: true
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1274.44'
+    - '934.49'
+    - '1210.84'
+    - '985.36'
+    - '1210.84'
+    - '1211.75'
+    - 500
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - 1000
+    - 1000
+    - 1226.11
+    - 400
+    - 300
+    - 400
+    - 500
+    wait: false

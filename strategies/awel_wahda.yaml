@@ -12,12 +12,6 @@ tasks:
     command: Wait for manual start
     params: []
     wait: false
-- description: Task 1
-  global_goal:
-    x: 800
-    y: 407.93
-    theta: -90
-  sequence:
   - device: STM
     command: set_position
     params:
@@ -25,6 +19,12 @@ tasks:
     - 300
     - 0
     wait: false
+- description: Task 1
+  global_goal:
+    x: 800
+    y: 407.93
+    theta: -90
+  sequence:
   - device: STM
     command: go_to
     params:
@@ -33,18 +33,13 @@ tasks:
     - 1100
     wait: false
   - device: STM
-    command: orientate
-    params:
-    - -90
-    wait: false
-  - device: STM
     command: go_to
     params:
     - 800
     - 407.93
     - 1100
     - 1
-    wait: true
+    wait: false
   - device: ESP_front
     command: pick_up
     params: []
@@ -61,7 +56,7 @@ tasks:
     - 1600
     - 563.1
     - 700
-    wait: false
+    wait: true
   - device: STM
     command: go_to_backwards
     params:
@@ -69,7 +64,7 @@ tasks:
     - 400
     - 1100
     - 1
-    wait: true
+    wait: false
   - device: ESP_back
     command: pick_up
     params: []
@@ -91,7 +86,7 @@ tasks:
     command: orientate
     params:
     - 90
-    wait: true
+    wait: false
   - device: ESP_front
     command: put_down
     params: []
@@ -125,7 +120,7 @@ tasks:
     - '1203.21'
     - '1178.68'
     - 700
-    wait: false
+    wait: true
   - device: STM
     command: go_to_backwards
     params:
@@ -139,14 +134,14 @@ tasks:
     - '887.79'
     - '306.18'
     - 1100
-    wait: true
+    wait: false
   - device: STM
     command: go_to_backwards
     params:
     - 300
     - 300
     - 1100
-    wait: true
+    wait: false
   - device: STM
     command: orientate
     params:

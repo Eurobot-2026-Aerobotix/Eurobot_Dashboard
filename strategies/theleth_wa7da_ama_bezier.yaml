@@ -1,0 +1,134 @@
+name: theleth_wa7da_ama_bezier
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - '296.96'
+    - '445.40'
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 795
+    y: 400
+    theta: -90
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 815.61
+    - 447.94
+    - 795
+    - 500
+    - 795
+    - 700
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 795
+    - 400
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: '1581.90'
+    y: '386.92'
+    theta: -89.73646457494787
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 800.86
+    - 801.33
+    - 1580
+    - 800
+    - '1581.90'
+    - '386.92'
+    - 1000
+    - 1
+    wait: true
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 4
+  global_goal:
+    x: '1203.08'
+    y: '1251.34'
+    theta: 89.4989728082678
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params:
+    - '1602.24'
+    - '953.88'
+    - '1198.50'
+    - '727.60'
+    - '1203.08'
+    - '1251.34'
+    - 1000
+    wait: true
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+- description: Task 5
+  global_goal:
+    x: '1200.53'
+    y: '1014.89'
+    theta: 40.210118923209585
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1200.53'
+    - '1014.89'
+    - 1100
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 6
+  global_goal:
+    x: '299.50'
+    y: '297.94'
+    theta: 178.62375297739342
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1200.53'
+    - '1131.84'
+    - 1100
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '416.45'
+    - '1124.22'
+    - '1146.13'
+    - '277.60'
+    - '299.50'
+    - '297.94'
+    - 1000
+    wait: false

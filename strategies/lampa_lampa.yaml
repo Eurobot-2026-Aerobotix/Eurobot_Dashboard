@@ -1,0 +1,17 @@
+name: lampa_lampa
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 0
+    - 0
+    - 0
+    wait: false

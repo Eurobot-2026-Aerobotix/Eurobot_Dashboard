@@ -11,17 +11,28 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - '1843.77'
-    - '1487.78'
+    - '818.15'
+    - '425.06'
     - 0
     wait: false
-- description: Task 2
-  global_goal:
-    x: null
-    y: null
-    theta: null
-  sequence:
   - device: ESP_front
     command: pick_up
     params: []
-    wait: false
+    wait: true
+- description: Task 2
+  global_goal:
+    x: '750.52'
+    y: '425.06'
+    theta: 29.525220043369515
+  sequence:
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '750.52'
+    - '425.06'
+    - 1100
+    wait: true

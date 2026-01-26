@@ -1,5 +1,5 @@
 name: test_wait
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
