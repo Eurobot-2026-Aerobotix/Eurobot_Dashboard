@@ -60,7 +60,7 @@ function initROS() {
         subscribeToRobotPose();
         
         // Subscribe to obstacles
-        subscribeTpoObstacles();
+        subscribeToObstacles();
     });
 
     ros.on('error', function(error) {
