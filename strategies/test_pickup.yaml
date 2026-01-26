@@ -1,12 +1,12 @@
 name: test_pickup
-selected: true
+selected: false
 color: blue
 tasks:
 - description: Task 1
   global_goal:
-    x: '1472.00'
-    y: '1266.63'
-    theta: 37.17082056012374
+    x: null
+    y: null
+    theta: null
   sequence:
   - device: STM
     command: set_position

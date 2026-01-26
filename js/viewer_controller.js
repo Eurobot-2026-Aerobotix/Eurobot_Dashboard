@@ -48,6 +48,8 @@ async function get_selected_strategy() {
     if (strategy.name === name) selected_strategy = strategy;
   }
   document.querySelector("title").textContent = selected_strategy.name;
+  undoStack.length = 0;
+  undoStack.push(JSON.stringify(selected_strategy));
   renderTasks();
 }
 
@@ -390,6 +392,7 @@ function renderTasks() {
     }else{
       actionIndex++;
     }
+    contextTask = selected_strategy.tasks[taskIndex];
     const modalContent = document.createElement("div");
     modalContent.classList.add("modal-content");
 
@@ -413,7 +416,7 @@ function renderTasks() {
       
       btn.addEventListener("click", () => {
         const newAction = new Action(option.device, option.command, [], false);
-        selected_strategy.tasks[taskIndex].sequence.splice(actionIndex + 1, 0, newAction);
+        selected_strategy.tasks[taskIndex].sequence.splice(actionIndex, 0, newAction);
         
         document.body.removeChild(backdrop);
         document.body.removeChild(modalContent);
@@ -854,6 +857,13 @@ document.getElementById("modal-cancel").addEventListener("click", () => {
   modal.classList.add("hidden");
   contextAction = null;
   contextTask = null;
+  if (undoStack.length > 0 ){
+    selected_strategy = JSON.parse(
+      undoStack[undoStack.length - 1]
+    );
+  }
+  renderTasks();
+  renderMap();
 });
 
 document.getElementById("modal-confirm").addEventListener("click", () => {
