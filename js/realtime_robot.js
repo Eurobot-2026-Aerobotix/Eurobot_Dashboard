@@ -17,6 +17,7 @@ let robotMarker = null;
 let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
+let receivingRosObstacles = false; // Track if we're receiving ROS obstacle data
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
@@ -33,20 +34,20 @@ const lastUpdateDisplay = document.getElementById('lastUpdate');
 initROS();
 
 // Initialize on page load
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     // Wait for map to load before creating robot marker
     if (map.complete) {
         initializeRobotMarker();
         // Load obstacles after map is ready
-        setTimeout(() => {
-            loadObstaclesFromServer();
+        setTimeout(async () => {
+            await loadObstaclesFromServer();
         }, 500);
     } else {
-        map.addEventListener('load', () => {
+        map.addEventListener('load', async () => {
             initializeRobotMarker();
             // Load obstacles after map is ready
-            setTimeout(() => {
-                loadObstaclesFromServer();
+            setTimeout(async () => {
+                await loadObstaclesFromServer();
             }, 500);
         });
     }
@@ -78,7 +79,7 @@ function initROS() {
     });
 
     ros.on('close', function() {
-        console.log('🔌 Disconnected from ROS2 Bridge');
+        console.log('�� Disconnected from ROS2 Bridge');
         isConnected = false;
         updateConnectionStatus(false);
         
@@ -128,39 +129,64 @@ function subscribeToRobotPose() {
 }
 
 function subscribeToObstacles() {
-    console.log('📡 Subscribing to obstacle data');
+    console.log('📡 Subscribing to obstacle data from ROS topic');
     
-    // We'll listen to the topic that pathfinding_node publishes
-    // Based on the pathfinding code, obstacles come from obstacles.yaml
-    // But we might also want to subscribe to a ROS topic if available
-    
-    // For now, load obstacles from the server API
-    loadObstaclesFromServer();
-    
-    // You can also subscribe to a ROS topic if pathfinding_node publishes obstacles
-    // Example:
-    /*
+    // Subscribe to obstacles topic from pathfinding_node
+    // The pathfinding_node publishes ObstacleArray to /obstacles/current
     const obstacleListener = new ROSLIB.Topic({
         ros: ros,
-        name: '/detected_obstacles',
-        messageType: 'std_msgs/String'
+        name: '/obstacles/current',
+        messageType: 'hybrid_astar/ObstacleArray'
     });
     
     obstacleListener.subscribe(function(message) {
         try {
-            const obstacleData = JSON.parse(message.data);
-            obstacles = obstacleData.obstacles || [];
+            console.log('📥 Received obstacle data from ROS topic (/obstacles/current)');
+            console.log('Message structure:', message);
+            
+            // Mark that we're receiving ROS obstacles (disable server polling)
+            receivingRosObstacles = true;
+            
+            // Clear all existing obstacles
+            obstacles = [];
+            
+            // Process obstacles from ObstacleArray message
+            if (message.obstacles) {
+                message.obstacles.forEach(obs => {
+                    // Check if the obstacle has valid data
+                    if (obs.pose && typeof obs.pose.x !== 'undefined' && typeof obs.pose.y !== 'undefined') {
+                        // Only add non-wall obstacles
+                        if (obs.color !== 'wall') {
+                            obstacles.push({
+                                aruco_id: obs.id || '',
+                                x: obs.pose.x, // Already in mm
+                                y: obs.pose.y, // Already in mm
+                                color: obs.color,
+                                batch_id: 0,
+                                width_mm: obs.width_mm || 50,
+                                height_mm: obs.height_mm || 50,
+                                direction: obs.width_mm > obs.height_mm ? 'horizontal' : 'vertical'
+                            });
+                        }
+                    }
+                });
+            }
+            
+            console.log(`✅ Updated obstacles from ROS: ${obstacles.length} obstacles`);
             drawObstacles();
             updateObstacleCount();
         } catch (error) {
-            console.error('Error parsing obstacle data:', error);
+            console.error('Error parsing obstacle data from ROS:', error);
         }
     });
-    */
+    
+    // Also load obstacles from the server API initially
+    loadObstaclesFromServer();
 }
 
 async function loadObstaclesFromServer() {
     try {
+        console.log('🔄 Fetching obstacles from server...');
         const response = await fetch(`${API_URL}/obstacles`);
         if (!response.ok) {
             throw new Error('Failed to load obstacles');
@@ -168,8 +194,10 @@ async function loadObstaclesFromServer() {
         
         const data = await response.json();
         
-        // Process batches into flat obstacle array
+        // Clear all existing obstacles first
         obstacles = [];
+        
+        // Process batches into flat obstacle array
         if (data.batches) {
             data.batches.forEach(batch => {
                 if (batch.members) {
@@ -298,10 +326,6 @@ function drawObstacles() {
     console.log(`Map position - offsetTop: ${map.offsetTop}px, offsetLeft: ${map.offsetLeft}px`);
     console.log(`Map-wrapper position - offsetTop: ${mapWrapper.offsetTop}px, offsetLeft: ${mapWrapper.offsetLeft}px`);
     
-    // Obstacle dimensions in mm
-    const OBSTACLE_LONG_MM = 150;   // Long side
-    const OBSTACLE_SHORT_MM = 50;   // Short side
-    
     obstacles.forEach((obstacle, index) => {
         // Obstacle positions are already in mm (not meters!)
         const x_mm = obstacle.x;
@@ -310,37 +334,34 @@ function drawObstacles() {
         // Convert to pixel coordinates (with x/y swap)
         // Scale from mm to actual displayed pixels
         // Position relative to the map image (which is at 0,0 within map-wrapper)
-        const center_x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
-        const center_y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+        const pos_x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+        const pos_y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
         
-        // Determine width and height based on direction
-        let width_mm, height_mm;
-        if (obstacle.direction === 'vertical') {
-            width_mm = OBSTACLE_SHORT_MM;
-            height_mm = OBSTACLE_LONG_MM;
-        } else if (obstacle.direction === 'horizontal') {
-            width_mm = OBSTACLE_LONG_MM;
-            height_mm = OBSTACLE_SHORT_MM;
-        } else {
-            width_mm = OBSTACLE_SHORT_MM;
-            height_mm = OBSTACLE_SHORT_MM;
-        }
+        // Use actual width and height from ROS message
+        // IMPORTANT: Since we swap x/y coordinates, we also need to swap width/height
+        const width_mm = obstacle.height_mm || 50;
+        const height_mm = obstacle.width_mm || 50;
         
         // Calculate dimensions in pixels (scaled)
         const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
         const height_px = (height_mm / MAP_HEIGHT_MM) * displayHeight;
         
-        console.log(`Obstacle ${index}: [${obstacle.x.toFixed(3)}m, ${obstacle.y.toFixed(3)}m] = [${x_mm}mm, ${y_mm}mm] -> [${center_x_px.toFixed(1)}px, ${center_y_px.toFixed(1)}px] ${width_px.toFixed(1)}x${height_px.toFixed(1)}px ${obstacle.color} ${obstacle.direction}`);
+        // Position is the left-top corner of the obstacle
+        // CSS left/top also positions the top-left corner, so use directly
+        const left_px = pos_x_px;
+        const top_px = pos_y_px;
+        
+        console.log(`Obstacle ${index}: [${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm] -> [${left_px.toFixed(1)}px, ${top_px.toFixed(1)}px] ${width_px.toFixed(1)}x${height_px.toFixed(1)}px ${obstacle.color} ${obstacle.direction}`);
         
         // Create obstacle marker
         const obstacleMarker = document.createElement('div');
         obstacleMarker.className = 'obstacle-marker ' + obstacle.color;
         obstacleMarker.style.position = 'absolute';
-        obstacleMarker.style.left = center_x_px + 'px';
-        obstacleMarker.style.top = center_y_px + 'px';
+        obstacleMarker.style.left = left_px + 'px';
+        obstacleMarker.style.top = top_px + 'px';
         obstacleMarker.style.width = width_px + 'px';
         obstacleMarker.style.height = height_px + 'px';
-        obstacleMarker.style.transform = 'translate(-50%, -50%)';
+        obstacleMarker.style.transform = 'none';
         obstacleMarker.style.zIndex = '50';
         obstacleMarker.style.pointerEvents = 'none';
         obstacleMarker.textContent = obstacle.aruco_id || '';
@@ -377,12 +398,13 @@ function updateLastUpdateDisplay() {
 // Update last update display every second
 setInterval(updateLastUpdateDisplay, 1000);
 
-// Reload obstacles periodically (every 10 seconds)
-setInterval(() => {
-    if (isConnected) {
-        loadObstaclesFromServer();
+// Reload obstacles from server only if NOT receiving ROS data (fallback)
+setInterval(async () => {
+    if (isConnected && !receivingRosObstacles) {
+        console.log('📡 No ROS obstacle data, falling back to server polling...');
+        await loadObstaclesFromServer();
     }
-}, 10000);
+}, 1000);
 
 // Handle window resize
 window.addEventListener('resize', () => {
