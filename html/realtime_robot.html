@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Robot Tracking</title>
+    <link rel="stylesheet" href="../css/home.css">
+    <link rel="stylesheet" href="../css/realtime_robot.css">
+    <link rel="icon" type="image/png" href="../resources/harissa.png">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="strategy_selector.html" class="nav-link">Strategy</a>
+            <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
+            <a href="realtime_robot.html" class="nav-link active">Real-Time</a>
+        </div>
+    </nav>
+    
+    <div class="logo-container">
+        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Real-Time Robot Tracking</h1>
+            <div id="rosStatus" class="ros-status">
+                <span class="status-indicator"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="map-container-fullscreen">
+                <div class="map-wrapper" id="mapWrapper">
+                    <img id="map" src="../resources/map.png" alt="Eurobot Map">
+                    <!-- Robot and obstacles will be added dynamically -->
+                </div>
+
+                <div class="info-panels">
+                    <div class="robot-info">
+                        <h4>Robot Position</h4>
+                        <div class="info-row">
+                            <span class="label">X:</span>
+                            <span id="robotX" class="value">-</span>
+                            <span class="unit">m</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Y:</span>
+                            <span id="robotY" class="value">-</span>
+                            <span class="unit">m</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">θ:</span>
+                            <span id="robotTheta" class="value">-</span>
+                            <span class="unit">°</span>
+                        </div>
+                    </div>
+
+                    <div class="obstacles-info">
+                        <h4>Obstacles</h4>
+                        <div class="info-row">
+                            <span class="label">Detected:</span>
+                            <span id="obstacleCount" class="value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load ROS library -->
+    <script src="../js/lib/roslib.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/realtime_robot.js"></script>
+</body>
+</html>
