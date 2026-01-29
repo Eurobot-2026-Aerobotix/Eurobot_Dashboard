@@ -1,0 +1,267 @@
+name: za9afouna
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 300
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 1600
+    y: 1910
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1450
+    - 700
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 1445
+    - 1910
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 1600
+    - 1910
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 4
+  global_goal:
+    x: 1200
+    y: 1150
+    theta: 180
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1500
+    - 1150
+    - 1100
+    - 0
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 1150
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 6
+  global_goal:
+    x: 1200
+    y: 1150
+    theta: 180
+  sequence:
+  - device: STM
+    command: orientate
+    params:
+    - 90
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 8
+  global_goal:
+    x: 1200
+    y: 1100
+    theta: -90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1230
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 1100
+    - 1100
+    wait: false
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+- description: Task 10
+  global_goal:
+    x: 1600
+    y: 1100
+    theta: 34.5085229876684
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1600
+    - 1100
+    - 1100
+    - 1
+    wait: true
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 12
+  global_goal:
+    x: 1600
+    y: 400
+    theta: 14.036243467926477
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1600
+    - 400
+    - 1100
+    - 1
+    wait: true
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 14
+  global_goal:
+    x: 1725
+    y: 540
+    theta: 17.382388881227914
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1725
+    - 540
+    - 1100
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 16
+  global_goal:
+    x: 840
+    y: 400
+    theta: -90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 840
+    - 540
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 840
+    - 400
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 18
+  global_goal:
+    x: 1200
+    y: 400
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 400
+    - 1100
+    wait: true
+  - device: STM
+    command: orientate
+    params:
+    - 90
+    wait: false
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 20
+  global_goal:
+    x: 1200
+    y: 345
+    theta: -90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 490
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 345
+    - 1100
+    wait: false
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+- description: Task 24
+  global_goal:
+    x: 300
+    y: 300
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 420
+    - 1000
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 300
+    - 300
+    - 1100
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 0
+    wait: false

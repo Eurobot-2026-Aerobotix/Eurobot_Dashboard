@@ -1,0 +1,32 @@
+name: test_bezier
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: 1297.91
+    y: 555.02
+    theta: 90
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 300
+    - 0
+    wait: false
+  - device: STM
+    command: bezier
+    params:
+    - 1200.1
+    - 305
+    - 1297.91
+    - 416.99
+    - 1297.91
+    - 555.02
+    - 700
+    wait: false

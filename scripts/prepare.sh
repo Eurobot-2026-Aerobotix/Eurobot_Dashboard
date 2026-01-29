@@ -36,15 +36,15 @@ ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 > /tmp/micro_
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM1..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM1 > /tmp/micro_ros_logs/agent_ACM1.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB2 > /tmp/micro_ros_logs/agent_ACM1.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM2..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM2 > /tmp/micro_ros_logs/agent_ACM2.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0 > /tmp/micro_ros_logs/agent_USB0.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM3..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM3 > /tmp/micro_ros_logs/agent_ACM3.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1 > /tmp/micro_ros_logs/agent_USB1.log 2>&1 &
 sleep 3
 
 # Check which agents are running

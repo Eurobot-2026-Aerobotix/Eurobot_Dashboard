@@ -1,0 +1,62 @@
+name: test_go_to
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 300
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 302.11
+    y: 297.19
+    theta: -154.67611951471696
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '801.63'
+    - '526.37'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '801.63'
+    - '398.76'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1603.78'
+    - '528.98'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1603.78'
+    - '398.76'
+    - 1100
+    wait: false
+  - device: STM
+    command: bezier_backwards
+    params:
+    - 1599.09
+    - 1081.1
+    - 593.8
+    - 435.22
+    - 302.11
+    - 297.19
+    - 800
+    wait: false
