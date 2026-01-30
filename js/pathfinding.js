@@ -1462,26 +1462,66 @@ function sendBatches() {
         };
     });
     
-    console.log('📤 Sending batches to ROS2:', batchesTable);
+    console.log('📤 Sending batches to backend and ROS2:', batchesTable);
     console.log('Total selected batches:', selectedBatches.length);
     console.log('Total members:', batchesTable.reduce((sum, b) => sum + b.members.length, 0));
     
-    // Send to ROS2 via rosbridge
-    const topic = new ROSLIB.Topic({
-        ros: ros,
-        name: '/web/send_batches',
-        messageType: 'std_msgs/String'
-    });
-    
-    const message = new ROSLIB.Message({
-        data: JSON.stringify({
+    // Step 1: Send batches to backend server for storage
+    fetch(`${window.ipConfig.getAPIURL()}/web_batches`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
             batches: batchesTable
         })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('✅ Batches stored on server:', data);
+        
+        // Step 2: Send batches to ROS2 via rosbridge (legacy support)
+        const topic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/web/send_batches',
+            messageType: 'std_msgs/String'
+        });
+        
+        const message = new ROSLIB.Message({
+            data: JSON.stringify({
+                batches: batchesTable
+            })
+        });
+        
+        topic.publish(message);
+        console.log('✅ Batches published to /web/send_batches');
+        
+        // Step 3: Trigger update_map service to fetch batches from web_handler
+        const updateMapService = new ROSLIB.Service({
+            ros: ros,
+            name: '/update_map',
+            serviceType: 'std_srvs/Trigger'
+        });
+        
+        const request = new ROSLIB.ServiceRequest({});
+        
+        updateMapService.callService(request, (result) => {
+            if (result.success) {
+                console.log('✅ Update map service called successfully:', result.message);
+                alert(`Successfully sent ${selectedBatches.length} batches!\n\nBatches are now loaded in the pathfinding system.`);
+            } else {
+                console.warn('⚠️ Update map service returned false:', result.message);
+                alert(`Batches sent but map update had issues:\n${result.message}`);
+            }
+        }, (error) => {
+            console.error('❌ Failed to call /update_map service:', error);
+            alert(`Batches sent but failed to trigger map update.\nError: ${error}`);
+        });
+    })
+    .catch(error => {
+        console.error('❌ Failed to store batches on server:', error);
+        alert(`Failed to send batches to server:\n${error}`);
     });
-    
-    topic.publish(message);
-    console.log('✅ Batches sent to ROS2');
-    alert(`Successfully sent ${selectedBatches.length} batches to ROS2!`);
     
     // Return the batches table for further use
     return batchesTable;

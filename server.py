@@ -20,6 +20,10 @@ start_process = None
 pathfinding_process = None
 prepare_process = None
 
+# Storage for web batches (for pathfinding simulation)
+web_batches_storage = []
+web_batches_lock = threading.Lock()
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -340,6 +344,56 @@ def update_batch(batch_id):
         yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
     
     return jsonify({"status": "updated", "batch_id": batch_id})
+
+
+# -------------------------------------------------
+# Store batches from web pathfinding simulation (for ROS2 GetStableBatches service)
+# POST /web_batches
+# Body: JSON with batches array
+# -------------------------------------------------
+@app.route("/web_batches", methods=["POST"])
+def store_web_batches():
+    """
+    Store batches from web pathfinding page to be served via ROS2 GetStableBatches service.
+    This endpoint is called by the web interface when sending batches.
+    """
+    if not request.is_json:
+        abort(400, "Expected JSON body")
+    
+    data = request.get_json()
+    batches_data = data.get('batches', [])
+    
+    if not batches_data:
+        return jsonify({"status": "error", "message": "No batches provided"}), 400
+    
+    # Store batches in memory with thread-safe access
+    with web_batches_lock:
+        web_batches_storage.clear()
+        web_batches_storage.extend(batches_data)
+    
+    print(f"📦 Stored {len(batches_data)} batches from web interface")
+    for batch in batches_data:
+        print(f"  - {batch.get('known_id')}: {batch.get('count')} members, direction={batch.get('direction')}")
+    
+    return jsonify({
+        "status": "success", 
+        "message": f"Stored {len(batches_data)} batches",
+        "count": len(batches_data)
+    })
+
+
+# -------------------------------------------------
+# Get stored web batches (for debugging)
+# GET /web_batches
+# -------------------------------------------------
+@app.route("/web_batches", methods=["GET"])
+def get_web_batches():
+    """Retrieve currently stored web batches"""
+    with web_batches_lock:
+        return jsonify({
+            "batches": list(web_batches_storage),
+            "count": len(web_batches_storage)
+        })
 
 
 # -------------------------------------------------
