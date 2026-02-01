@@ -9,7 +9,7 @@ const listDivBlue = document.getElementById("strategy-list-blue");
 const createBtn = document.getElementById("create-btn");
 const pamiBtn = document.getElementById("pami-btn");
 const deleteBtn = document.getElementById("delete-btn");
-const selectBtn = document.getElementById("select-btn");
+const branchBtn = document.getElementById("branch-btn");
 
 let strategies = [];
 let clickedIndex = null;
@@ -45,7 +45,7 @@ function renderList() {
       window.location.href = `strategy_viewer.html?name=${s.name}`;
     });
     // long-press / hold detection to mark this strategy as selected
-    const HOLD_MS = 400;
+    const HOLD_MS = 100;
     let holdTimer = null;
 
     const startHold = (e) => {
@@ -87,7 +87,7 @@ function updateButtons() {
   const enabled = clickedIndex !== null;
   pamiBtn.disabled = !enabled;
   deleteBtn.disabled = !enabled;
-  selectBtn.disabled = !enabled;
+  branchBtn.disabled = !enabled;
 }
 
 // -------------------------------------------------
@@ -138,17 +138,26 @@ pamiBtn.addEventListener("click", () => {
   window.location.href = `pami_strategy_selector.html?name=${strategy.name}`;
 });
 
-selectBtn.addEventListener("click", () => {
+branchBtn.addEventListener("click", () => {
   if (clickedIndex === null) return;
-  for(let i = 0; i<strategies.length; i++){
-    if (i == clickedIndex){
-        strategies[i].selected = true
-    }else{
-        strategies[i].selected = false;
+
+  const original = strategies[clickedIndex];
+
+  const cloned = JSON.parse(JSON.stringify(original));
+
+  const name = prompt("Enter name for the branched strategy:");
+  for(let strategy of strategies){
+    if (strategy.name == name){
+        alert("deja mawjouda");
+        return
     }
-    updateStrategy(strategies[i])
   }
-  loadStrategies();
+  if (name !== null && name.trim() !== "") {
+    cloned.name = name.trim();
+    strategies.push(cloned);
+    saveStrategy(cloned);
+    loadStrategies();
+  }
 });
 
 window.addEventListener("pageshow", (e) => {
