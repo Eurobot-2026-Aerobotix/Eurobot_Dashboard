@@ -1,28 +1,68 @@
 name: bezier
-selected: false
+selected: true
 color: yellow
 tasks:
-- description: Task 1
-  global_goal:
-    x: 1100
-    y: 800
-    theta: 90
+- description: yo yo
   sequence:
   - device: STM
     command: set_position
     params:
-    - 300
-    - 300
-    - 0
+    - 1600
+    - 1900
+    - 180
+    wait: false
+  global_goal:
+    x: null
+    y: null
+    theta: null
+- description: Task 2
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
     wait: false
   - device: STM
     command: bezier
     params:
-    - 500
-    - 300
-    - 1100
-    - 300
-    - 1100
-    - 800
+    - '1579.82'
+    - '1875.44'
+    - 1602.21
+    - 1857.2
+    - 1400
+    - 1850
     - 700
+    - 1
     wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1000
+    - 1000
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '793.73'
+    - '1646.48'
+    - 1100
+    wait: false
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - '827.15'
+    - '529.68'
+    - 1100
+    wait: true
+  global_goal:
+    x: '827.15'
+    y: '529.68'
+    theta: -88.28594762929409

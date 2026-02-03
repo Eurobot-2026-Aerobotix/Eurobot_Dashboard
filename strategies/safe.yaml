@@ -1,5 +1,5 @@
 name: safe
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1

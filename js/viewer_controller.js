@@ -153,6 +153,85 @@ async function update_waiting_or_not(strategy){
     });
   });
 }
+
+async function apply_tasks_logic(strategy) {
+  const isESP = a => a.device.startsWith("ESP");
+  const isSTM = a => a.device.includes("STM");
+  const isWaitManual = a =>
+    a.device.includes("RASP") && a.command.includes("manual");
+  const isSetPosition = a =>
+    a.device.includes("STM") && a.command.includes("position");
+  // 1. save task names
+  const savedNames = strategy.tasks.map(t => t.description);
+  let nameIndex = 0;
+  let autoIndex = 1;
+
+  // 2. flatten actions
+  const flatActions = strategy.tasks.flatMap(t => t.sequence);
+
+  const newTasks = [];
+  let currentTask = null;
+
+  const startTask = () => {
+    const name =
+      savedNames[nameIndex] ??
+      `Task ${++autoIndex}`;
+
+    if (nameIndex < savedNames.length) nameIndex++;
+
+    currentTask = {
+      description: name,
+      sequence: []
+    };
+  };
+
+  for (let i = 0; i < flatActions.length; i++) {
+    const action = flatActions[i];
+    const next = flatActions[i + 1];
+
+    if (!currentTask) startTask();
+
+    // special case: Wait for manual start + set_position
+    if (action && isWaitManual(action)) {
+      currentTask.sequence.push(action);
+      if (next && isSetPosition(next)) {
+        currentTask.sequence.push(next);
+        i++; // consume next
+      }
+      newTasks.push(currentTask);
+      currentTask = null;
+      continue;
+    }
+    else if (action && isSetPosition(action)) {
+      currentTask.sequence.push(action);
+      if (next && isWaitManual(next)) {
+        currentTask.sequence.push(next);
+        i++; // consume next
+      }
+      newTasks.push(currentTask);
+      currentTask = null;
+      continue;
+    }
+
+    currentTask.sequence.push(action);
+
+    // ESP logic: close task after ESP
+    if (isESP(action)) {
+      newTasks.push(currentTask);
+      currentTask = null;
+    } 
+    console.log(currentTask);
+  }
+
+  // push remaining task if not empty
+  if (currentTask && currentTask.sequence.length) {
+    newTasks.push(currentTask);
+  }
+
+  // 3. replace tasks
+  strategy.tasks = newTasks;
+}
+
 // ------------------------------
 // Render tasks and actions
 // ------------------------------
@@ -851,6 +930,12 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
 document.getElementById("back-btn").addEventListener("click", () => {
   sessionStorage.setItem("refreshOnce", "1");
   window.history.back();
+});
+
+document.getElementById("apply-tasks-btn").addEventListener("click", () => {
+  apply_tasks_logic(selected_strategy).then(() => {
+    update();
+  });
 });
 
 document.getElementById("modal-cancel").addEventListener("click", () => {
