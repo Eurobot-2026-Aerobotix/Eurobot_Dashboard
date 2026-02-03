@@ -12,7 +12,7 @@ const newTaskCheckBox = document.getElementById("task-checkbox");
 const modal = document.getElementById("action-modal");
 const go_to_args = ["x", "y", "speed"];
 const orientate_args = ["angle"];
-const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"];
+const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "backup x", "backup y", "speed"];
 const set_position_args = ["x", "y", "angle"]
 const options = [
     new Action("STM", "set_position"),
@@ -118,14 +118,14 @@ async function update_smooth_or_not(strategy) {
         }
 
         if (next && next.command.includes("pick")) {
-          if (task.sequence[i].params.length == 7) {
+          if (task.sequence[i].params.length == 9) {
             task.sequence[i].params.push(1);
           }else{
-            task.sequence[i].params[7] = 1;
+            task.sequence[i].params[9] = 1;
           }
         }else{
-          if (task.sequence[i].params.length > 7) {
-            task.sequence[i].params[7] = 0;
+          if (task.sequence[i].params.length > 9) {
+            task.sequence[i].params[9] = 0;
           }
         }
       }

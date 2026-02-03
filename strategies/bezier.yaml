@@ -11,32 +11,26 @@ tasks:
     - 1900
     - 180
     wait: false
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
   global_goal:
     x: null
     y: null
     theta: null
 - description: Task 2
   sequence:
-  - device: RASP_PI
-    command: Wait for manual start
-    params: []
-    wait: false
-  - device: STM
-    command: bezier
-    params:
-    - '1579.82'
-    - '1875.44'
-    - 1602.21
-    - 1857.2
-    - 1400
-    - 1850
-    - 700
-    - 1
-    wait: false
   - device: ESP_back
     command: pick_up
     params: []
     wait: true
+  global_goal:
+    x: null
+    y: null
+    theta: null
+- description: Task 2
+  sequence:
   - device: STM
     command: go_to_backwards
     params:
@@ -55,14 +49,33 @@ tasks:
     command: put_down
     params: []
     wait: true
+  global_goal:
+    x: '793.73'
+    y: '1646.48'
+    theta: 107.69613213821134
+- description: Task 3
+  sequence:
   - device: STM
     command: go_to
     params:
-    - '827.15'
-    - '529.68'
+    - '603.80'
+    - '1639.38'
     - 1100
     wait: true
+  - device: STM
+    command: bezier
+    params:
+    - '1148.01'
+    - '1221.74'
+    - '1028.21'
+    - '750.35'
+    - '674.01'
+    - '734.72'
+    - 1000
+    - 1000
+    - 1100
+    wait: false
   global_goal:
-    x: '827.15'
-    y: '529.68'
-    theta: -88.28594762929409
+    x: '674.01'
+    y: '734.72'
+    theta: -177.47331327618608

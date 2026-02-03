@@ -186,6 +186,8 @@ button:hover {
     gap: 15px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: auto;
+    max-height: 95vh;
 }
 
 .modal-content h3 {
