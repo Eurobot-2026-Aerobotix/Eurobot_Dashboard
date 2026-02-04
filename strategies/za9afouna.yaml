@@ -1,5 +1,5 @@
 name: za9afouna
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -120,8 +120,22 @@ tasks:
   global_goal:
     x: 1600
     y: 1100
-    theta: 34.5085229876684
+    theta: 0
   sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1150
+    - 1000
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1386.36
+    - 1100
+    - 1000
+    wait: false
   - device: STM
     command: go_to
     params:
@@ -129,7 +143,7 @@ tasks:
     - 1100
     - 1100
     - 1
-    wait: true
+    wait: false
   - device: ESP_front
     command: pick_up
     params: []
@@ -154,15 +168,15 @@ tasks:
     wait: true
 - description: Task 14
   global_goal:
-    x: 1725
-    y: 540
-    theta: 17.382388881227914
+    x: '1714.50'
+    y: '524.94'
+    theta: 17.02336905595304
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1725
-    - 540
+    - '1714.50'
+    - '524.94'
     - 1100
     wait: true
   - device: ESP_front
@@ -171,21 +185,28 @@ tasks:
     wait: true
 - description: Task 16
   global_goal:
-    x: 840
+    x: 800
     y: 400
     theta: -90
   sequence:
   - device: STM
-    command: go_to
+    command: go_to_backwards
     params:
-    - 840
-    - 540
-    - 1100
+    - '1625.47'
+    - '428.28'
+    - 1000
     wait: true
   - device: STM
     command: go_to
     params:
-    - 840
+    - 800
+    - 540
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
     - 400
     - 1100
     - 1
