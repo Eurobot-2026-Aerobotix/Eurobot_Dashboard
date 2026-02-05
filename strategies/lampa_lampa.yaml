@@ -1,5 +1,5 @@
 name: lampa_lampa
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
