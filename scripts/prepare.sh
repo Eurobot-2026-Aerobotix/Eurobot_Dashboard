@@ -9,7 +9,7 @@ pkill -9 -f "web_handler.py"
 pkill -9 -f "rosbridge_websocket"
 pkill -9 -f "ros2 launch rosbridge_server"
 pkill -9 -f "micro_ros_agent"
-
+pkill -9 -f "robot_only.launch.py"
 # Wait for processes to fully terminate
 sleep 2
 
@@ -27,7 +27,9 @@ ros2 run hybrid_astar web_handler.py &
 sleep 2
 echo "🤖 running micro ros agents "
 source ~/ROS2-WS-EURO/install/setup.bash
-
+source ~/LIDAR_EUROBOT/install/setup.bash
+ros2 launch lidar_obstacle_warning robot_only.launch.py &
+sleep 2
 # Create logs directory if it doesn't exist
 mkdir -p /tmp/micro_ros_logs
 
@@ -36,15 +38,15 @@ ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 > /tmp/micro_
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM1..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB2 > /tmp/micro_ros_logs/agent_ACM1.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP1 > /tmp/micro_ros_logs/agent_ESP1.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM2..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB0 > /tmp/micro_ros_logs/agent_USB0.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP2 > /tmp/micro_ros_logs/agent_ESP2.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ttyACM3..."
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyUSB1 > /tmp/micro_ros_logs/agent_USB1.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP3 > /tmp/micro_ros_logs/agent_ESP3.log 2>&1 &
 sleep 3
 
 # Check which agents are running
