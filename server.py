@@ -190,6 +190,7 @@ def save_pami_strategy(strategy_name, pami_number):
         yaml.safe_dump(data, f, sort_keys=False)
     return jsonify({"status": "saved", "file": filename})
 
+
 # -------------------------------------------------
 # Delete a strategy file
 # DELETE /strategies/<filename>
@@ -202,6 +203,15 @@ def delete_strategy(filename):
     if not os.path.exists(path):
         abort(404, "File not found")
 
+    # Delete associated PAMI strategies
+    for filename in os.listdir(PAMI_STRATEGIES_DIR):
+        if filename.startswith(os.path.splitext(filename.split("_pami_")[0])[0]) and "_pami_" in filename:
+            pami_path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+            with open(pami_path, "r") as f:
+                pami_data = yaml.safe_load(f)
+            if pami_data and pami_data.get("strategy_name") == os.path.splitext(os.path.basename(path))[0]:
+                os.remove(pami_path)
+    
     os.remove(path)
     return jsonify({"status": "deleted", "file": filename})
 
