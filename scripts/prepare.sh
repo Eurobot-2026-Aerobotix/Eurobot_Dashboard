@@ -47,7 +47,11 @@ sleep 1
 
 echo "  Starting agent on /dev/ttyACM3..."
 ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP3 > /tmp/micro_ros_logs/agent_ESP3.log 2>&1 &
-sleep 3
+sleep 1
+
+echo "  Starting UDP4 agent on port 8888..."
+ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888 > /tmp/micro_ros_logs/agent_udp_8888.log 2>&1 &
+sleep 2
 
 # Check which agents are running
 echo "📊 Agent status:"
@@ -55,6 +59,7 @@ pgrep -f "micro_ros_agent serial --dev /dev/ttyACM0" > /dev/null && echo "  ✅ 
 pgrep -f "micro_ros_agent serial --dev /dev/ttyACM1" > /dev/null && echo "  ✅ ACM1 running" || echo "  ❌ ACM1 failed"
 pgrep -f "micro_ros_agent serial --dev /dev/ttyACM2" > /dev/null && echo "  ✅ ACM2 running" || echo "  ❌ ACM2 failed"
 pgrep -f "micro_ros_agent serial --dev /dev/ttyACM3" > /dev/null && echo "  ✅ ACM3 running" || echo "  ❌ ACM3 failed"
+pgrep -f "micro_ros_agent udp4 --port 8888" > /dev/null && echo "  ✅ UDP4:8888 running" || echo "  ❌ UDP4:8888 failed"
 echo "📁 Logs available at: /tmp/micro_ros_logs/"
 
 echo "🔌 Starting rosbridge..."

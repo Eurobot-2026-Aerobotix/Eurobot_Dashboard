@@ -13,8 +13,9 @@ const orientate_args = ["angle"];
 const set_position_args = ["x", "y", "angle"];
 const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
+const walking_args = [];
 const commandCodes = ["go_to", "orientate", "set_position"];
-const commandCodesPami7 = ["go_to", "orientate", "set_position", "pick_up", "put_down"];
+const commandCodesPami7 = ["go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
 let contextActionIndex = null;
 let robot_on_map = null;
 
@@ -79,6 +80,8 @@ function renderTasks() {
         actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
       }else if (action[0] == 4 && selected_strategy.pami_number === 7){
         actionDiv.textContent = `put_down()`;
+      }else if (action[0] == 5 && selected_strategy.pami_number === 7){
+        actionDiv.textContent = `walking()`;
       }
 
       actionDiv.draggable = true;
@@ -219,6 +222,8 @@ function renderTasks() {
       args_table = pick_up_args;
     } else if (command_type == 4) {
       args_table = put_down_args;
+    } else if (command_type == 5) {
+      args_table = walking_args;
     }
 
     const argsContainer = document.getElementById("args-container");
@@ -271,7 +276,8 @@ function populateAddList() {
       "orientate",
       "set_position",
       "pick_up",
-      "put_down"
+      "put_down",
+      "walking"
     ];
   } else {
     options = [
@@ -430,10 +436,17 @@ function draw_robot_on_map(svg, x, y, angle) {
     `translate(${cx}, ${cy}) rotate(${90 - angle})`
   );
 
-  /* Robot body */
+  /* Robot body - different size for pami 7 */
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  rect.setAttribute("width", svg.clientWidth * 0.025);
-  rect.setAttribute("height", svg.clientWidth * 0.03);
+  if (selected_strategy.pami_number === 7) {
+    // Pami 7: 110mm x 130mm (map is 3000mm wide)
+    rect.setAttribute("width", svg.clientWidth * (110 / 3000));
+    rect.setAttribute("height", svg.clientWidth * (130 / 3000));
+  } else {
+    // Default pami size
+    rect.setAttribute("width", svg.clientWidth * 0.025);
+    rect.setAttribute("height", svg.clientWidth * 0.03);
+  }
   rect.setAttribute("x", -rect.getAttribute("width") / 2);
   rect.setAttribute("y", -rect.getAttribute("height") / 2);
   rect.setAttribute("fill", color);
@@ -568,6 +581,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   }
   else if (command.includes("put_down")) {
     args_table = put_down_args;
+  }
+  else if (command.includes("walking")) {
+    args_table = walking_args;
   }
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
