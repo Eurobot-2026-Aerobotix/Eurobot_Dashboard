@@ -8,9 +8,13 @@ let actionsContainer = document.getElementById("side-panel");
 const actionSelect = document.getElementById("action-select");
 const modal = document.getElementById("action-modal");
 const go_to_args = ["x", "y", "speed"];
+const go_to_args_pami7 = ["x", "y", "speed", "direction"];
 const orientate_args = ["angle"];
 const set_position_args = ["x", "y", "angle"];
+const pick_up_args = ["right", "left", "up_down"];
+const put_down_args = [];
 const commandCodes = ["go_to", "orientate", "set_position"];
+const commandCodesPami7 = ["go_to", "orientate", "set_position", "pick_up", "put_down"];
 let contextActionIndex = null;
 let robot_on_map = null;
 
@@ -62,11 +66,19 @@ function renderTasks() {
       const actionDiv = document.createElement("div");
       actionDiv.classList.add("action-item");
       if (action[0] == 0){
-        actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
+        if (selected_strategy.pami_number === 7 && action.length > 4) {
+          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, dir:${action[4]})`;
+        } else {
+          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
+        }
       }else if (action[0] == 1){
         actionDiv.textContent = `orientate(${action[1]})`;
       }else if (action[0] == 2){
         actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
+      }else if (action[0] == 3 && selected_strategy.pami_number === 7){
+        actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
+      }else if (action[0] == 4 && selected_strategy.pami_number === 7){
+        actionDiv.textContent = `put_down()`;
       }
 
       actionDiv.draggable = true;
@@ -190,15 +202,24 @@ function renderTasks() {
   document.getElementById("ctx-modify").onclick = () => {
     if (contextActionIndex == null) return;
     const command_type = selected_strategy.sequence[contextActionIndex][0];
-    const command = commandCodes[command_type];
+    const commandList = selected_strategy.pami_number === 7 ? commandCodesPami7 : commandCodes;
+    const command = commandList[command_type];
 
     let args_table = [];
     document.getElementById("command_label").textContent =
       "Command: " + command;
 
-    if (command_type == 0) args_table = go_to_args;
-    else if (command_type == 1) args_table = orientate_args;
-    else if (command_type == 2) args_table = set_position_args;
+    if (command_type == 0) {
+      args_table = selected_strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
+    } else if (command_type == 1) {
+      args_table = orientate_args;
+    } else if (command_type == 2) {
+      args_table = set_position_args;
+    } else if (command_type == 3) {
+      args_table = pick_up_args;
+    } else if (command_type == 4) {
+      args_table = put_down_args;
+    }
 
     const argsContainer = document.getElementById("args-container");
     argsContainer.innerHTML = "";
@@ -210,6 +231,9 @@ function renderTasks() {
       const input = document.createElement("input");
       input.type = "decimal";
       input.dataset.argName = arg;
+      if (arg === "up_down") {
+        input.placeholder = "1: up, 2: down";
+      }
 
       label.appendChild(input);
       argsContainer.appendChild(label);
@@ -240,11 +264,22 @@ function renderTasks() {
 // Populate Add Action dropdown
 // ------------------------------
 function populateAddList() {
-  const options = [
-    "go_to",
-    "orientate",
-    "set_position"
-  ];
+  let options;
+  if (selected_strategy.pami_number === 7) {
+    options = [
+      "go_to",
+      "orientate",
+      "set_position",
+      "pick_up",
+      "put_down"
+    ];
+  } else {
+    options = [
+      "go_to",
+      "orientate",
+      "set_position"
+    ];
+  }
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
     const opt = document.createElement("option");
@@ -520,13 +555,19 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   document.getElementById("command_label").textContent = "Command: "+command;
   // Decide which argument table to use
   if (command.includes("go_to")) {
-    args_table = go_to_args;
+    args_table = selected_strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
   }
   else if (command.includes("orientate")) {
     args_table = orientate_args;
   }
   else if (command.includes("set_position")) {
     args_table = set_position_args;
+  }
+  else if (command.includes("pick_up")) {
+    args_table = pick_up_args;
+  }
+  else if (command.includes("put_down")) {
+    args_table = put_down_args;
   }
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
@@ -541,6 +582,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     input.dataset.argName = arg;
     if (arg === "speed") {
       input.value = "400"; // default speed
+    }
+    if (arg === "up_down") {
+      input.placeholder = "1: up, 2: down";
     }
     label.appendChild(input);
     argsContainer.appendChild(label);

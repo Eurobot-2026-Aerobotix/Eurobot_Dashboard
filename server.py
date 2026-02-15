@@ -109,8 +109,8 @@ def get_pami_strategies():
     # extract strategy name from path (last part, no .yaml)
     strategy_name = os.path.splitext(os.path.basename(SELECTED_STRATEGY_PATH))[0]
 
-    # dict to ensure pami 1..6 existence
-    pami_map = {i: None for i in range(1, 7)}
+    # dict to ensure pami 1..7 existence
+    pami_map = {i: None for i in range(1, 8)}
 
     for filename in os.listdir(PAMI_STRATEGIES_DIR):
         if not filename.endswith(".yaml"):
@@ -133,17 +133,17 @@ def get_pami_strategies():
 
         pami_number = data.get("pami_number")
 
-        if isinstance(pami_number, int) and 1 <= pami_number <= 6:
+        if isinstance(pami_number, int) and 1 <= pami_number <= 7:
             pami_map[pami_number] = data
 
-    # build ordered result 1..6
+    # build ordered result 1..7
     pami_list = [
         pami_map[i] if pami_map[i] is not None else {
             "strategy_name": strategy_name,
             "pami_number": i,
             "sequence": []
         }
-        for i in range(1, 7)
+        for i in range(1, 8)
     ]
 
     return pami_list
