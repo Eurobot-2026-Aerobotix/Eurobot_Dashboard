@@ -1,0 +1,133 @@
+name: test_blue
+selected: false
+color: blue
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 2755
+    - 0
+    wait: false
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 2755
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: '1317.29'
+    y: '2362.45'
+    theta: -12.758028832623253
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '890.18'
+    - '2724.46'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '903.20'
+    - '2456.21'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1317.29'
+    - '2362.45'
+    - 1100
+    - 0
+    wait: false
+- description: Task 3
+  global_goal:
+    x: '1309.48'
+    y: '2661.95'
+    theta: 1.4691620802065122
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1106.34'
+    - '2656.74'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1309.48'
+    - '2661.95'
+    - 1100
+    - 0
+    wait: false
+- description: Task 4
+  global_goal:
+    x: '1452.72'
+    y: '2596.84'
+    theta: 60.77654912484623
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1452.72'
+    - '2596.84'
+    - 1100
+    wait: false
+- description: Task 5
+  global_goal:
+    x: '1653.26'
+    y: '2299.95'
+    theta: 180
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1622.01'
+    - '2602.05'
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1653.26'
+    - '2299.95'
+    - 1100
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 180
+    wait: false
+- description: Task 10
+  global_goal:
+    x: 300
+    y: 2755
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 300
+    - 2755
+    - 1100
+    wait: false
+  - device: STM
+    command: orientate
+    params:
+    - 0
+    wait: false
