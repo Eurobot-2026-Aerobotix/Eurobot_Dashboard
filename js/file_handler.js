@@ -144,7 +144,19 @@ async function calculate_global_poses(strategy) {
           }
         }
 
-        lastTheta = Math.atan2(y - prevY, x - prevX)*180/3.1415926535897932384626;
+        // Calculate travel direction
+        let travelTheta = Math.atan2(y - prevY, x - prevX)*180/3.1415926535897932384626;
+        
+        // For backward movement, robot faces opposite direction
+        if (action.command === "go_to_backwards") {
+          lastTheta = travelTheta + 180;
+          // Normalize to [-180, 180]
+          if (lastTheta > 180) lastTheta -= 360;
+          if (lastTheta < -180) lastTheta += 360;
+        } else {
+          lastTheta = travelTheta;
+        }
+        
         lastMoveIndex = i;
         break;
 
@@ -154,7 +166,18 @@ async function calculate_global_poses(strategy) {
         lastY = y3;
 
         // Previous point for theta = x2, y2
-        lastTheta = Math.atan2(y3 - y2, x3 - x2)*180/3.1415926535897932384626;
+        let travelTheta = Math.atan2(y3 - y2, x3 - x2)*180/3.1415926535897932384626;
+        
+        // For backward movement, robot faces opposite direction
+        if (action.command === "bezier_backwards") {
+          lastTheta = travelTheta + 180;
+          // Normalize to [-180, 180]
+          if (lastTheta > 180) lastTheta -= 360;
+          if (lastTheta < -180) lastTheta += 360;
+        } else {
+          lastTheta = travelTheta;
+        }
+        
         lastMoveIndex = i;
         break;
 
