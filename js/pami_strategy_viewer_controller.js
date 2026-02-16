@@ -199,7 +199,7 @@ function renderTasks() {
 
     renderTasks();
     renderMap();
-    updateStrategy(selected_strategy);
+    savePamiStrategy(selected_strategy);
   };
 
   document.getElementById("ctx-modify").onclick = () => {
