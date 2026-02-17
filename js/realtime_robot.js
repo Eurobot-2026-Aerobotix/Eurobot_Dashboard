@@ -19,6 +19,7 @@ let enemyRobotMarker = null;  // Marker for enemy robot
 let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
+let currentPath = [];  // Store current planned path from hybrid A*
 
 // Throttling for enemy robot updates (prevent browser lag from high-frequency lidar data)
 let lastEnemyUpdateTime = 0;
@@ -70,6 +71,9 @@ function initROS() {
         
         // Subscribe to enemy robot
         subscribeToEnemyRobot();
+        
+        // Subscribe to path visualization
+        subscribeToPathVisualization();
     });
 
     ros.on('error', function(error) {
@@ -175,8 +179,6 @@ function subscribeToEnemyRobot() {
 }
 
 function subscribeToObstacles() {
-    console.log('📡 Subscribing to obstacle data from ROS topic');
-    
     // Subscribe to obstacles topic from pathfinding_node
     // The pathfinding_node publishes ObstacleArray to /obstacles/current
     const obstacleListener = new ROSLIB.Topic({
@@ -187,9 +189,6 @@ function subscribeToObstacles() {
     
     obstacleListener.subscribe(function(message) {
         try {
-            console.log('📥 Received obstacle data from ROS topic (/obstacles/current)');
-            console.log('Message structure:', message);
-            
             // Clear all existing obstacles
             obstacles = [];
             
@@ -215,11 +214,47 @@ function subscribeToObstacles() {
                 });
             }
             
-            console.log(`✅ Updated obstacles from ROS: ${obstacles.length} obstacles`);
             drawObstacles();
             updateObstacleCount();
         } catch (error) {
             console.error('Error parsing obstacle data from ROS:', error);
+        }
+    });
+}
+
+function subscribeToPathVisualization() {
+    console.log('📡 Subscribing to /path_visualization (hybrid A* path)');
+    
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/path_visualization',
+        messageType: 'visualization_msgs/MarkerArray'
+    });
+    
+    listener.subscribe(function(message) {
+        // Extract path points from MarkerArray
+        currentPath = [];
+        
+        if (message.markers && message.markers.length > 0) {
+            // Find the path marker (first marker with LINE_STRIP type)
+            const pathMarker = message.markers.find(m => m.type === 4);  // LINE_STRIP = 4
+            
+            if (pathMarker && pathMarker.points) {
+                // Convert points to our coordinate system
+                currentPath = pathMarker.points.map(point => ({
+                    x: point.x,  // Already in meters
+                    y: point.y   // Already in meters
+                }));
+                
+                console.log(`✅ Received path with ${currentPath.length} waypoints`);
+                
+                // Draw the path
+                drawPath();
+            }
+        } else {
+            // Clear path if empty marker array
+            currentPath = [];
+            drawPath();
         }
     });
 }
@@ -350,23 +385,17 @@ function drawObstacles() {
     existingObstacles.forEach(marker => marker.remove());
     
     if (obstacles.length === 0) {
-        console.log('⚠️ No obstacles to draw');
         return;
     }
     
     // Wait for map to be loaded and have dimensions
     if (!map.complete || map.offsetWidth === 0 || map.offsetHeight === 0) {
-        console.log('⏳ Waiting for map to load before drawing obstacles...');
         setTimeout(drawObstacles, 100);
         return;
     }
     
     const displayWidth = map.offsetWidth;
     const displayHeight = map.offsetHeight;
-    
-    console.log(`📊 Drawing ${obstacles.length} obstacles on map (${displayWidth}x${displayHeight}px)`);
-    console.log(`Map position - offsetTop: ${map.offsetTop}px, offsetLeft: ${map.offsetLeft}px`);
-    console.log(`Map-wrapper position - offsetTop: ${mapWrapper.offsetTop}px, offsetLeft: ${mapWrapper.offsetLeft}px`);
     
     obstacles.forEach((obstacle, index) => {
         // Obstacle positions are already in mm (not meters!)
@@ -393,8 +422,6 @@ function drawObstacles() {
         const left_px = pos_x_px;
         const top_px = pos_y_px;
         
-        console.log(`Obstacle ${index}: [${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm] -> [${left_px.toFixed(1)}px, ${top_px.toFixed(1)}px] ${width_px.toFixed(1)}x${height_px.toFixed(1)}px ${obstacle.color} ${obstacle.direction}`);
-        
         // Create obstacle marker
         const obstacleMarker = document.createElement('div');
         obstacleMarker.className = 'obstacle-marker ' + obstacle.color;
@@ -408,12 +435,73 @@ function drawObstacles() {
         obstacleMarker.style.pointerEvents = 'none';
         obstacleMarker.title = `Color: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)`;
         
-        console.log(`Creating obstacle element:`, obstacleMarker);
         mapWrapper.appendChild(obstacleMarker);
-        console.log(`Obstacle ${index} appended to mapWrapper, total children: ${mapWrapper.children.length}`);
+    });
+}
+
+function drawPath() {
+    // Remove existing path visualization
+    const existingPath = mapWrapper.querySelector('.path-visualization');
+    if (existingPath) {
+        existingPath.remove();
+    }
+    
+    if (currentPath.length === 0) {
+        return;
+    }
+    
+    // Wait for map to be loaded and have dimensions
+    if (!map.complete || map.offsetWidth === 0 || map.offsetHeight === 0) {
+        setTimeout(drawPath, 100);
+        return;
+    }
+    
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    // Create SVG for path
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'path-visualization');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = displayWidth + 'px';
+    svg.style.height = displayHeight + 'px';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '60';
+    
+    // Create path element
+    const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    
+    // Build SVG path data
+    let pathData = '';
+    currentPath.forEach((point, index) => {
+        // Convert from meters to mm
+        const x_mm = point.x * 1000;
+        const y_mm = point.y * 1000;
+        
+        // Convert to pixel coordinates (with x/y swap for map coordinate system)
+        const x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+        const y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+        
+        if (index === 0) {
+            pathData += `M ${x_px} ${y_px}`;
+        } else {
+            pathData += ` L ${x_px} ${y_px}`;
+        }
     });
     
-    console.log(`✅ Drew ${obstacles.length} obstacles on map`);
+    pathElement.setAttribute('d', pathData);
+    pathElement.setAttribute('stroke', '#00ff00');
+    pathElement.setAttribute('stroke-width', '3');
+    pathElement.setAttribute('fill', 'none');
+    pathElement.setAttribute('stroke-linecap', 'round');
+    pathElement.setAttribute('stroke-linejoin', 'round');
+    
+    svg.appendChild(pathElement);
+    mapWrapper.appendChild(svg);
+    
+    console.log(`✅ Drew path with ${currentPath.length} waypoints`);
 }
 
 function updateObstacleCount() {
@@ -449,6 +537,9 @@ window.addEventListener('resize', () => {
     }
     if (obstacles.length > 0) {
         drawObstacles();
+    }
+    if (currentPath.length > 0) {
+        drawPath();
     }
 });
 
