@@ -20,6 +20,10 @@ let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
 
+// Throttling for enemy robot updates (prevent browser lag from high-frequency lidar data)
+let lastEnemyUpdateTime = 0;
+const ENEMY_UPDATE_THROTTLE_MS = 100;  // Update enemy display max once every 100ms (10Hz)
+
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
@@ -125,8 +129,6 @@ function subscribeToRobotPose() {
 }
 
 function subscribeToEnemyRobot() {
-    console.log('📡 Subscribing to /obstacle_relative (enemy robot)');
-    
     const listener = new ROSLIB.Topic({
         ros: ros,
         name: '/obstacle_relative',
@@ -134,6 +136,13 @@ function subscribeToEnemyRobot() {
     });
     
     listener.subscribe(function(message) {
+        // Throttle updates to prevent browser lag from high-frequency lidar data
+        const now = Date.now();
+        if (now - lastEnemyUpdateTime < ENEMY_UPDATE_THROTTLE_MS) {
+            return;  // Skip this update
+        }
+        lastEnemyUpdateTime = now;
+        
         // Check if the message frame_id indicates base_link or map frame
         const frameId = message.header.frame_id;
         const posX = message.pose.position.x;
@@ -148,14 +157,10 @@ function subscribeToEnemyRobot() {
             
             globalX = robotPose.x + (posX * cosTheta - posY * sinTheta);
             globalY = robotPose.y + (posX * sinTheta + posY * cosTheta);
-            
-            console.log(`🤖 Enemy robot detected at relative (${posX.toFixed(3)}, ${posY.toFixed(3)}) in base_link -> global (${globalX.toFixed(3)}, ${globalY.toFixed(3)})`);
         } else {
             // Already in global/map frame
             globalX = posX;
             globalY = posY;
-            
-            console.log(`🤖 Enemy robot detected at global (${globalX.toFixed(3)}, ${globalY.toFixed(3)}) in frame: ${frameId}`);
         }
         
         enemyRobot = {
