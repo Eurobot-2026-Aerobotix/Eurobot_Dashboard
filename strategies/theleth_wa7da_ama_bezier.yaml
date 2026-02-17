@@ -23,7 +23,7 @@ tasks:
   global_goal:
     x: 795
     y: 400
-    theta: -90
+    theta: 90
   sequence:
   - device: STM
     command: bezier
@@ -74,7 +74,7 @@ tasks:
   global_goal:
     x: '1203.08'
     y: '1251.34'
-    theta: 89.4989728082678
+    theta: -90.50102719173219
   sequence:
   - device: STM
     command: bezier_backwards

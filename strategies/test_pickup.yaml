@@ -23,7 +23,7 @@ tasks:
   global_goal:
     x: 1700
     y: 1100
-    theta: 0
+    theta: 180
   sequence:
   - device: STM
     command: go_to

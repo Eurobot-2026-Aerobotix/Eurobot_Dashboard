@@ -58,7 +58,7 @@ tasks:
   global_goal:
     x: '1309.48'
     y: '2661.95'
-    theta: 1.4691620802065122
+    theta: -178.5308379197935
   sequence:
   - device: STM
     command: go_to_backwards

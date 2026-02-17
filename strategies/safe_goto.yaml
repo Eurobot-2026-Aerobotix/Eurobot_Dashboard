@@ -1,5 +1,5 @@
 name: safe_goto
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -87,7 +87,7 @@ tasks:
   global_goal:
     x: '1681.44'
     y: '1359.29'
-    theta: 36.64
+    theta: 38.952360849904764
   sequence:
   - device: STM
     command: go_to
@@ -183,7 +183,7 @@ tasks:
   global_goal:
     x: '1048.04'
     y: '659.76'
-    theta: 49.61
+    theta: 32.19115178041276
   sequence:
   - device: STM
     command: go_to
@@ -200,7 +200,7 @@ tasks:
   global_goal:
     x: '1083.66'
     y: '334.16'
-    theta: 118.81
+    theta: 118.80904022891805
   sequence:
   - device: STM
     command: go_to_backwards
