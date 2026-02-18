@@ -1,7 +1,5 @@
-import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js"; // your API functions
+import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js";
 import { Strategy } from "../classes/Strategy.js";
-import { Task } from "../classes/Task.js";
-import { Action } from "../classes/Action.js";
 
 // HTML elements
 const listDivYellow = document.getElementById("strategy-list-yellow");
@@ -15,70 +13,72 @@ let strategies = [];
 let clickedIndex = null;
 
 // -------------------------------------------------
-// Helpers
+// Render
 // -------------------------------------------------
 function renderList() {
   listDivYellow.innerHTML = "";
   listDivBlue.innerHTML = "";
+
   strategies.forEach((s, i) => {
     const div = document.createElement("div");
-    div.classList.add("strategy-item");
+    div.className = "strategy-item";
     if (i === clickedIndex) div.classList.add("selected");
+
     div.textContent = s.name;
-    div.style.display = "flex";
-    div.style.alignItems = "center";
-    div.style.justifyContent = "center"; // Center the text and image
-    if (s.selected){
+
+    // selected icon
+    if (s.selected) {
       const img = document.createElement("img");
       img.src = "../resources/harissa.png";
-      img.classList.add("selected-icon");
+      img.className = "selected-icon";
       img.style.height = "30px";
       img.style.marginLeft = "8px";
       div.appendChild(img);
     }
-    div.addEventListener("click", () => {
+
+    // single click (UI selection only)
+    div.onclick = () => {
       clickedIndex = i;
       renderList();
       updateButtons();
-    });
-    div.addEventListener("dblclick", () => {
+    };
+
+    // double click (open)
+    div.ondblclick = () => {
       window.location.href = `strategy_viewer.html?name=${s.name}`;
-    });
-    // long-press / hold detection to mark this strategy as selected
-    const HOLD_MS = 100;
-    let holdTimer = null;
+    };
+
+    // long press = mark as active strategy
+    const HOLD_MS = 300;
+    let holdTimer;
 
     const startHold = (e) => {
-      // prevent text selection / native behavior on touch
-      if (e && e.preventDefault) e.preventDefault();
+      e.preventDefault();
       holdTimer = setTimeout(async () => {
-        // mark only this strategy as selected and persist
-        for (let j = 0; j < strategies.length; j++) {
-          strategies[j].selected = (j === i);
-          await updateStrategy(strategies[j]);
-        }
-        await loadStrategies();
+        strategies.forEach((st, j) => {
+          st.selected = (j === i);
+        });
+
+        // Persist only changed strategies
+        await Promise.all(strategies.map(st => updateStrategy(st)));
+
+        renderList(); // update icon immediately
       }, HOLD_MS);
     };
 
-    const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
-      }
-    };
+    const cancelHold = () => clearTimeout(holdTimer);
 
     div.addEventListener("mousedown", startHold);
     div.addEventListener("touchstart", startHold, { passive: false });
-
     div.addEventListener("mouseup", cancelHold);
     div.addEventListener("mouseleave", cancelHold);
     div.addEventListener("touchend", cancelHold);
     div.addEventListener("touchcancel", cancelHold);
-    if (s.color == "yellow"){
-        listDivYellow.appendChild(div);
-    }else{
-        listDivBlue.appendChild(div);
+
+    if (s.color === "yellow") {
+      listDivYellow.appendChild(div);
+    } else {
+      listDivBlue.appendChild(div);
     }
   });
 }
@@ -93,6 +93,7 @@ function updateButtons() {
 // -------------------------------------------------
 // Actions
 // -------------------------------------------------
+
 async function loadStrategies() {
   strategies = await loadAllStrategies();
   clickedIndex = null;
@@ -100,76 +101,129 @@ async function loadStrategies() {
   updateButtons();
 }
 
+function mirror_strategy(strategy) {
+  if (!strategy.tasks) return strategy;
+  if (strategy.color === "yellow") {
+    strategy.color = "blue";
+  }
+  else {
+    strategy.color = "yellow";
+  }
+  strategy.tasks.forEach(task => {
+    if (!task.sequence) return;
+
+    task.sequence.forEach(action => {
+      if (!action.command || !Array.isArray(action.params)) return;
+
+      const mirrorValue = (value) => {
+        const num = Number(value);
+        if (isNaN(num)) return value;
+        const mirrored = 3000 - num;
+        return typeof value === "string" ? String(mirrored) : mirrored;
+      };
+
+      // ---- set_position / go_to / go_to_backwards ----
+      if (
+        action.command.includes("set_position") ||
+        action.command.includes("go_to")
+      ) {
+        if (action.params.length >= 2) {
+          action.params[1] = mirrorValue(action.params[1]);
+        }
+      }
+
+      // ---- bezier / bezier_backwards ----
+      if (action.command.includes("bezier")) {
+        // mirror Y1, Y2, Y3
+        if (action.params.length >= 6) {
+          action.params[1] = mirrorValue(action.params[1]);
+          action.params[3] = mirrorValue(action.params[3]);
+          action.params[5] = mirrorValue(action.params[5]);
+        }
+      }
+    });
+  });
+
+  return strategy;
+}
+
+// CREATE
 createBtn.addEventListener("click", async () => {
-  var name = prompt("Enter new strategy name:");
+  let name = prompt("Enter new strategy name:");
   if (!name) return;
+
   name = name.replace(/\s+/g, "_");
-  for(let strategy of strategies){
-    if (strategy.name == name){
-        alert("deja mawjouda");
-        return
-    }
+
+  if (strategies.some(s => s.name === name)) {
+    alert("deja mawjouda");
+    return;
   }
-  var color = prompt("azreg walla asfer (b/y)")
-  if (color == "b"){
-    color = "blue";
-  }else{
-    color = "yellow";
-  }
-  const filename = name + ".yaml";
+
+  let color = prompt("azreg walla asfer (b/y)");
+  color = color === "b" ? "blue" : "yellow";
+
   const newStrategy = new Strategy(name, [], false, color);
+
   await saveStrategy(newStrategy);
-  await loadStrategies();
+
+  strategies.push(newStrategy);  // ✅ update locally
+  renderList();
 });
 
+// DELETE
 deleteBtn.addEventListener("click", async () => {
   if (clickedIndex === null) return;
+
   const strategy = strategies[clickedIndex];
   if (!confirm(`Delete strategy "${strategy.name}"?`)) return;
 
-  const filename = strategy.name.replace(/\s+/g, "_") + ".yaml";
+  const filename = strategy.name + ".yaml";
   await deleteStrategy(filename);
-  await loadStrategies();
+
+  strategies.splice(clickedIndex, 1);  // ✅ remove locally
+  clickedIndex = null;
+
+  renderList();
+  updateButtons();
 });
 
+// PAMI
 pamiBtn.addEventListener("click", () => {
   if (clickedIndex === null) return;
-  const strategy = strategies[clickedIndex];
-  window.location.href = `pami_strategy_selector.html?name=${strategy.name}`;
+  window.location.href = `pami_strategy_selector.html?name=${strategies[clickedIndex].name}`;
 });
 
-branchBtn.addEventListener("click", () => {
+// BRANCH
+branchBtn.addEventListener("click", async () => {
   if (clickedIndex === null) return;
 
   const original = strategies[clickedIndex];
 
-  const cloned = JSON.parse(JSON.stringify(original));
+  let name = prompt("Enter name for the branched strategy:");
+  if (!name || !name.trim()) return;
 
-  const name = prompt("Enter name for the branched strategy:");
-  for(let strategy of strategies){
-    if (strategy.name == name){
-        alert("deja mawjouda");
-        return
-    }
-  }
-  if (name !== null && name.trim() !== "") {
-    cloned.name = name.trim();
-    strategies.push(cloned);
-    saveStrategy(cloned);
-    loadStrategies();
-  }
-});
+  name = name.trim();
 
-window.addEventListener("pageshow", (e) => {
-  if (sessionStorage.getItem("refreshOnce")) {
-    sessionStorage.removeItem("refreshOnce");
-    location.reload();
+  if (strategies.some(s => s.name === name)) {
+    alert("deja mawjouda");
+    return;
   }
+
+  let cloned = JSON.parse(JSON.stringify(original));
+  cloned.name = name;
+  const mirror = confirm("Should the strategy be mirrored?");
+  if (mirror) {
+    cloned = mirror_strategy(cloned);
+  }
+  cloned.selected = false;
+
+  await saveStrategy(cloned);
+
+  strategies.push(cloned);  // ✅ update locally
+  renderList();
 });
 
 // -------------------------------------------------
 // Initial load
 // -------------------------------------------------
-
 loadStrategies();
-
