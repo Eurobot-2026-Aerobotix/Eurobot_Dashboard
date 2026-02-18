@@ -1,4 +1,4 @@
-import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js";
+import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js"; 
 import { Strategy } from "../classes/Strategy.js";
 
 // HTML elements
@@ -11,11 +11,26 @@ const branchBtn = document.getElementById("branch-btn");
 
 let strategies = [];
 let clickedIndex = null;
+let busy = false;
 
 // -------------------------------------------------
-// Render
+// Helpers
 // -------------------------------------------------
+
+function sortStrategies() {
+  strategies.sort((a, b) => {
+    // first: by color (yellow < blue)
+    if (a.color !== b.color) {
+      return a.color === "yellow" ? -1 : 1;
+    }
+    // second: by order
+    return a.order - b.order;
+  });
+}
+
 function renderList() {
+  sortStrategies();
+
   listDivYellow.innerHTML = "";
   listDivBlue.innerHTML = "";
 
@@ -51,21 +66,14 @@ function renderList() {
     // long press = mark as active strategy
     const HOLD_MS = 300;
     let holdTimer;
-
     const startHold = (e) => {
       e.preventDefault();
       holdTimer = setTimeout(async () => {
-        strategies.forEach((st, j) => {
-          st.selected = (j === i);
-        });
-
-        // Persist only changed strategies
+        strategies.forEach((st, j) => st.selected = (j === i));
         await Promise.all(strategies.map(st => updateStrategy(st)));
-
-        renderList(); // update icon immediately
+        renderList();
       }, HOLD_MS);
     };
-
     const cancelHold = () => clearTimeout(holdTimer);
 
     div.addEventListener("mousedown", startHold);
@@ -103,12 +111,8 @@ async function loadStrategies() {
 
 function mirror_strategy(strategy) {
   if (!strategy.tasks) return strategy;
-  if (strategy.color === "yellow") {
-    strategy.color = "blue";
-  }
-  else {
-    strategy.color = "yellow";
-  }
+  strategy.color = strategy.color === "yellow" ? "blue" : "yellow";
+
   strategy.tasks.forEach(task => {
     if (!task.sequence) return;
 
@@ -122,19 +126,11 @@ function mirror_strategy(strategy) {
         return typeof value === "string" ? String(mirrored) : mirrored;
       };
 
-      // ---- set_position / go_to / go_to_backwards ----
-      if (
-        action.command.includes("set_position") ||
-        action.command.includes("go_to")
-      ) {
-        if (action.params.length >= 2) {
-          action.params[1] = mirrorValue(action.params[1]);
-        }
+      if (action.command.includes("set_position") || action.command.includes("go_to")) {
+        if (action.params.length >= 2) action.params[1] = mirrorValue(action.params[1]);
       }
 
-      // ---- bezier / bezier_backwards ----
       if (action.command.includes("bezier")) {
-        // mirror Y1, Y2, Y3
         if (action.params.length >= 6) {
           action.params[1] = mirrorValue(action.params[1]);
           action.params[3] = mirrorValue(action.params[3]);
@@ -162,11 +158,12 @@ createBtn.addEventListener("click", async () => {
   let color = prompt("azreg walla asfer (b/y)");
   color = color === "b" ? "blue" : "yellow";
 
-  const newStrategy = new Strategy(name, [], false, color);
+  const maxOrder = strategies.length ? Math.max(...strategies.map(s => s.order)) : 0;
+  const newStrategy = new Strategy(name, [], false, color, maxOrder + 1);
 
   await saveStrategy(newStrategy);
 
-  strategies.push(newStrategy);  // ✅ update locally
+  strategies.push(newStrategy);
   renderList();
 });
 
@@ -177,12 +174,10 @@ deleteBtn.addEventListener("click", async () => {
   const strategy = strategies[clickedIndex];
   if (!confirm(`Delete strategy "${strategy.name}"?`)) return;
 
-  const filename = strategy.name + ".yaml";
-  await deleteStrategy(filename);
+  await deleteStrategy(strategy.name + ".yaml");
 
-  strategies.splice(clickedIndex, 1);  // ✅ remove locally
+  strategies.splice(clickedIndex, 1);
   clickedIndex = null;
-
   renderList();
   updateButtons();
 });
@@ -198,10 +193,8 @@ branchBtn.addEventListener("click", async () => {
   if (clickedIndex === null) return;
 
   const original = strategies[clickedIndex];
-
   let name = prompt("Enter name for the branched strategy:");
   if (!name || !name.trim()) return;
-
   name = name.trim();
 
   if (strategies.some(s => s.name === name)) {
@@ -211,16 +204,42 @@ branchBtn.addEventListener("click", async () => {
 
   let cloned = JSON.parse(JSON.stringify(original));
   cloned.name = name;
-  const mirror = confirm("Should the strategy be mirrored?");
-  if (mirror) {
+  cloned.selected = false;
+  cloned.order = strategies.length ? Math.max(...strategies.map(s => s.order)) + 1 : 1;
+
+  if (confirm("symetric ?")) {
     cloned = mirror_strategy(cloned);
   }
-  cloned.selected = false;
 
   await saveStrategy(cloned);
-
-  strategies.push(cloned);  // ✅ update locally
+  strategies.push(cloned);
   renderList();
+});
+
+// -------------------------------------------------
+// Arrow key handling
+// -------------------------------------------------
+window.addEventListener("keydown", async (e) => {
+  if (clickedIndex === null) return;
+  const current = strategies[clickedIndex];
+
+  if (e.key === "ArrowLeft" && clickedIndex > 0) {
+    const prev = strategies[clickedIndex - 1];
+    clickedIndex--;
+    [current.order, prev.order] = [prev.order, current.order];
+    await updateStrategy(current);
+    await updateStrategy(prev);
+    renderList();
+  }
+
+  if (e.key === "ArrowRight" && clickedIndex < strategies.length - 1) {
+    const next = strategies[clickedIndex + 1];
+    clickedIndex++;
+    [current.order, next.order] = [next.order, current.order];
+    await updateStrategy(current);
+    await updateStrategy(next);
+    renderList();
+  }
 });
 
 // -------------------------------------------------

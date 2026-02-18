@@ -19,3 +19,4 @@ tasks:
     command: pick_up
     params: []
     wait: true
+order: 13

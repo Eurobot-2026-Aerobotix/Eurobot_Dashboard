@@ -1,5 +1,5 @@
 name: safe branch
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -180,3 +180,4 @@ tasks:
     - 300
     - 700
     wait: true
+order: 0

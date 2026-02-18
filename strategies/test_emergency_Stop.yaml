@@ -32,3 +32,4 @@ tasks:
     - 400
     - 1100
     wait: false
+order: 10

@@ -1,5 +1,5 @@
 name: theleth_wahda
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 0
@@ -163,3 +163,4 @@ tasks:
     - 400
     - 500
     wait: false
+order: 16
