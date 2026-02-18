@@ -18,13 +18,25 @@ let busy = false;
 // -------------------------------------------------
 
 function sortStrategies() {
+  // First, sort by color and then order
   strategies.sort((a, b) => {
-    // first: by color (yellow < blue)
-    if (a.color !== b.color) {
-      return a.color === "yellow" ? -1 : 1;
-    }
-    // second: by order
+    if (a.color !== b.color) return a.color === "yellow" ? -1 : 1;
     return a.order - b.order;
+  });
+
+  // Then, ensure unique order within each color
+  const lastOrder = {}; // { color: lastAssignedOrder }
+
+  strategies.forEach((s) => {
+    if (lastOrder[s.color] === undefined) {
+      lastOrder[s.color] = s.order;
+    } else if (s.order <= lastOrder[s.color]) {
+      // conflict, push it back
+      s.order = lastOrder[s.color] + 1;
+      lastOrder[s.color] = s.order;
+    } else {
+      lastOrder[s.color] = s.order;
+    }
   });
 }
 
