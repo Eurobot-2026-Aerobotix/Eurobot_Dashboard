@@ -227,18 +227,18 @@ window.addEventListener("keydown", async (e) => {
     const prev = strategies[clickedIndex - 1];
     clickedIndex--;
     [current.order, prev.order] = [prev.order, current.order];
+    renderList();
     await updateStrategy(current);
     await updateStrategy(prev);
-    renderList();
   }
 
   if (e.key === "ArrowRight" && clickedIndex < strategies.length - 1) {
     const next = strategies[clickedIndex + 1];
     clickedIndex++;
     [current.order, next.order] = [next.order, current.order];
+    renderList();
     await updateStrategy(current);
     await updateStrategy(next);
-    renderList();
   }
 });
 

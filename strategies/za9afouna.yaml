@@ -1,5 +1,5 @@
 name: za9afouna
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -286,4 +286,4 @@ tasks:
     params:
     - 0
     wait: false
-order: 2
+order: 1
