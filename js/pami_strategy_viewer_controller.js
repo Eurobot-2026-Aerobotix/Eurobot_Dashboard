@@ -14,8 +14,9 @@ const set_position_args = ["x", "y", "angle"];
 const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
 const walking_args = [];
-const commandCodes = ["go_to", "orientate", "set_position"];
-const commandCodesPami7 = ["go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
+const delay_args = ["duration"];
+const commandCodes = ["delay", "go_to", "orientate", "set_position"];
+const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
 let contextActionIndex = null;
 let robot_on_map = null;
 
@@ -66,22 +67,24 @@ function renderTasks() {
     selected_strategy.sequence.forEach((action, actionIndex) => {
       const actionDiv = document.createElement("div");
       actionDiv.classList.add("action-item");
-      if (action[0] == 0){
+      if (action[0] == 1){
         if (selected_strategy.pami_number === 7 && action.length > 4) {
-          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, dir:${action[4]})`;
+          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
         } else {
           actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
         }
-      }else if (action[0] == 1){
-        actionDiv.textContent = `orientate(${action[1]})`;
       }else if (action[0] == 2){
+        actionDiv.textContent = `orientate(${action[1]})`;
+      }else if (action[0] == 3){
         actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
-      }else if (action[0] == 3 && selected_strategy.pami_number === 7){
-        actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
       }else if (action[0] == 4 && selected_strategy.pami_number === 7){
-        actionDiv.textContent = `put_down()`;
+        actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
       }else if (action[0] == 5 && selected_strategy.pami_number === 7){
+        actionDiv.textContent = `put_down()`;
+      }else if (action[0] == 6 && selected_strategy.pami_number === 7){
         actionDiv.textContent = `walking()`;
+      }else if (action[0] == 0){
+        actionDiv.textContent = `delay(${action[1]}ms)`;
       }
 
       actionDiv.draggable = true;
@@ -212,18 +215,20 @@ function renderTasks() {
     document.getElementById("command_label").textContent =
       "Command: " + command;
 
-    if (command_type == 0) {
+    if (command_type == 1) {
       args_table = selected_strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
-    } else if (command_type == 1) {
-      args_table = orientate_args;
     } else if (command_type == 2) {
-      args_table = set_position_args;
+      args_table = orientate_args;
     } else if (command_type == 3) {
-      args_table = pick_up_args;
+      args_table = set_position_args;
     } else if (command_type == 4) {
-      args_table = put_down_args;
+      args_table = pick_up_args;
     } else if (command_type == 5) {
+      args_table = put_down_args;
+    } else if (command_type == 6) {
       args_table = walking_args;
+    } else if (command_type == 0) {
+      args_table = delay_args;
     }
 
     const argsContainer = document.getElementById("args-container");
@@ -272,6 +277,7 @@ function populateAddList() {
   let options;
   if (selected_strategy.pami_number === 7) {
     options = [
+      "delay",
       "go_to",
       "orientate",
       "set_position",
@@ -281,6 +287,7 @@ function populateAddList() {
     ];
   } else {
     options = [
+      "delay",
       "go_to",
       "orientate",
       "set_position"
@@ -339,20 +346,20 @@ function renderMap() {
     let currentPos = { x: 0, y: 0 };
     selected_strategy.sequence.forEach((action, actionIndex) => {
 
-        if (action[0] == 2) {
+        if (action[0] == 3) {
         const [x, y] = [action[1], action[2]];
         currentPos = { x, y };
         drawPoint(svg, x, y, "robot", actionIndex, 1, 2);
         }
 
-        else if (action[0] == 0) {
+        else if (action[0] == 1) {
         const [x, y] = [action[1], action[2]];
         drawArrow(svg, currentPos, { x, y }, 0);
         drawPoint(svg, x, y,"", actionIndex, 1, 2);
         currentPos = { x, y };
         }
 
-        else if (action[0] == 1) {
+        else if (action[0] == 2) {
         drawRotateIcon(svg, currentPos);
         }
     });
@@ -585,6 +592,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   else if (command.includes("walking")) {
     args_table = walking_args;
   }
+  else if (command.includes("delay")) {
+    args_table = delay_args;
+  }
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
 
@@ -600,7 +610,7 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
       input.value = "400"; // default speed
     }
     if (arg === "up_down") {
-      input.placeholder = "1: up, 2: down";
+      input.placeholder = "1: up, 0: down";
     }
     label.appendChild(input);
     argsContainer.appendChild(label);
