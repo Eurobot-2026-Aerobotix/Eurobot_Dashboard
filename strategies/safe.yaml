@@ -180,3 +180,4 @@ tasks:
     - 300
     - 700
     wait: true
+order: 6
