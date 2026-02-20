@@ -1,5 +1,5 @@
 name: one_batch_one_spot
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -54,20 +54,20 @@ tasks:
 - description: Task 3
   global_goal:
     x: '1658.17'
-    y: '1503.03'
-    theta: 0
+    y: '1515.75'
+    theta: 5
   sequence:
   - device: STM
     command: go_to
     params:
     - '1658.17'
-    - '1503.03'
+    - '1515.75'
     - 1100
     wait: true
   - device: STM
     command: orientate
     params:
-    - 0
+    - 5
     wait: false
   - device: ESP_front
     command: put_down
@@ -84,7 +84,7 @@ tasks:
     params:
     - 1500
     - 1500
-    - 1000
+    - 1100
     wait: true
   - device: STM
     command: go_to_backwards
@@ -198,9 +198,9 @@ tasks:
     wait: true
 - description: Task 9
   global_goal:
-    x: 1700
-    y: 500
-    theta: -163.6104596659652
+    x: 1600
+    y: 400
+    theta: 90
   sequence:
   - device: STM
     command: orientate
@@ -211,13 +211,6 @@ tasks:
     command: put_down
     params: []
     wait: true
-  - device: STM
-    command: go_to_backwards
-    params:
-    - 1700
-    - 500
-    - 1100
-    wait: true
 - description: Task 10
   global_goal:
     x: 800
@@ -225,11 +218,24 @@ tasks:
     theta: -90
   sequence:
   - device: STM
-    command: go_to
+    command: go_to_backwards
     params:
+    - '1716.65'
+    - '521.67'
+    - 1000
+    wait: true
+  - device: STM
+    command: bezier
+    params:
+    - 1600
+    - 400
+    - 933.58
+    - 500
     - 800
     - 500
-    - 1100
+    - 1000
+    - 1000
+    - 1000
     wait: false
   - device: STM
     command: go_to
@@ -245,15 +251,21 @@ tasks:
     wait: true
 - description: Task 11
   global_goal:
-    x: '1014.94'
-    y: '234.38'
-    theta: 13.003357088751697
+    x: '1067.31'
+    y: '313.19'
+    theta: -54.90138754116175
   sequence:
   - device: STM
-    command: go_to
+    command: bezier
     params:
-    - '1014.94'
-    - '234.38'
+    - 964.09
+    - 414.89
+    - 1004.77
+    - 402.18
+    - '1067.31'
+    - '313.19'
+    - 1000
+    - 1000
     - 1100
     wait: true
   - device: ESP_front
@@ -262,20 +274,21 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: '220.68'
-    y: '244.55'
-    theta: 1.1523546004663672
+    x: 226.78
+    y: 292.85
+    theta: 15.998249659519445
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - '661.54'
-    - '503.87'
-    - '599.50'
-    - '252.17'
-    - '220.68'
-    - '244.55'
+    - 887.82
+    - 557.26
+    - 590.35
+    - 397.09
+    - 226.78
+    - 292.85
     - 1000
     - 1000
     - 1100
     wait: true
+order: 1

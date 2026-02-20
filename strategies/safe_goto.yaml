@@ -1,5 +1,5 @@
 name: safe_goto
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -245,4 +245,4 @@ tasks:
     params:
     - 0
     wait: false
-order: 7
+order: 2
