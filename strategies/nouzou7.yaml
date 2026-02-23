@@ -1,0 +1,60 @@
+name: nouzou7
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: 1200
+    y: 1150
+    theta: 180
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 300
+    - 0
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 460
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2600
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 800
+    - 1150
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 1150
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+order: 18
