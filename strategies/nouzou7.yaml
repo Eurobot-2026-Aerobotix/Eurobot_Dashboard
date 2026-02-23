@@ -4,9 +4,9 @@ color: yellow
 tasks:
 - description: Task 1
   global_goal:
-    x: 1200
-    y: 1150
-    theta: 180
+    x: 1600
+    y: 1100
+    theta: 0
   sequence:
   - device: RASP_PI
     command: Wait for manual start
@@ -54,6 +54,47 @@ tasks:
     - 1
     wait: false
   - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1250
+    - 1100
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 1045
+    - 1100
+    wait: true
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1100
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1600
+    - 1100
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
     command: pick_up
     params: []
     wait: true

@@ -16,7 +16,7 @@ tasks:
     command: set_position
     params:
     - 300
-    - 445
+    - 300
     - 0
     wait: false
 - description: Task 2
@@ -29,7 +29,7 @@ tasks:
     command: go_to
     params:
     - 1470
-    - 445
+    - 425
     - 1100
     wait: false
   - device: STM
@@ -263,9 +263,9 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: 300
-    y: 300
-    theta: 0
+    x: 700
+    y: 800
+    theta: 90
   sequence:
   - device: STM
     command: go_to
@@ -277,13 +277,45 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 300
-    - 300
+    - 700
+    - 400
     - 1100
     wait: false
   - device: STM
-    command: orientate
+    command: go_to
     params:
-    - 0
+    - 700
+    - 800
+    - 1000
+    wait: false
+- description: Task 13
+  global_goal:
+    x: 700
+    y: 800
+    theta: 90
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
+    params:
+    - 12
+    wait: false
+- description: Task 14
+  global_goal:
+    x: 250
+    y: 250
+    theta: 180
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 700
+    - 250
+    - 600
+    - 250
+    - 250
+    - 250
+    - 1000
+    - 1000
+    - 1100
     wait: false
 order: 0
