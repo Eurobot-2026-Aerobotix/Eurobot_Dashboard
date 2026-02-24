@@ -11,11 +11,12 @@ const go_to_args = ["x", "y", "speed"];
 const go_to_args_pami7 = ["x", "y", "speed", "direction"];
 const orientate_args = ["angle"];
 const set_position_args = ["x", "y", "angle"];
+const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"]
 const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
 const walking_args = [];
 const delay_args = ["duration"];
-const commandCodes = ["delay", "go_to", "orientate", "set_position"];
+const commandCodes = ["delay", "go_to", "orientate", "set_position", "bezier"];
 const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
 let contextActionIndex = null;
 let robot_on_map = null;
@@ -77,6 +78,8 @@ function renderTasks() {
         actionDiv.textContent = `orientate(${action[1]})`;
       }else if (action[0] == 3){
         actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
+      }else if (action[0] == 4 && !(selected_strategy.pami_number === 7) ){
+        actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
       }else if (action[0] == 4 && selected_strategy.pami_number === 7){
         actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
       }else if (action[0] == 5 && selected_strategy.pami_number === 7){
@@ -221,6 +224,8 @@ function renderTasks() {
       args_table = orientate_args;
     } else if (command_type == 3) {
       args_table = set_position_args;
+    } else if (command_type == 4 && !(selected_strategy.pami_number === 7)) {
+      args_table = bezier_args;
     } else if (command_type == 4) {
       args_table = pick_up_args;
     } else if (command_type == 5) {
@@ -290,7 +295,8 @@ function populateAddList() {
       "delay",
       "go_to",
       "orientate",
-      "set_position"
+      "set_position",
+      "bezier"
     ];
   }
   actionSelect.innerHTML = '<option value="">select action</option>';
@@ -346,23 +352,76 @@ function renderMap() {
     let currentPos = { x: 0, y: 0 };
     selected_strategy.sequence.forEach((action, actionIndex) => {
 
-        if (action[0] == 3) {
+      if (action[0] == 3) {
         const [x, y] = [action[1], action[2]];
         currentPos = { x, y };
         drawPoint(svg, x, y, "robot", actionIndex, 1, 2);
-        }
+      }
 
-        else if (action[0] == 1) {
+      else if (action[0] == 1) {
         const [x, y] = [action[1], action[2]];
         drawArrow(svg, currentPos, { x, y }, 0);
         drawPoint(svg, x, y,"", actionIndex, 1, 2);
         currentPos = { x, y };
-        }
+      }
 
-        else if (action[0] == 2) {
+      else if (action[0] == 2) {
         drawRotateIcon(svg, currentPos);
-        }
+      }
+      else if (action[0] == 4){
+        drawBezier(svg, currentPos, action.slice(1), 0, actionIndex);
+        const [ , , , , x3, y3 ] = action.slice(1);
+        currentPos = { x: x3, y: y3 };
+      }
     });
+}
+function drawBezier(svg, start, params, backwards, actionIndex) {
+  const [x1,y1,x2,y2,x3,y3] = params;
+
+  const p0 = mapToScreen(start.x, start.y);
+  const p1 = mapToScreen(x1, y1);
+  const p2 = mapToScreen(x2, y2);
+  const p3 = mapToScreen(x3, y3);
+
+  drawDiscountinousLine(svg, start, { x: x1, y: y1 }); // Draw discontinuous line to first point
+  drawDiscountinousLine(svg, { x: x2, y: y2 }, { x: x3, y: y3 }); // Draw discontinuous line to last point
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    `M ${p0.cx} ${p0.cy} C ${p1.cx} ${p1.cy}, ${p2.cx} ${p2.cy}, ${p3.cx} ${p3.cy}`
+  );
+  path.classList.add(backwards ? "backward" : "forward");
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke-width", "2");
+
+  svg.appendChild(path);
+
+  drawPoint(svg, params[0], params[1], "", actionIndex, 1, 2, true);
+  drawPoint(svg, params[2], params[3], "", actionIndex, 3, 4, true);
+  drawPoint(svg, params[4], params[5], "", actionIndex, 5, 6);
+  // add arrowhead at end of bezier like drawArrow
+  path.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
+  path.setAttribute("stroke", backwards ? "blue" : "red");
+}
+
+function drawDiscountinousLine(svg, from, to) {
+  const p1 = mapToScreen(from.x, from.y);
+  const p2 = mapToScreen(to.x, to.y);
+
+  const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l.setAttribute("x1", p1.cx);
+  l.setAttribute("y1", p1.cy);
+  l.setAttribute("x2", p2.cx);
+  l.setAttribute("y2", p2.cy);
+
+  l.setAttribute("stroke", "white");
+  l.setAttribute("marker-end", "none");
+  l.setAttribute("stroke-width", "2"); // Increase the stroke width to make the line thicker
+  l.setAttribute("stroke-dasharray", "10,10"); // Set dash pattern: 10px dash, 10px gap
+  l.setAttribute("opacity", "0.5"); // Optional: make the line semi-transparent
+
+  svg.appendChild(l);
 }
 
 function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, secondary=false) {
@@ -421,14 +480,14 @@ function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, c
   renderMap();
 }
 function hightlightAction(actionIndex) {
-    const actionItems = document.querySelectorAll(".action-item");
-    actionItems[actionIndex].classList.add("highlighted");
+    //const actionItems = document.querySelectorAll(".action-item");
+    //actionItems[actionIndex].classList.add("highlighted");
 }
 function unHightlightActions() {
-  const actionItems = document.querySelectorAll(".action-item");
-  actionItems.forEach(item => {
-    item.classList.remove("highlighted");
-  });
+  // const actionItems = document.querySelectorAll(".action-item");
+  // actionItems.forEach(item => {
+  //   item.classList.remove("highlighted");
+  // });
 }
 function draw_robot_on_map(svg, x, y, angle) {
   clear_robot_off_map(svg);
@@ -582,6 +641,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   }
   else if (command.includes("set_position")) {
     args_table = set_position_args;
+  }
+  else if (command.includes("bezier")) {
+    args_table = bezier_args;
   }
   else if (command.includes("pick_up")) {
     args_table = pick_up_args;
