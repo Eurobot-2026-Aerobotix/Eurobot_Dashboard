@@ -13,7 +13,8 @@ const modal = document.getElementById("action-modal");
 const go_to_args = ["x", "y", "speed"];
 const orientate_args = ["angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "backup x", "backup y", "speed"];
-const set_position_args = ["x", "y", "angle"]
+const set_position_args = ["x", "y", "angle"];
+const wait_enf_game_args = ["duration"];
 const options = [
     new Action("STM", "set_position"),
     new Action("STM", "go_to"),
@@ -26,7 +27,8 @@ const options = [
     new Action("ESP_back", "pick_up"),
     new Action("ESP_back", "put_down"),
     new Action("RASP_PI", "Wait for manual start"),
-    new Action("RASP_PI", "Start pamiyeet")
+    new Action("RASP_PI", "Start pamiyeet"),
+    new Action("RASP_PI","wait_end_game")
   ];
 let contextAction = null;
 let contextTask = null;
@@ -417,6 +419,7 @@ function renderTasks() {
     else if (command.includes("bezier")) args_table = bezier_args;
     else if (command.includes("orientate")) args_table = orientate_args;
     else if (command.includes("set_position")) args_table = set_position_args;
+    else if (command.includes("wait_end_game")) args_table = wait_enf_game_args;
 
     const argsContainer = document.getElementById("args-container");
     argsContainer.innerHTML = "";
@@ -892,6 +895,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   }
   else if (command.includes("set_position")) {
     args_table = set_position_args;
+  }
+  else if (command.includes("wait_end_game")) {
+    args_table = wait_enf_game_args;
   }
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
