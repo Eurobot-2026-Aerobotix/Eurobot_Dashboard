@@ -113,3 +113,35 @@
   font-weight: bold;
   color: #e4e4e4;
 }
+
+/* Test PAMI Button */
+.test-pami-button {
+  padding: 12px 40px;
+  font-size: 18px;
+  font-weight: bold;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+  transition: all 0.3s ease;
+}
+
+.test-pami-button:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+}
+
+.test-pami-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+.test-pami-button:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
