@@ -16,9 +16,11 @@ SELECTED_STRATEGY_PATH = ""
 # Queues for streaming output
 strategy_output_queue = queue.Queue()
 pathfinding_output_queue = queue.Queue()
+pami_output_queue = queue.Queue()
 start_process = None
 pathfinding_process = None
 prepare_process = None
+pami_process = None
 
 # Storage for web batches (for pathfinding simulation)
 web_batches_storage = []
@@ -529,6 +531,26 @@ def read_pathfinding_output(process):
         pathfinding_output_queue.put(f"[Error reading output: {e}]")
 
 
+def read_pami_output(process):
+    """Read PAMI process output line by line and put in queue"""
+    try:
+        buffer = ""
+        while True:
+            char = process.stdout.read(1)
+            if not char:
+                break
+            buffer += char
+            if char == '\n':
+                pami_output_queue.put(buffer.rstrip())
+                buffer = ""
+        if buffer:
+            pami_output_queue.put(buffer.rstrip())
+        process.wait()
+        pami_output_queue.put("[Process completed]")
+    except Exception as e:
+        pami_output_queue.put(f"[Error reading output: {e}]")
+
+
 # -------------------------------------------------
 # Stop strategy execution
 # POST /stop
@@ -551,6 +573,65 @@ def stop_strategy():
             return jsonify({"status": "success", "message": "Strategy already stopped"})
         else:
             return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+# -------------------------------------------------
+# Test PAMI strategy
+# POST /test_pami
+# Automatically finds and tests the selected strategy
+# -------------------------------------------------
+@app.route("/test_pami", methods=["POST"])
+def test_pami():
+    """Run pami_test_manager for the selected strategy"""
+    global pami_process
+    try:
+        script_path = "./scripts/pami.sh"
+        if not os.path.exists(script_path):
+            return jsonify({"status": "error", "error": "pami.sh not found"}), 404
+        
+        # Find the selected strategy (same logic as start.sh)
+        selected_strategy_path = get_selected_strategy_path()
+        
+        if not selected_strategy_path:
+            return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
+        
+        # Convert to absolute path
+        strategy_abs_path = os.path.abspath(selected_strategy_path)
+        
+        # Extract strategy name for display
+        strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
+        
+        print(f"\n=== Running PAMI test for strategy: {strategy_name} ===")
+        print(f"Strategy file: {strategy_abs_path}")
+        
+        # Clear the queue
+        while not pami_output_queue.empty():
+            pami_output_queue.get()
+        
+        # Run pami.sh with the strategy path as argument
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+        env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+        
+        pami_process = subprocess.Popen(
+            ["bash", script_path, strategy_abs_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=0,  # Unbuffered
+            env=env
+        )
+        
+        # Start thread to read output
+        threading.Thread(target=read_pami_output, args=(pami_process,), daemon=True).start()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"PAMI test started for strategy: {strategy_name}"
+        })
+        
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 # -------------------------------------------------
@@ -589,10 +670,12 @@ def get_selected_strategy_service():
 # -------------------------------------------------
 @app.route("/stream/<source>", methods=["GET"])
 def stream_output(source):
-    if source not in ['strategy', 'pathfinding']:
-        abort(400, "Invalid source. Use 'strategy' or 'pathfinding'")
+    if source not in ['strategy', 'pathfinding', 'pami']:
+        abort(400, "Invalid source. Use 'strategy', 'pathfinding', or 'pami'")
     
-    output_queue = strategy_output_queue if source == 'strategy' else pathfinding_output_queue
+    output_queue = strategy_output_queue if source == 'strategy' else \
+                   pathfinding_output_queue if source == 'pathfinding' else \
+                   pami_output_queue
     
     def generate():
         while True:
@@ -653,6 +736,7 @@ def cleanup():
     subprocess.run(["pkill", "-f", "rosbridge_websocket"], stderr=subprocess.DEVNULL)
     subprocess.run(["pkill", "-f", "ros2 launch hybrid_astar"], stderr=subprocess.DEVNULL)
     subprocess.run(["pkill", "-f", "ros2 run hybrid_astar"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "pami_test_manager"], stderr=subprocess.DEVNULL)
     
     # Kill tracked processes
     if start_process and start_process.poll() is None:
@@ -670,6 +754,12 @@ def cleanup():
     if prepare_process and prepare_process.poll() is None:
         try:
             prepare_process.terminate()
+        except:
+            pass
+    
+    if pami_process and pami_process.poll() is None:
+        try:
+            pami_process.terminate()
         except:
             pass
     

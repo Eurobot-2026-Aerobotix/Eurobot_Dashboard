@@ -15,17 +15,20 @@ const currentIPSpan = document.getElementById('currentIP');
 const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const testPamiBtn = document.getElementById('testPamiBtn');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 const outputSelector = document.getElementById('outputSelector');
 
 let strategyEventSource = null;
 let pathfindingEventSource = null;
+let pamiEventSource = null;
 let currentSource = 'strategy';
 
 // Separate output buffers for each source - persist in localStorage
 let strategyOutput = JSON.parse(localStorage.getItem('strategyOutput') || '[]');
 let pathfindingOutput = JSON.parse(localStorage.getItem('pathfindingOutput') || '[]');
+let pamiOutput = JSON.parse(localStorage.getItem('pamiOutput') || '[]');
 
 // Load saved current source
 const savedSource = localStorage.getItem('currentSource');
@@ -44,6 +47,9 @@ if (strategyOutput.length > 0) {
 if (pathfindingOutput.length > 0) {
     startStreaming('pathfinding');
 }
+if (pamiOutput.length > 0) {
+    startStreaming('pami');
+}
 
 // Handle output source change
 outputSelector.addEventListener('change', function() {
@@ -53,7 +59,8 @@ outputSelector.addEventListener('change', function() {
 });
 
 function displayCurrentOutput() {
-    const outputs = currentSource === 'strategy' ? strategyOutput : pathfindingOutput;
+    const outputs = currentSource === 'strategy' ? strategyOutput : 
+                    currentSource === 'pathfinding' ? pathfindingOutput : pamiOutput;
     outputDiv.innerHTML = '';
     
     outputs.forEach(text => {
@@ -91,7 +98,7 @@ function startStreaming(source) {
         strategyEventSource.onerror = function(error) {
             console.error('Strategy EventSource error:', error);
         };
-    } else {
+    } else if (source === 'pathfinding') {
         if (pathfindingEventSource) {
             pathfindingEventSource.close();
         }
@@ -113,6 +120,29 @@ function startStreaming(source) {
         
         pathfindingEventSource.onerror = function(error) {
             console.error('Pathfinding EventSource error:', error);
+        };
+    } else if (source === 'pami') {
+        if (pamiEventSource) {
+            pamiEventSource.close();
+        }
+        
+        pamiEventSource = new EventSource(`${API_URL}/stream/pami`);
+        
+        pamiEventSource.onmessage = function(event) {
+            pamiOutput.push(event.data);
+            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            
+            if (currentSource === 'pami') {
+                const line = document.createElement('div');
+                line.className = 'output-line';
+                line.textContent = event.data;
+                outputDiv.appendChild(line);
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            }
+        };
+        
+        pamiEventSource.onerror = function(error) {
+            console.error('PAMI EventSource error:', error);
         };
     }
 }
@@ -223,9 +253,42 @@ async function stopStrategy() {
     }
 }
 
+async function testPami() {
+    testPamiBtn.disabled = true;
+    showStatus('Running PAMI test...', 'info');
+    
+    try {
+        const response = await fetch(`${API_URL}/test_pami`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showStatus(data.message || 'PAMI test started!', 'success');
+            
+            // Clear PAMI output and start streaming
+            pamiOutput = [];
+            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            outputDiv.innerHTML = '';
+            outputSelector.value = 'pami';
+            currentSource = 'pami';
+            localStorage.setItem('currentSource', currentSource);
+            startStreaming('pami');
+        } else {
+            showStatus(data.error || 'Failed to run PAMI test', 'error');
+        }
+    } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+        testPamiBtn.disabled = false;
+    }
+}
+
 prepareBtn.addEventListener('click', prepareRobot);
 startBtn.addEventListener('click', startStrategy);
 stopBtn.addEventListener('click', stopStrategy);
+testPamiBtn.addEventListener('click', testPami);
 
 // ========== Settings Modal Functions ==========
 
