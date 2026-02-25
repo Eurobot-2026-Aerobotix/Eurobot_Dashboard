@@ -2,6 +2,7 @@
 const API_URL = window.ipConfig.getAPIURL();
 
 // Settings Modal Elements
+const saveBtn = document.getElementById('saveBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const closeModal = document.querySelector('.close');
@@ -291,6 +292,41 @@ stopBtn.addEventListener('click', stopStrategy);
 testPamiBtn.addEventListener('click', testPami);
 
 // ========== Settings Modal Functions ==========
+
+// Save & Commit button
+saveBtn.addEventListener('click', async () => {
+    const commitMessage = prompt('Enter commit message:');
+    if (!commitMessage || !commitMessage.trim()) {
+        return;
+    }
+    
+    saveBtn.disabled = true;
+    showStatus('Saving and committing changes...', 'info');
+    
+    try {
+        const response = await fetch(`${API_URL}/git_commit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: commitMessage.trim()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showStatus(data.message || 'Changes committed successfully!', 'success');
+        } else {
+            showStatus(data.error || 'Failed to commit changes', 'error');
+        }
+    } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
 
 // Open settings modal
 settingsBtn.addEventListener('click', () => {
