@@ -260,8 +260,19 @@ async function testPami() {
     
     try {
         const response = await fetch(`${API_URL}/test_pami`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            showStatus(`Server error: ${text}`, 'error');
+            testPamiBtn.disabled = false;
+            return;
+        }
         
         const data = await response.json();
         
@@ -313,6 +324,14 @@ saveBtn.addEventListener('click', async () => {
                 message: commitMessage.trim()
             })
         });
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            showStatus(`Server error: ${text}`, 'error');
+            saveBtn.disabled = false;
+            return;
+        }
         
         const data = await response.json();
         
