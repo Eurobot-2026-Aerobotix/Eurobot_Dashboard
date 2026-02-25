@@ -635,6 +635,78 @@ def test_pami():
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 # -------------------------------------------------
+# Git commit
+# POST /git_commit
+# Body: JSON with commit message
+# -------------------------------------------------
+@app.route("/git_commit", methods=["POST"])
+def git_commit():
+    """Commit changes to git repository"""
+    try:
+        if not request.is_json:
+            abort(400, "Expected JSON body")
+        
+        data = request.get_json()
+        commit_message = data.get("message")
+        
+        if not commit_message:
+            return jsonify({"status": "error", "error": "No commit message provided"}), 400
+        
+        # Get the dashboard directory
+        dashboard_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        print(f"\n=== Git Commit ===")
+        print(f"Directory: {dashboard_dir}")
+        print(f"Message: {commit_message}")
+        
+        # Run git add .
+        add_result = subprocess.run(
+            ["git", "add", "."],
+            cwd=dashboard_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        if add_result.returncode != 0:
+            return jsonify({
+                "status": "error",
+                "error": f"Git add failed: {add_result.stderr}"
+            }), 500
+        
+        # Run git commit
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            cwd=dashboard_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        if commit_result.returncode != 0:
+            # Check if it's because there's nothing to commit
+            if "nothing to commit" in commit_result.stdout.lower() or "nothing to commit" in commit_result.stderr.lower():
+                return jsonify({
+                    "status": "success",
+                    "message": "Nothing to commit, working tree clean"
+                })
+            return jsonify({
+                "status": "error",
+                "error": f"Git commit failed: {commit_result.stderr}"
+            }), 500
+        
+        print(f"✓ Commit successful")
+        print(f"Output: {commit_result.stdout}")
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Changes committed: {commit_message}",
+            "output": commit_result.stdout
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+# -------------------------------------------------
 # Get currently selected strategy
 # GET /selected_strategy
 # -------------------------------------------------
