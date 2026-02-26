@@ -15,21 +15,52 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - 1200
-    - 200
-    - 90
+    - 300
+    - 245
+    - 0
     wait: false
 - description: Task 2
   global_goal:
     x: 1200
     y: 1250
+    theta: 90
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 1130
+    - 245
+    - 1200
+    - 630
+    - 1200
+    - 1250
+    - 1224
+    - 1227
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: 300
+    y: 245
     theta: 0
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1200
-    - 1250
+    - '1205.31'
+    - '346.67'
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 300
+    - 245
     - 1100
     wait: false
   - device: STM
