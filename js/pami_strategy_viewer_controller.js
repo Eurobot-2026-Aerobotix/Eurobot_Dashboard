@@ -552,8 +552,12 @@ function calculate_x_y_phi_after_action(point, actionIndex) {
     let y = point.getAttribute("cy");
     let phi = 0;
     let action = selected_strategy.sequence[actionIndex];
-    if (action[0] == 2) { 
+    if (action[0] == 3) { 
+        // set_position command - use the angle parameter
         phi = action[3];
+    } else if (action[0] == 2) {
+        // orientate command - use the angle parameter
+        phi = action[1];
     } else{
         const prevPoint = points[Array.from(points).indexOf(point) - 1];
         const prevX = prevPoint ? parseFloat(prevPoint.getAttribute("cx")) : point.getAttribute("cx");
@@ -564,7 +568,8 @@ function calculate_x_y_phi_after_action(point, actionIndex) {
     if (actionIndex < selected_strategy.sequence.length - 1){
         const next = selected_strategy.sequence[actionIndex + 1];
 
-        if (next[0] == 1) {
+        if (next[0] == 2) {
+            // Next action is orientate - use that angle
             phi = next[1];
         }
     }
