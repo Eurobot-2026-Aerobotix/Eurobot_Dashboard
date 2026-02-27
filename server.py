@@ -6,7 +6,8 @@ import threading
 import subprocess
 import queue
 import time
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+from http.server import SimpleHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
+from socketserver import ThreadingMixIn
 
 STRATEGIES_DIR = "strategies"
 PAMI_STRATEGIES_DIR = "pami_strategies"
@@ -25,6 +26,10 @@ pami_process = None
 # Storage for web batches (for pathfinding simulation)
 web_batches_storage = []
 web_batches_lock = threading.Lock()
+
+# Locks for thread-safe operations
+strategy_lock = threading.Lock()  # Protects SELECTED_STRATEGY_PATH and strategy file operations
+process_lock = threading.Lock()   # Protects start/stop/prepare process operations
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -165,11 +170,12 @@ def save_strategy(filename):
 
     data = request.get_json()
 
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False)
-    global SELECTED_STRATEGY_PATH
-    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
-    print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}")
+    with strategy_lock:  # Protect file write and strategy path update
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
+        global SELECTED_STRATEGY_PATH
+        SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+        print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}", flush=True)
     return jsonify({"status": "saved", "file": filename})
 
 
@@ -188,8 +194,9 @@ def save_pami_strategy(strategy_name, pami_number):
 
     data = request.get_json()
 
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False)
+    with strategy_lock:  # Protect file write operation
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
     return jsonify({"status": "saved", "file": filename})
 
 
@@ -415,45 +422,46 @@ def get_web_batches():
 @app.route("/prepare", methods=["POST"])
 def prepare_robot():
     global pathfinding_process, prepare_process
-    try:
-        script_path = "./scripts/prepare.sh"
-        pathfinding_script = "./scripts/pathfinding.sh"
-        
-        if not os.path.exists(script_path):
-            return jsonify({"status": "error", "error": "prepare.sh not found"}), 404
-        
-        if not os.path.exists(pathfinding_script):
-            return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
-        
-        # Execute the prepare script with visible output in server terminal
-        print("\n=== Starting prepare.sh ===")
-        prepare_process = subprocess.Popen(["bash", script_path], stdout=None, stderr=None)
-        
-        # Clear the pathfinding queue
-        while not pathfinding_output_queue.empty():
-            pathfinding_output_queue.get()
-        
-        # Execute pathfinding script and capture output
-        # Use unbuffered output for real-time streaming
-        env = os.environ.copy()
-        env['PYTHONUNBUFFERED'] = '1'
-        env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
-        
-        pathfinding_process = subprocess.Popen(
-            ["bash", pathfinding_script],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=0,  # Unbuffered
-            env=env
-        )
-        
-        # Start thread to read pathfinding output
-        threading.Thread(target=read_pathfinding_output, args=(pathfinding_process,), daemon=True).start()
-        
-        return jsonify({"status": "success", "message": "Robot preparation and pathfinding started"})
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+    with process_lock:  # Protect process start operation
+        try:
+            script_path = "./scripts/prepare.sh"
+            pathfinding_script = "./scripts/pathfinding.sh"
+            
+            if not os.path.exists(script_path):
+                return jsonify({"status": "error", "error": "prepare.sh not found"}), 404
+            
+            if not os.path.exists(pathfinding_script):
+                return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
+            
+            # Execute the prepare script with visible output in server terminal
+            print("\n=== Starting prepare.sh ===", flush=True)
+            prepare_process = subprocess.Popen(["bash", script_path], stdout=None, stderr=None)
+            
+            # Clear the pathfinding queue
+            while not pathfinding_output_queue.empty():
+                pathfinding_output_queue.get()
+            
+            # Execute pathfinding script and capture output
+            # Use unbuffered output for real-time streaming
+            env = os.environ.copy()
+            env['PYTHONUNBUFFERED'] = '1'
+            env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+            
+            pathfinding_process = subprocess.Popen(
+                ["bash", pathfinding_script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=0,  # Unbuffered
+                env=env
+            )
+            
+            # Start thread to read pathfinding output
+            threading.Thread(target=read_pathfinding_output, args=(pathfinding_process,), daemon=True).start()
+            
+            return jsonify({"status": "success", "message": "Robot preparation and pathfinding started"})
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
 
 
 # -------------------------------------------------
@@ -463,41 +471,41 @@ def prepare_robot():
 @app.route("/start", methods=["POST"])
 def start_strategy():
     global start_process
-    try:
-        script_path = "./scripts/start.sh"
-        if not os.path.exists(script_path):
-            return jsonify({"status": "error", "error": "start.sh not found"}), 404
-        
-        if not SELECTED_STRATEGY_PATH:
-            return jsonify({"status": "error", "error": "No strategy selected"}), 400
-        
-        # Convert to absolute path
-        strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
-        
-        # Clear the queue
-        while not strategy_output_queue.empty():
-            strategy_output_queue.get()
-        
-        # Execute the start script with the strategy path as argument
-        start_process = subprocess.Popen(
-            ["bash", script_path, strategy_abs_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.PIPE,  # Enable stdin to send 'q'
-            text=True,
-            bufsize=1,
-            preexec_fn=os.setsid  # Create new process group
-        )
-        
-        # Start thread to read output
-        threading.Thread(target=read_strategy_output, args=(start_process,), daemon=True).start()
-        
-        return jsonify({
-            "status": "success", 
-            "message": f"Strategy execution started (Strategy: {strategy_abs_path})"
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+    with process_lock:  # Protect process start operation
+        try:
+            script_path = "./scripts/start.sh"
+            if not os.path.exists(script_path):
+                return jsonify({"status": "error", "error": "start.sh not found"}), 404
+            
+            with strategy_lock:  # Read SELECTED_STRATEGY_PATH safely
+                if not SELECTED_STRATEGY_PATH:
+                    return jsonify({"status": "error", "error": "No strategy selected"}), 400
+                strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
+            
+            # Clear the queue
+            while not strategy_output_queue.empty():
+                strategy_output_queue.get()
+            
+            # Execute the start script with the strategy path as argument
+            start_process = subprocess.Popen(
+                ["bash", script_path, strategy_abs_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE,  # Enable stdin to send 'q'
+                text=True,
+                bufsize=1,
+                preexec_fn=os.setsid  # Create new process group
+            )
+            
+            # Start thread to read output
+            threading.Thread(target=read_strategy_output, args=(start_process,), daemon=True).start()
+            
+            return jsonify({
+                "status": "success", 
+                "message": f"Strategy execution started (Strategy: {strategy_abs_path})"
+            })
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
 
 
 def read_strategy_output(process):
@@ -558,23 +566,24 @@ def read_pami_output(process):
 @app.route("/stop", methods=["POST"])
 def stop_strategy():
     global start_process
-    try:
-        if start_process and start_process.poll() is None:
-            # Send 'q' to stdin to trigger robot stop (without closing process)
-            try:
-                start_process.stdin.write('q\n')
-                start_process.stdin.flush()
-                strategy_output_queue.put("[Sent 'q' - Robot stopped (process still running)]")
-                return jsonify({"status": "success", "message": "Robot stopped"})
-            except Exception as e:
-                strategy_output_queue.put(f"[Failed to send 'q': {e}]")
-                return jsonify({"status": "error", "error": f"Failed to send stop command: {e}"}), 500
-        elif start_process and start_process.poll() is not None:
-            return jsonify({"status": "success", "message": "Strategy already stopped"})
-        else:
-            return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+    with process_lock:  # Protect process stop operation
+        try:
+            if start_process and start_process.poll() is None:
+                # Send 'q' to stdin to trigger robot stop (without closing process)
+                try:
+                    start_process.stdin.write('q\n')
+                    start_process.stdin.flush()
+                    strategy_output_queue.put("[Sent 'q' - Robot stopped (process still running)]")
+                    return jsonify({"status": "success", "message": "Robot stopped"})
+                except Exception as e:
+                    strategy_output_queue.put(f"[Failed to send 'q': {e}]")
+                    return jsonify({"status": "error", "error": f"Failed to send stop command: {e}"}), 500
+            elif start_process and start_process.poll() is not None:
+                return jsonify({"status": "success", "message": "Strategy already stopped"})
+            else:
+                return jsonify({"status": "error", "error": "No strategy is currently running"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
 
 
 # -------------------------------------------------
@@ -717,24 +726,25 @@ def get_selected_strategy_service():
     Updates the global SELECTED_STRATEGY_PATH from disk before returning.
     """
     global SELECTED_STRATEGY_PATH
-    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+    with strategy_lock:  # Protect reading SELECTED_STRATEGY_PATH
+        SELECTED_STRATEGY_PATH = get_selected_strategy_path()
 
-    if not SELECTED_STRATEGY_PATH:
-        return jsonify({"status": "error", "error": "No strategy selected"}), 404
+        if not SELECTED_STRATEGY_PATH:
+            return jsonify({"status": "error", "error": "No strategy selected"}), 404
 
-    data = SELECTED_STRATEGY_PATH
-    name = ""
-    try:
-        with open(SELECTED_STRATEGY_PATH, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        name = data.get("name", "-")
-    except Exception as e:
-        name = "-"
+        data = SELECTED_STRATEGY_PATH
+        name = ""
+        try:
+            with open(SELECTED_STRATEGY_PATH, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            name = data.get("name", "-")
+        except Exception as e:
+            name = "-"
 
-    return jsonify({
-        "status": "success",
-        "strategy": name
-    })
+        return jsonify({
+            "status": "success",
+            "strategy": name
+        })
 
 # -------------------------------------------------
 # Stream output from start.sh or pathfinding.sh
@@ -763,9 +773,13 @@ def stream_output(source):
 
 
 def run_flask():
-    app.run(host="0.0.0.0", port=8000, debug=False)
+    app.run(host="0.0.0.0", port=8000, debug=False, threaded=True)
 
 class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        # Set directory for serving files
+        super().__init__(*args, directory="/home/harissa/Eurobot_Dashboard", **kwargs)
+    
     def do_GET(self):
         # Redirect root to /html/index.html
         if self.path == '/' or self.path == '':
@@ -774,12 +788,31 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             return
         return SimpleHTTPRequestHandler.do_GET(self)
+    
+    def log_message(self, format, *args):
+        # Suppress normal request logs to reduce clutter
+        pass
+    
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            # Silently ignore broken pipe errors when client disconnects
+            pass
 
 def run_http_server():
-    server = HTTPServer(("0.0.0.0", 5000), CustomHTTPRequestHandler)
-    print("Static file server running on http://0.0.0.0:5000")
-    print("Access from other devices using: http://<raspberry-pi-ip>:5000")
-    server.serve_forever()
+    try:
+        print("run_http_server: Starting...", flush=True)
+        # Use ThreadingHTTPServer for concurrent request handling
+        server = ThreadingHTTPServer(("0.0.0.0", 5000), CustomHTTPRequestHandler)
+        server.request_queue_size = 20  # Increase queue size
+        print("Static file server running on http://0.0.0.0:5000", flush=True)
+        print("Access from other devices using: http://<raspberry-pi-ip>:5000", flush=True)
+        server.serve_forever()
+    except Exception as e:
+        print(f"Error starting static file server: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 def get_selected_strategy_path():
     for filename in os.listdir(STRATEGIES_DIR):
@@ -856,10 +889,14 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    SELECTED_STRATEGY_PATH = get_selected_strategy_path()
-    print(f"Initially selected strategy: {SELECTED_STRATEGY_PATH}")
+    with strategy_lock:  # Protect initial strategy path read
+        SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+        print(f"Initially selected strategy: {SELECTED_STRATEGY_PATH}", flush=True)
+    print("Starting Flask server thread...", flush=True)
     threading.Thread(target=run_flask, daemon=True).start()
+    print("Starting static file server thread...", flush=True)
     threading.Thread(target=run_http_server, daemon=True).start()
+    print("Both server threads started.", flush=True)
 
     # Keep main thread alive
     print("Servers running. Press Ctrl+C to exit.")
