@@ -44,6 +44,20 @@
   transform: translateY(-10px) scale(1.05);
   opacity: 0.9;
 }
+
+.all-square {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  font-size: 4rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em;
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6) !important;
+  grid-column: span 1;
+}
+
+.all-square:hover {
+  box-shadow: 0 16px 50px rgba(102, 126, 234, 0.8) !important;
+}
+
 .back-button{
     position: absolute;
     top: 20px;

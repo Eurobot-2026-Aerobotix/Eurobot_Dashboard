@@ -4,6 +4,18 @@ import { Pami_Strategy } from "../classes/Pami_Strategy.js";
 
 let strategies = [];
 let selected_strategy = null;
+let loaded_strategies = {}; // Store strategies for each PAMI { pami_number: strategy }
+let visible_pamis = new Set([1]); // Default: show PAMI 1
+let isViewAllMode = false; // Track if we're in multi-PAMI mode
+const pami_colors = {
+  1: "#FF6B6B",
+  2: "#4ECDC4",
+  3: "#FFE66D",
+  4: "#95E1D3",
+  5: "#F38181",
+  6: "#AA96DA",
+  7: "#FCBAD3"
+};
 let actionsContainer = document.getElementById("side-panel");
 const actionSelect = document.getElementById("action-select");
 const modal = document.getElementById("action-modal");
@@ -19,7 +31,10 @@ const delay_args = ["duration"];
 const commandCodes = ["delay", "go_to", "orientate", "set_position", "bezier"];
 const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
 let contextActionIndex = null;
+let contextPamiNumber = null;
 let robot_on_map = null;
+let undoStack = [];
+let redoStack = [];
 
 // ------------------------------
 // Load selected strategy
@@ -34,184 +49,428 @@ async function get_selected_strategy() {
   const params = new URLSearchParams(window.location.search);
   const strategy_name = params.get("name");
   const pami_number = parseInt(params.get("pami"));
+  const viewAll = params.get("viewAll") === "true";
+  isViewAllMode = viewAll;
   strategies = await loadPAMIStrategies();
-  for (let strategy of strategies) {
-    if (strategy.strategy_name === strategy_name && strategy.pami_number === pami_number) selected_strategy = strategy;
+  
+  // Load all PAMIs for this strategy
+  for (let i = 1; i <= 7; i++) {
+    let found = false;
+    for (let strategy of strategies) {
+      if (strategy.strategy_name === strategy_name && strategy.pami_number === i) {
+        loaded_strategies[i] = strategy;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      loaded_strategies[i] = create_strategy(strategy_name, i);
+    }
   }
-  if (!selected_strategy) {
-    selected_strategy = create_strategy(strategy_name, pami_number);
+  
+  // Set the default selected strategy
+  selected_strategy = loaded_strategies[pami_number];
+  
+  // Initialize undo stack
+  undoStack.length = 0;
+  undoStack.push(JSON.stringify(loaded_strategies));
+  redoStack.length = 0;
+  
+  if (viewAll) {
+    // Multi-PAMI mode: show selector and all PAMIs
+    document.getElementById("pami-selector").classList.remove("hidden");
+    
+    // Check appropriate PAMIs in the UI
+    const checkboxes = document.querySelectorAll(".pami-checkbox");
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = true;
+      visible_pamis.add(parseInt(checkbox.dataset.pami));
+    });
+    
+    document.querySelector("title").textContent = "Multi-PAMI - " + strategy_name;
+  } else {
+    // Single-PAMI mode: hide selector, show only selected PAMI
+    document.getElementById("pami-selector").classList.add("hidden");
+    visible_pamis.clear();
+    visible_pamis.add(pami_number);
+    document.querySelector("title").textContent = "PAMI " + pami_number + " - " + strategy_name;
   }
-  document.querySelector("title").textContent = "PAMI " + pami_number + " - " + strategy_name;
-  renderTasks();
+  
+  renderTasks(viewAll);
+  
+  // Setup PAMI checkbox listeners only in multi-PAMI mode
+  if (viewAll) {
+    setupPamiCheckboxes();
+  }
+}
+
+// ------------------------------
+// Setup PAMI checkbox listeners
+// ------------------------------
+function setupPamiCheckboxes() {
+  const checkboxes = document.querySelectorAll(".pami-checkbox");
+  const allCheckbox = document.getElementById("pami-all-checkbox");
+  
+  // Individual checkbox change handler
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener("change", (e) => {
+      const pamiNum = parseInt(e.target.dataset.pami);
+      if (e.target.checked) {
+        visible_pamis.add(pamiNum);
+      } else {
+        visible_pamis.delete(pamiNum);
+      }
+      
+      // Update ALL checkbox state
+      updateAllCheckboxState();
+      
+      renderTasks(isViewAllMode);
+      renderMap();
+    });
+  });
+  
+  // ALL checkbox handler
+  allCheckbox.addEventListener("change", (e) => {
+    const isChecked = e.target.checked;
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = isChecked;
+      const pamiNum = parseInt(checkbox.dataset.pami);
+      
+      if (isChecked) {
+        visible_pamis.add(pamiNum);
+      } else {
+        visible_pamis.delete(pamiNum);
+      }
+    });
+    
+    renderTasks(isViewAllMode);
+    renderMap();
+  });
+  
+  // Initialize ALL checkbox state
+  updateAllCheckboxState();
+}
+
+function saveToUndoStack() {
+  if (undoStack.length > 100) undoStack.shift();
+  undoStack.push(JSON.stringify(loaded_strategies));
+  redoStack.length = 0;
+}
+
+function undo() {
+  if (undoStack.length < 2) return;
+
+  redoStack.push(undoStack.pop());
+
+  loaded_strategies = JSON.parse(
+    undoStack[undoStack.length - 1]
+  );
+
+  renderTasks(isViewAllMode);
+  renderMap();
+  
+  // Save all PAMIs
+  Object.values(loaded_strategies).forEach(strategy => {
+    savePamiStrategy(strategy);
+  });
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+
+  const state = redoStack.pop();
+  undoStack.push(state);
+
+  loaded_strategies = JSON.parse(state);
+
+  renderTasks(isViewAllMode);
+  renderMap();
+  
+  // Save all PAMIs
+  Object.values(loaded_strategies).forEach(strategy => {
+    savePamiStrategy(strategy);
+  });
+}
+
+function updateAllCheckboxState() {
+  const allCheckbox = document.getElementById("pami-all-checkbox");
+  const checkboxes = document.querySelectorAll(".pami-checkbox");
+  const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+  
+  if (checkedCount === 0) {
+    allCheckbox.checked = false;
+    allCheckbox.indeterminate = false;
+  } else if (checkedCount === checkboxes.length) {
+    allCheckbox.checked = true;
+    allCheckbox.indeterminate = false;
+  } else {
+    allCheckbox.checked = false;
+    allCheckbox.indeterminate = true;
+  }
 }
 
 // ------------------------------
 // Render tasks and actions
 // ------------------------------
-function renderTasks() {
+function renderTasks(isMultiMode = true) {
     actionsContainer.innerHTML = "";
-    if (!selected_strategy) return;
-  
-    const taskBox = document.createElement("div");
-    taskBox.classList.add("task-box");
+    
+    if (!isMultiMode) {
+      // Single-PAMI mode: render like the old viewer (simple list)
+      const pamiNum = Array.from(visible_pamis)[0];
+      const strategy = loaded_strategies[pamiNum];
+      if (!strategy) return;
+      
+      const taskBox = document.createElement("div");
+      taskBox.classList.add("task-box");
 
-    const legend = document.createElement("label");
-    legend.type = "text";
-    legend.value = `Actions`;
-    legend.classList.add("task-legend");
+      const legend = document.createElement("label");
+      legend.type = "text";
+      legend.value = `Actions`;
+      legend.classList.add("task-legend");
 
-    taskBox.appendChild(legend);
+      taskBox.appendChild(legend);
 
-    const actionList = document.createElement("div");
-    actionList.classList.add("action-list");
+      const actionList = document.createElement("div");
+      actionList.classList.add("action-list");
 
-    selected_strategy.sequence.forEach((action, actionIndex) => {
-      const actionDiv = document.createElement("div");
-      actionDiv.classList.add("action-item");
-      if (action[0] == 1){
-        if (selected_strategy.pami_number === 7 && action.length > 4) {
-          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
-        } else {
-          actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
+      strategy.sequence.forEach((action, actionIndex) => {
+        const actionDiv = document.createElement("div");
+        actionDiv.classList.add("action-item");
+        
+        if (action[0] == 1){
+          if (strategy.pami_number === 7 && action.length > 4) {
+            actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
+          } else {
+            actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
+          }
+        }else if (action[0] == 2){
+          actionDiv.textContent = `orientate(${action[1]})`;
+        }else if (action[0] == 3){
+          actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
+        }else if (action[0] == 4 && !(strategy.pami_number === 7) ){
+          actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
+        }else if (action[0] == 4 && strategy.pami_number === 7){
+          actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
+        }else if (action[0] == 5 && strategy.pami_number === 7){
+          actionDiv.textContent = `put_down()`;
+        }else if (action[0] == 6 && strategy.pami_number === 7){
+          actionDiv.textContent = `walking()`;
+        }else if (action[0] == 0){
+          actionDiv.textContent = `delay(${action[1]}ms)`;
         }
-      }else if (action[0] == 2){
-        actionDiv.textContent = `orientate(${action[1]})`;
-      }else if (action[0] == 3){
-        actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
-      }else if (action[0] == 4 && !(selected_strategy.pami_number === 7) ){
-        actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
-      }else if (action[0] == 4 && selected_strategy.pami_number === 7){
-        actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
-      }else if (action[0] == 5 && selected_strategy.pami_number === 7){
-        actionDiv.textContent = `put_down()`;
-      }else if (action[0] == 6 && selected_strategy.pami_number === 7){
-        actionDiv.textContent = `walking()`;
-      }else if (action[0] == 0){
-        actionDiv.textContent = `delay(${action[1]}ms)`;
-      }
 
-      actionDiv.draggable = true;
-      actionDiv.dataset.actionIndex = actionIndex;
+        actionDiv.draggable = true;
+        actionDiv.dataset.actionIndex = actionIndex;
+        actionDiv.dataset.pamiNumber = pamiNum;
 
-      /* ---------- DRAG START / END ---------- */
-      actionDiv.addEventListener("dragstart", e => {
-        actionDiv.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData(
-          "text/plain",
-          JSON.stringify({
-            fromAction: actionIndex
-          })
-        );
+        setupActionEventListeners(actionDiv, actionIndex, pamiNum, actionList);
+        actionList.appendChild(actionDiv);
       });
 
-      actionDiv.addEventListener("dragend", () => {
-        actionDiv.classList.remove("dragging");
-      });
+      setupActionListDropZone(actionList, pamiNum);
 
-      /* ---------- DRAG OVER ---------- */
-      actionDiv.addEventListener("dragover", e => {
-        e.preventDefault();
-        actionDiv.classList.add("drag-over");
-      });
+      taskBox.appendChild(actionList);
+      actionsContainer.appendChild(taskBox);
+      
+    } else {
+      // Multi-PAMI mode: render with colored boxes for each PAMI
+      visible_pamis.forEach(pamiNum => {
+        const strategy = loaded_strategies[pamiNum];
+        if (!strategy) return;
+        
+        const pamiBox = document.createElement("div");
+        pamiBox.classList.add("pami-task-box");
+        pamiBox.style.borderColor = pami_colors[pamiNum];
 
-      actionDiv.addEventListener("dragleave", () => {
-        actionDiv.classList.remove("drag-over");
-      });
+        const header = document.createElement("div");
+        header.classList.add("pami-task-header");
+        header.style.backgroundColor = pami_colors[pamiNum] + "33";
+        
+        const colorIndicator = document.createElement("span");
+        colorIndicator.classList.add("pami-color-indicator");
+        colorIndicator.style.backgroundColor = pami_colors[pamiNum];
+        
+        const headerText = document.createElement("span");
+        headerText.textContent = `PAMI ${pamiNum}`;
+        
+        header.appendChild(colorIndicator);
+        header.appendChild(headerText);
+        pamiBox.appendChild(header);
 
-      /* ---------- DROP (INSERT HERE) ---------- */
-      actionDiv.addEventListener("drop", e => {
-        e.preventDefault();
-        actionDiv.classList.remove("drag-over");
+        const actionList = document.createElement("div");
+        actionList.classList.add("action-list");
+
+        strategy.sequence.forEach((action, actionIndex) => {
+          const actionDiv = document.createElement("div");
+          actionDiv.classList.add("action-item");
+          actionDiv.style.borderLeft = `4px solid ${pami_colors[pamiNum]}`;
+          
+          if (action[0] == 1){
+            if (strategy.pami_number === 7 && action.length > 4) {
+              actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
+            } else {
+              actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
+            }
+          }else if (action[0] == 2){
+            actionDiv.textContent = `orientate(${action[1]})`;
+          }else if (action[0] == 3){
+            actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
+          }else if (action[0] == 4 && !(strategy.pami_number === 7) ){
+            actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
+          }else if (action[0] == 4 && strategy.pami_number === 7){
+            actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
+          }else if (action[0] == 5 && strategy.pami_number === 7){
+            actionDiv.textContent = `put_down()`;
+          }else if (action[0] == 6 && strategy.pami_number === 7){
+            actionDiv.textContent = `walking()`;
+          }else if (action[0] == 0){
+            actionDiv.textContent = `delay(${action[1]}ms)`;
+          }
+
+          actionDiv.draggable = true;
+          actionDiv.dataset.actionIndex = actionIndex;
+          actionDiv.dataset.pamiNumber = pamiNum;
+
+          setupActionEventListeners(actionDiv, actionIndex, pamiNum, actionList);
+          actionList.appendChild(actionDiv);
+        });
+
+        setupActionListDropZone(actionList, pamiNum);
+
+        pamiBox.appendChild(actionList);
+        actionsContainer.appendChild(pamiBox);
+      });
+    }
+
+  setupContextMenuHandlers();
+}
+
+function setupActionEventListeners(actionDiv, actionIndex, pamiNum, actionList) {
+        actionDiv.addEventListener("dragstart", e => {
+          actionDiv.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData(
+            "text/plain",
+            JSON.stringify({
+              fromAction: actionIndex,
+              fromPami: pamiNum
+            })
+          );
+        });
+
+        actionDiv.addEventListener("dragend", () => {
+          actionDiv.classList.remove("dragging");
+        });
+
+        /* ---------- DRAG OVER ---------- */
+        actionDiv.addEventListener("dragover", e => {
+          e.preventDefault();
+          actionDiv.classList.add("drag-over");
+        });
+
+        actionDiv.addEventListener("dragleave", () => {
+          actionDiv.classList.remove("drag-over");
+        });
+
+        /* ---------- DROP (INSERT HERE) ---------- */
+        actionDiv.addEventListener("drop", e => {
+          e.preventDefault();
+          actionDiv.classList.remove("drag-over");
+
+          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+          const {fromAction, fromPami } = data;
+          const toAction = actionIndex;
+          const toPami = pamiNum;
+
+          if (fromAction == null || fromPami == null) return;
+          
+          // Only allow drag within same PAMI
+          if (fromPami !== toPami) return;
+
+          const movedAction = loaded_strategies[fromPami].sequence.splice(fromAction, 1)[0];
+
+          const insertIndex = fromAction < toAction ? toAction - 1 : toAction;
+
+          loaded_strategies[toPami].sequence.splice(insertIndex, 0, movedAction);
+
+          saveToUndoStack();
+          renderTasks(isViewAllMode);
+          renderMap();
+          savePamiStrategy(loaded_strategies[toPami]);
+        });
+
+        /* ---------- CONTEXT MENU ---------- */
+        actionDiv.addEventListener("contextmenu", e => {
+          e.preventDefault();
+
+          contextActionIndex = actionIndex;
+          contextPamiNumber = pamiNum;
+
+          const menu = document.getElementById("action-context-menu");
+          menu.style.left = `${e.clientX}px`;
+          menu.style.top = `${e.clientY}px`;
+          menu.classList.remove("hidden");
+        });
+}
+
+function setupActionListDropZone(actionList, pamiNum) {
+      /* ---------- DROP AT END OF TASK ---------- */
+      actionList.addEventListener("dragover", e => e.preventDefault());
+
+      actionList.addEventListener("drop", e => {
+        if (e.target !== actionList) return;
 
         const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-        const {fromAction } = data;
-        const toAction = actionIndex;
+        const { fromAction, fromPami } = data;
 
-        if (fromAction == null) return;
+        if (fromAction == null || fromPami == null) return;
+        
+        // Only allow within same PAMI
+        if (fromPami !== pamiNum) return;
 
-        const movedAction =
-          selected_strategy.sequence.splice(fromAction, 1)[0];
+        const movedAction = loaded_strategies[fromPami].sequence.splice(fromAction, 1)[0];
 
-        const insertIndex =
-        fromAction < toAction
-            ? toAction - 1
-            : toAction;
+        loaded_strategies[pamiNum].sequence.push(movedAction);
 
-        selected_strategy.sequence.splice(
-          insertIndex,
-          0,
-          movedAction
-        );
-
-        renderTasks();
+        saveToUndoStack();
+        renderTasks(isViewAllMode);
         renderMap();
-        savePamiStrategy(selected_strategy);
+        savePamiStrategy(loaded_strategies[pamiNum]);
       });
+}
 
-      /* ---------- CONTEXT MENU ---------- */
-      actionDiv.addEventListener("contextmenu", e => {
-        e.preventDefault();
-
-        contextActionIndex = actionIndex;
-
-        const menu = document.getElementById("action-context-menu");
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-        menu.classList.remove("hidden");
-      });
-
-      actionList.appendChild(actionDiv);
-    });
-
-    /* ---------- DROP AT END OF TASK ---------- */
-    actionList.addEventListener("dragover", e => e.preventDefault());
-
-    actionList.addEventListener("drop", e => {
-      if (e.target !== actionList) return;
-
-      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-      const { fromAction } = data;
-
-      if (fromAction == null) return;
-
-      const movedAction =
-        selected_strategy.sequence.splice(fromAction, 1)[0];
-
-      selected_strategy.sequence.push(movedAction);
-
-      renderTasks();
-      renderMap();
-      savePamiStrategy(selected_strategy);
-    });
-
-    taskBox.appendChild(actionList);
-    actionsContainer.appendChild(taskBox);
-
-  /* ---------- GLOBAL CONTEXT MENU HANDLERS ---------- */
+function setupContextMenuHandlers() {
 
   document.addEventListener("click", () => {
     document.getElementById("action-context-menu").classList.add("hidden");
   });
 
   document.getElementById("ctx-delete").onclick = () => {
-    if (contextActionIndex == null) return;
+    if (contextActionIndex == null || contextPamiNumber == null) return;
 
-    selected_strategy.sequence.splice(contextActionIndex, 1);
+    loaded_strategies[contextPamiNumber].sequence.splice(contextActionIndex, 1);
+    
+    const pamiToSave = contextPamiNumber;
 
     contextActionIndex = null;
+    contextPamiNumber = null;
 
     document.getElementById("action-context-menu").classList.add("hidden");
 
-    renderTasks();
+    saveToUndoStack();
+    renderTasks(isViewAllMode);
     renderMap();
-    savePamiStrategy(selected_strategy);
+    savePamiStrategy(loaded_strategies[pamiToSave]);
   };
 
   document.getElementById("ctx-modify").onclick = () => {
-    if (contextActionIndex == null) return;
-    const command_type = selected_strategy.sequence[contextActionIndex][0];
-    const commandList = selected_strategy.pami_number === 7 ? commandCodesPami7 : commandCodes;
+    if (contextActionIndex == null || contextPamiNumber == null) return;
+    
+    const strategy = loaded_strategies[contextPamiNumber];
+    const command_type = strategy.sequence[contextActionIndex][0];
+    const commandList = strategy.pami_number === 7 ? commandCodesPami7 : commandCodes;
     const command = commandList[command_type];
 
     let args_table = [];
@@ -219,12 +478,12 @@ function renderTasks() {
       "Command: " + command;
 
     if (command_type == 1) {
-      args_table = selected_strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
+      args_table = strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
     } else if (command_type == 2) {
       args_table = orientate_args;
     } else if (command_type == 3) {
       args_table = set_position_args;
-    } else if (command_type == 4 && !(selected_strategy.pami_number === 7)) {
+    } else if (command_type == 4 && !(strategy.pami_number === 7)) {
       args_table = bezier_args;
     } else if (command_type == 4) {
       args_table = pick_up_args;
@@ -266,7 +525,7 @@ function renderTasks() {
       }
     }));
     inputs.forEach((input, i) => {
-      input.value = selected_strategy.sequence[contextActionIndex][i+1] ?? "";
+      input.value = strategy.sequence[contextActionIndex][i+1] ?? "";
     });
 
     modal.classList.remove("hidden");
@@ -309,18 +568,17 @@ function populateAddList() {
 }
 
 function addDefs(svg) {
-  svg.innerHTML = `
-    <defs>
-      <marker id="arrowhead-red" markerWidth="10" markerHeight="7"
-        refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="red"/>
-      </marker>
-      <marker id="arrowhead-blue" markerWidth="10" markerHeight="7"
-        refX="10" refY="3.5" orient="auto">
-        <polygon points="0 0, 10 3.5, 0 7" fill="blue"/>
-      </marker>
-    </defs>
-  `;
+  let defsHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#667eea"/></marker>';
+  
+  // Add arrowheads for each PAMI color
+  for (let i = 1; i <= 7; i++) {
+    defsHTML += `<marker id="arrowhead-${i}" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="${pami_colors[i]}"/>
+    </marker>`;
+  }
+  
+  defsHTML += '</defs>';
+  svg.innerHTML = defsHTML;
 }
 
 function mapToScreen(x, y) {
@@ -347,35 +605,41 @@ function renderMap() {
     svg.innerHTML = "";
     addDefs(svg);
 
-    if (!selected_strategy) return;
+    // Render paths for all visible PAMIs
+    visible_pamis.forEach(pamiNum => {
+      const strategy = loaded_strategies[pamiNum];
+      if (!strategy) return;
+      
+      const color = pami_colors[pamiNum];
 
-    let currentPos = { x: 0, y: 0 };
-    selected_strategy.sequence.forEach((action, actionIndex) => {
+      let currentPos = { x: 0, y: 0 };
+      strategy.sequence.forEach((action, actionIndex) => {
 
-      if (action[0] == 3) {
-        const [x, y] = [action[1], action[2]];
-        currentPos = { x, y };
-        drawPoint(svg, x, y, "robot", actionIndex, 1, 2);
-      }
+        if (action[0] == 3) {
+          const [x, y] = [action[1], action[2]];
+          currentPos = { x, y };
+          drawPoint(svg, x, y, "robot", actionIndex, 1, 2, false, color, pamiNum);
+        }
 
-      else if (action[0] == 1) {
-        const [x, y] = [action[1], action[2]];
-        drawArrow(svg, currentPos, { x, y }, 0);
-        drawPoint(svg, x, y,"", actionIndex, 1, 2);
-        currentPos = { x, y };
-      }
+        else if (action[0] == 1) {
+          const [x, y] = [action[1], action[2]];
+          drawArrow(svg, currentPos, { x, y }, 0, color, pamiNum);
+          drawPoint(svg, x, y,"", actionIndex, 1, 2, false, color, pamiNum);
+          currentPos = { x, y };
+        }
 
-      else if (action[0] == 2) {
-        drawRotateIcon(svg, currentPos);
-      }
-      else if (action[0] == 4){
-        drawBezier(svg, currentPos, action.slice(1), 0, actionIndex);
-        const [ , , , , x3, y3 ] = action.slice(1);
-        currentPos = { x: x3, y: y3 };
-      }
+        else if (action[0] == 2) {
+          drawRotateIcon(svg, currentPos, color);
+        }
+        else if (action[0] == 4){
+          drawBezier(svg, currentPos, action.slice(1), 0, actionIndex, color, pamiNum);
+          const [ , , , , x3, y3 ] = action.slice(1);
+          currentPos = { x: x3, y: y3 };
+        }
+      });
     });
 }
-function drawBezier(svg, start, params, backwards, actionIndex) {
+function drawBezier(svg, start, params, backwards, actionIndex, color, pamiNum) {
   const [x1,y1,x2,y2,x3,y3] = params;
 
   const p0 = mapToScreen(start.x, start.y);
@@ -383,8 +647,8 @@ function drawBezier(svg, start, params, backwards, actionIndex) {
   const p2 = mapToScreen(x2, y2);
   const p3 = mapToScreen(x3, y3);
 
-  drawDiscountinousLine(svg, start, { x: x1, y: y1 }); // Draw discontinuous line to first point
-  drawDiscountinousLine(svg, { x: x2, y: y2 }, { x: x3, y: y3 }); // Draw discontinuous line to last point
+  drawDiscountinousLine(svg, start, { x: x1, y: y1 }, color); // Draw discontinuous line to first point
+  drawDiscountinousLine(svg, { x: x2, y: y2 }, { x: x3, y: y3 }, color); // Draw discontinuous line to last point
 
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute(
@@ -394,18 +658,18 @@ function drawBezier(svg, start, params, backwards, actionIndex) {
   path.classList.add(backwards ? "backward" : "forward");
   path.setAttribute("fill", "none");
   path.setAttribute("stroke-width", "2");
+  path.style.stroke = color;
 
   svg.appendChild(path);
 
-  drawPoint(svg, params[0], params[1], "", actionIndex, 1, 2, true);
-  drawPoint(svg, params[2], params[3], "", actionIndex, 3, 4, true);
-  drawPoint(svg, params[4], params[5], "", actionIndex, 5, 6);
+  drawPoint(svg, params[0], params[1], "", actionIndex, 1, 2, true, color, pamiNum);
+  drawPoint(svg, params[2], params[3], "", actionIndex, 3, 4, true, color, pamiNum);
+  drawPoint(svg, params[4], params[5], "", actionIndex, 5, 6, false, color, pamiNum);
   // add arrowhead at end of bezier like drawArrow
-  path.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
-  path.setAttribute("stroke", backwards ? "blue" : "red");
+  path.setAttribute("marker-end", `url(#arrowhead-${pamiNum})`);
 }
 
-function drawDiscountinousLine(svg, from, to) {
+function drawDiscountinousLine(svg, from, to, color) {
   const p1 = mapToScreen(from.x, from.y);
   const p2 = mapToScreen(to.x, to.y);
 
@@ -415,7 +679,7 @@ function drawDiscountinousLine(svg, from, to) {
   l.setAttribute("x2", p2.cx);
   l.setAttribute("y2", p2.cy);
 
-  l.setAttribute("stroke", "white");
+  l.setAttribute("stroke", color || "white");
   l.setAttribute("marker-end", "none");
   l.setAttribute("stroke-width", "2"); // Increase the stroke width to make the line thicker
   l.setAttribute("stroke-dasharray", "10,10"); // Set dash pattern: 10px dash, 10px gap
@@ -424,7 +688,7 @@ function drawDiscountinousLine(svg, from, to) {
   svg.appendChild(l);
 }
 
-function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, secondary=false) {
+function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, secondary=false, color="#667eea", pamiNum) {
   const { cx, cy } = mapToScreen(x, y);
 
   const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -432,16 +696,18 @@ function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, s
   c.setAttribute("cy", cy);
   c.setAttribute("r", 6);
   c.classList.add("map-point");
+  c.setAttribute("fill", color);
+  c.setAttribute("stroke", color);
   if (secondary){
     c.classList.add("secondary");
   }
   if (cls) c.classList.add(cls);
 
-  enableDrag(c, actionIndex , paramIndexX, paramIndexY);
+  enableDrag(c, actionIndex , paramIndexX, paramIndexY, pamiNum);
   svg.appendChild(c);
 }
 
-function drawArrow(svg, from, to, backwards) {
+function drawArrow(svg, from, to, backwards, color, pamiNum) {
   const p1 = mapToScreen(from.x, from.y);
   const p2 = mapToScreen(to.x, to.y);
 
@@ -451,12 +717,13 @@ function drawArrow(svg, from, to, backwards) {
   l.setAttribute("x2", p2.cx);
   l.setAttribute("y2", p2.cy);
   l.classList.add("arrow", backwards ? "backward" : "forward");
-  l.setAttribute("marker-end", backwards ? "url(#arrowhead-blue)" : "url(#arrowhead-red)");
+  l.style.stroke = color;
+  l.setAttribute("marker-end", `url(#arrowhead-${pamiNum})`);
 
   svg.appendChild(l);
 }
 
-function drawIcon(svg, pos, symbol) {
+function drawIcon(svg, pos, symbol, color) {
   const { cx, cy } = mapToScreen(pos.x, pos.y);
 
   const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -464,20 +731,19 @@ function drawIcon(svg, pos, symbol) {
   t.setAttribute("y", cy - 5);
   t.textContent = symbol;
   t.classList.add("icon");
+  if (color) t.setAttribute("fill", color);
 
   svg.appendChild(t);
 }
 
-function drawRotateIcon(svg, pos) {
-  drawIcon(svg, pos, "🔄");
+function drawRotateIcon(svg, pos, color) {
+  drawIcon(svg, pos, "🔄", color);
 }
-function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, cy) {
+function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, cy, pamiNum) {
   const { x, y } = screenToMap(cx, cy);
 
-  selected_strategy.sequence[actionIndex][paramIndexX] = x.toFixed(2);
-  selected_strategy.sequence[actionIndex][paramIndexY] = y.toFixed(2);
-
-  renderMap();
+  loaded_strategies[pamiNum].sequence[actionIndex][paramIndexX] = x.toFixed(2);
+  loaded_strategies[pamiNum].sequence[actionIndex][paramIndexY] = y.toFixed(2);
 }
 function hightlightAction(actionIndex) {
     //const actionItems = document.querySelectorAll(".action-item");
@@ -489,12 +755,12 @@ function unHightlightActions() {
   //   item.classList.remove("highlighted");
   // });
 }
-function draw_robot_on_map(svg, x, y, angle) {
+function draw_robot_on_map(svg, x, y, angle, pamiNum) {
   clear_robot_off_map(svg);
 
   const { cx, cy } = mapToScreen(x, y);
 
-  const color = "rgba(243, 20, 255, 1)"
+  const color = pami_colors[pamiNum] || "rgba(243, 20, 255, 1)";
 
   const robot = document.createElementNS("http://www.w3.org/2000/svg", "g");
   robot.setAttribute(
@@ -504,7 +770,7 @@ function draw_robot_on_map(svg, x, y, angle) {
 
   /* Robot body - different size for pami 7 */
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  if (selected_strategy.pami_number === 7) {
+  if (pamiNum === 7) {
     // Pami 7: 110mm x 130mm (map is 3000mm wide)
     rect.setAttribute("width", svg.clientWidth * (110 / 3000));
     rect.setAttribute("height", svg.clientWidth * (130 / 3000));
@@ -545,13 +811,13 @@ function clear_robot_off_map(svg) {
 function rad_to_deg(rad) {
   return rad * (180 / Math.PI);
 }
-function calculate_x_y_phi_after_action(point, actionIndex) {
+function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     const svg = document.getElementById("map-overlay");
     const points = svg.querySelectorAll(".map-point");
     let x = point.getAttribute("cx");
     let y = point.getAttribute("cy");
     let phi = 0;
-    let action = selected_strategy.sequence[actionIndex];
+    let action = loaded_strategies[pamiNum].sequence[actionIndex];
     if (action[0] == 3) { 
         // set_position command - use the angle parameter
         phi = action[3];
@@ -565,8 +831,8 @@ function calculate_x_y_phi_after_action(point, actionIndex) {
 
         phi = rad_to_deg(Math.atan2(x - prevX, y - prevY)) ;
     }
-    if (actionIndex < selected_strategy.sequence.length - 1){
-        const next = selected_strategy.sequence[actionIndex + 1];
+    if (actionIndex < loaded_strategies[pamiNum].sequence.length - 1){
+        const next = loaded_strategies[pamiNum].sequence[actionIndex + 1];
 
         if (next[0] == 2) {
             // Next action is orientate - use that angle
@@ -576,13 +842,13 @@ function calculate_x_y_phi_after_action(point, actionIndex) {
     const xy = screenToMap(x, y);
     return [xy.x, xy.y, phi];
 }
-function enableDrag(el, actionIndex, paramIndexX, paramIndexY) {
+function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   let dragging = false;
 
   el.addEventListener("mouseover", e => {
     hightlightAction(actionIndex);
-    let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
+    let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
+    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi, pamiNum);
   });
   el.addEventListener("mouseout", e => {
     unHightlightActions();
@@ -592,8 +858,8 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY) {
   el.addEventListener("mousedown", e => {
     dragging = true;
     e.stopPropagation();
-    let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
+    let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
+    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi, pamiNum);
   });
 
   window.addEventListener("mousemove", e => {
@@ -613,18 +879,20 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY) {
       paramIndexX,
       paramIndexY,
       y,
-      x
+      x,
+      pamiNum
     );
-    let [x1, y1, phi] = calculate_x_y_phi_after_action(el, actionIndex);
-    draw_robot_on_map(document.getElementById("map-overlay"), x1, y1, phi);
+    let [x1, y1, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
+    draw_robot_on_map(document.getElementById("map-overlay"), x1, y1, phi, pamiNum);
   });
 
   window.addEventListener("mouseup", () => {
     if (!dragging) return;
 
     dragging = false;          // ← drag is over
-    renderTasks();
-    savePamiStrategy(selected_strategy);
+    saveToUndoStack();
+    renderTasks(isViewAllMode);
+    savePamiStrategy(loaded_strategies[pamiNum]);
   });
 }
 
@@ -632,14 +900,43 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY) {
 
 document.getElementById("add-action-btn").addEventListener("click", () => {
   const index = actionSelect.value;
-  if (index == "" || !selected_strategy) return;
+  if (index == "" || visible_pamis.size === 0) return;
+  
+  // Use the first visible PAMI to determine which commands to show
+  const firstVisiblePami = Array.from(visible_pamis)[0];
+  const targetStrategy = loaded_strategies[firstVisiblePami];
+  contextPamiNumber = firstVisiblePami;
+  
+  // Show PAMI selector if in multi-PAMI mode
+  const pamiSelectorModal = document.getElementById("pami-selector-modal");
+  const pamiSelectDropdown = document.getElementById("pami-select-modal");
+  
+  if (isViewAllMode && visible_pamis.size > 1) {
+    pamiSelectorModal.classList.remove("hidden");
+    
+    // Populate dropdown with only visible PAMIs
+    pamiSelectDropdown.innerHTML = "";
+    visible_pamis.forEach(pamiNum => {
+      const option = document.createElement("option");
+      option.value = pamiNum;
+      option.textContent = `PAMI ${pamiNum}`;
+      option.style.color = pami_colors[pamiNum];
+      pamiSelectDropdown.appendChild(option);
+    });
+    
+    // Set default to first visible PAMI
+    pamiSelectDropdown.value = firstVisiblePami;
+  } else {
+    pamiSelectorModal.classList.add("hidden");
+  }
+  
   const opt = actionSelect.options[index];
   const command = opt.textContent;
   let args_table = [];
   document.getElementById("command_label").textContent = "Command: "+command;
   // Decide which argument table to use
   if (command.includes("go_to")) {
-    args_table = selected_strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
+    args_table = targetStrategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
   }
   else if (command.includes("orientate")) {
     args_table = orientate_args;
@@ -709,6 +1006,20 @@ document.getElementById("modal-cancel").addEventListener("click", () => {
 
 document.getElementById("modal-confirm").addEventListener("click", () => {
   let action = null;
+  
+  // If adding new action (not modifying), check PAMI selector
+  let targetPami;
+  if (contextActionIndex == null && isViewAllMode && visible_pamis.size > 1) {
+    // Use selected PAMI from dropdown
+    const pamiSelectDropdown = document.getElementById("pami-select-modal");
+    targetPami = parseInt(pamiSelectDropdown.value);
+  } else {
+    // Use context PAMI (for modify) or first visible (for add in single mode)
+    targetPami = contextPamiNumber || Array.from(visible_pamis)[0];
+  }
+  
+  const targetStrategy = loaded_strategies[targetPami];
+  
   if (contextActionIndex == null){
     const index = actionSelect.value - 1;
 
@@ -727,9 +1038,9 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
     if (!action) return;
 
-    selected_strategy.sequence.push(action);
+    targetStrategy.sequence.push(action);
   }else{
-    action = selected_strategy.sequence[contextActionIndex];
+    action = targetStrategy.sequence[contextActionIndex];
     if (action[0] == 0){
       document.querySelectorAll("#args-container input").forEach((input, index) => {
         const value = parseFloat(input.value) || 1000;
@@ -744,18 +1055,35 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
     if (contextActionIndex != null) {
       // MODIFY
-      selected_strategy.sequence[contextActionIndex] = action;
+      targetStrategy.sequence[contextActionIndex] = action;
       contextActionIndex = null;
+      contextPamiNumber = null;
     } else {
       // ADD
-      selected_strategy.sequence.push(action);
+      targetStrategy.sequence.push(action);
     }
   }
   modal.classList.add("hidden");
-  renderTasks();
+  saveToUndoStack();
+  renderTasks(isViewAllMode);
   renderMap();
-  savePamiStrategy(selected_strategy);
+  savePamiStrategy(targetStrategy);
 });
+
+document.addEventListener("keydown", (e) => {
+  const isCtrl = e.ctrlKey || e.metaKey;
+
+  if (isCtrl && e.key === "z") {
+    e.preventDefault();
+    undo();
+  }
+
+  if (isCtrl && e.key === "y") {
+    e.preventDefault();
+    redo();
+  }
+});
+
 await get_selected_strategy();
 populateAddList();
 renderMap();
