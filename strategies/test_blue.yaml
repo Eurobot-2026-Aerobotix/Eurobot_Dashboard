@@ -79,7 +79,7 @@ tasks:
   global_goal:
     x: '1452.72'
     y: '2596.84'
-    theta: 60.77654912484623
+    theta: -24.444256148399173
   sequence:
   - device: STM
     command: go_to

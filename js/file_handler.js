@@ -107,15 +107,20 @@ export async function deleteStrategy(filename) {
 async function calculate_global_poses(strategy) {
   if (!strategy || !strategy.tasks) return;
 
+  // Track position across tasks
+  let globalLastX = 0;
+  let globalLastY = 0;
+
+  // First pass: calculate theta and position from movement commands
   strategy.tasks.forEach(task => {
     let lastX = null;
     let lastY = null;
     let lastTheta = null;
     let lastMoveIndex = -1;
 
-    // Track the last known position for theta calculation
-    let prevX = 0;
-    let prevY = 0;
+    // Use global position tracker as starting point for this task
+    let prevX = globalLastX;
+    let prevY = globalLastY;
 
     // First, find the last movement command
     for (let i = task.sequence.length - 1; i >= 0; i--) {
@@ -126,23 +131,28 @@ async function calculate_global_poses(strategy) {
         lastX = x;
         lastY = y;
 
-        // Find previous position by looking backward
+        // Find previous position by looking backward in CURRENT task
+        let foundPrevInTask = false;
         for (let j = i - 1; j >= 0; j--) {
           const prevAction = task.sequence[j];
           if (prevAction.command.includes("go_to")) {
             prevX = prevAction.params[0];
             prevY = prevAction.params[1];
+            foundPrevInTask = true;
             break;
           } else if (prevAction.command.includes("bezier")) {
             prevX = prevAction.params[4]; // x3
             prevY = prevAction.params[5]; // y3
+            foundPrevInTask = true;
             break;
           } else if (prevAction.command.includes("set_position")) {
             prevX = prevAction.params[0];
             prevY = prevAction.params[1];
+            foundPrevInTask = true;
             break;
           }
         }
+        // If not found in current task, prevX/prevY already has globalLastX/Y
 
         // Calculate travel direction
         let travelTheta = Math.atan2(y - prevY, x - prevX)*180/3.1415926535897932384626;
@@ -182,13 +192,14 @@ async function calculate_global_poses(strategy) {
         break;
 
       } else if (action.command.includes("set_position")) {
-        // Could be used for prevX / prevY for next go_to
+        // Update position for this task
         prevX = action.params[0];
         prevY = action.params[1];
       }
     }
 
-    // Check for orientate after last movement
+    // Check for orientate command ANYWHERE in the sequence after last movement
+    // This handles tasks with NO movement but WITH orientate
     for (let i = lastMoveIndex + 1; i < task.sequence.length; i++) {
       const action = task.sequence[i];
       if (action.command.includes("orientate")) {
@@ -203,16 +214,29 @@ async function calculate_global_poses(strategy) {
       y: lastY,
       theta: lastTheta
     };
+
+    // Update global position tracker for next task
+    if (lastX != null) {
+      globalLastX = lastX;
+      globalLastY = lastY;
+    }
   });
+  
+  // Second pass: inherit from previous task if needed
   strategy.tasks.forEach((task, i) => {
-  if (task.global_goal && task.global_goal.x == null && i > 0) {
-      // Copy global_goal from previous task
+    if (i > 0) {
       const prevGoal = strategy.tasks[i - 1].global_goal;
-      task.global_goal = {
-        x: prevGoal.x,
-        y: prevGoal.y,
-        theta: prevGoal.theta
-      };
+      
+      // Inherit position if current task has null position
+      if (task.global_goal.x == null && prevGoal.x != null) {
+        task.global_goal.x = prevGoal.x;
+        task.global_goal.y = prevGoal.y;
+      }
+      
+      // Inherit theta if current task has null theta
+      if (task.global_goal.theta == null && prevGoal.theta != null) {
+        task.global_goal.theta = prevGoal.theta;
+      }
     }
   });
 }

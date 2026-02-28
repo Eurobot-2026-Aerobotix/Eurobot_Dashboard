@@ -81,7 +81,7 @@ tasks:
   global_goal:
     x: 1200
     y: 1150
-    theta: 0
+    theta: 90
   sequence:
   - device: STM
     command: orientate
@@ -152,7 +152,7 @@ tasks:
   global_goal:
     x: 1600
     y: 400
-    theta: -165.96375653207352
+    theta: 90
   sequence:
   - device: STM
     command: go_to_backwards
@@ -170,7 +170,7 @@ tasks:
   global_goal:
     x: '1714.50'
     y: '524.94'
-    theta: 17.02336905595304
+    theta: 47.4966142189985
   sequence:
   - device: STM
     command: go_to
