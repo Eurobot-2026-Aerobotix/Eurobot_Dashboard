@@ -60,14 +60,31 @@ function hideMenu() {
 }
 
 for (let i = 0; i < pamiBtns.length; i++) {
+  // Check if this is the ALL square
+  if (pamiBtns[i].classList.contains('all-square')) {
+    pamiBtns[i].addEventListener("click", () => {
+      // Open with all PAMIs visible
+      window.location.href = `pami_strategy_viewer.html?pami=1&name=${params.get("name")}&viewAll=true`;
+    });
+    
+    // No context menu for ALL square
+    pamiBtns[i].addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+    continue;
+  }
+  
+  // Regular PAMI squares - also open with multi-PAMI view
+  const pamiNumber = i; // i=1 -> PAMI 1, i=2 -> PAMI 2, etc.
   pamiBtns[i].addEventListener("click", () => {
-    window.location.href =`pami_strategy_viewer.html?pami=${i + 1}&name=${params.get("name")}`;
+    // Open with PAMI selector visible, this PAMI selected by default
+    window.location.href =`pami_strategy_viewer.html?pami=${pamiNumber}&name=${params.get("name")}`;
   });
 
   pamiBtns[i].addEventListener("contextmenu", (e) => {
     e.preventDefault(); // stop browser menu
-    context_strategy_number = i;
-    showMenu(e.pageX, e.pageY, i);
+    context_strategy_number = pamiNumber - 1;
+    showMenu(e.pageX, e.pageY, pamiNumber - 1);
   });
 
 }

@@ -32,12 +32,56 @@
       </div>
     </div>
     <div id="controls">
-      &nbsp;&nbsp;&nbsp;&nbsp; Action :
-      <select id="action-select">
-        <option value="">Add</option>
-      </select>
-      <button id="add-action-btn">Add</button>
-      <button id="back-btn">Back</button>
+      <div id="pami-selector">
+        <label style="font-weight: bold; margin-right: 10px;">Select PAMIs:</label>
+        <label class="pami-checkbox-label" style="font-weight: bold; background-color: rgba(102, 126, 234, 0.2); padding: 8px 12px; border-radius: 5px;">
+          <input type="checkbox" id="pami-all-checkbox">
+          <span style="font-size: 16px;">ALL</span>
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="1" checked>
+          <span class="pami-color-indicator" style="background-color: #FF6B6B;"></span>
+          PAMI 1
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="2">
+          <span class="pami-color-indicator" style="background-color: #4ECDC4;"></span>
+          PAMI 2
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="3">
+          <span class="pami-color-indicator" style="background-color: #FFE66D;"></span>
+          PAMI 3
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="4">
+          <span class="pami-color-indicator" style="background-color: #95E1D3;"></span>
+          PAMI 4
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="5">
+          <span class="pami-color-indicator" style="background-color: #F38181;"></span>
+          PAMI 5
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="6">
+          <span class="pami-color-indicator" style="background-color: #AA96DA;"></span>
+          PAMI 6
+        </label>
+        <label class="pami-checkbox-label">
+          <input type="checkbox" class="pami-checkbox" data-pami="7">
+          <span class="pami-color-indicator" style="background-color: #FCBAD3;"></span>
+          PAMI 7
+        </label>
+      </div>
+      <div style="margin-top: 10px;">
+        &nbsp;&nbsp;&nbsp;&nbsp; Action :
+        <select id="action-select">
+          <option value="">Add</option>
+        </select>
+        <button id="add-action-btn">Add</button>
+        <button id="back-btn">Back</button>
+      </div>
     </div>
   </div>
   <div id="action-modal" class="modal hidden">

@@ -58,6 +58,86 @@ body {
     opacity: 0.5;
 }
 
+/* PAMI Selector Styles */
+#pami-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    padding: 10px;
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+#pami-selector.hidden {
+    display: none;
+}
+
+.pami-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.pami-checkbox-label:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.pami-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+#pami-all-checkbox {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    accent-color: #667eea;
+}
+
+#pami-all-checkbox:indeterminate {
+    opacity: 0.7;
+}
+
+.pami-color-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* PAMI-specific task boxes */
+.pami-task-box {
+    margin-bottom: 20px;
+    border: 2px solid;
+    border-radius: 10px;
+    padding: 10px;
+    background: rgba(30, 30, 30, 0.5);
+}
+
+.pami-task-header {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pami-task-header .pami-color-indicator {
+    width: 16px;
+    height: 16px;
+}
+
   /* Main area */
 #main-area {
     flex: 1;
