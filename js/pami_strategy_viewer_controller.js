@@ -650,6 +650,20 @@ function drawBezier(svg, start, params, backwards, actionIndex, color, pamiNum) 
   drawDiscountinousLine(svg, start, { x: x1, y: y1 }, color); // Draw discontinuous line to first point
   drawDiscountinousLine(svg, { x: x2, y: y2 }, { x: x3, y: y3 }, color); // Draw discontinuous line to last point
 
+  // Draw black outline first (thicker)
+  const outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  outline.setAttribute(
+    "d",
+    `M ${p0.cx} ${p0.cy} C ${p1.cx} ${p1.cy}, ${p2.cx} ${p2.cy}, ${p3.cx} ${p3.cy}`
+  );
+  outline.classList.add(backwards ? "backward" : "forward");
+  outline.setAttribute("fill", "none");
+  outline.style.strokeWidth = "5";
+  outline.style.stroke = "#000000";
+  outline.setAttribute("marker-end", "none");
+  svg.appendChild(outline);
+
+  // Draw colored path on top
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute(
     "d",
@@ -657,7 +671,7 @@ function drawBezier(svg, start, params, backwards, actionIndex, color, pamiNum) 
   );
   path.classList.add(backwards ? "backward" : "forward");
   path.setAttribute("fill", "none");
-  path.setAttribute("stroke-width", "2");
+  path.style.strokeWidth = "2";
   path.style.stroke = color;
 
   svg.appendChild(path);
@@ -673,17 +687,31 @@ function drawDiscountinousLine(svg, from, to, color) {
   const p1 = mapToScreen(from.x, from.y);
   const p2 = mapToScreen(to.x, to.y);
 
+  // Draw black outline first (thicker)
+  const outline = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  outline.setAttribute("x1", p1.cx);
+  outline.setAttribute("y1", p1.cy);
+  outline.setAttribute("x2", p2.cx);
+  outline.setAttribute("y2", p2.cy);
+  outline.style.stroke = "#000000";
+  outline.setAttribute("marker-end", "none");
+  outline.style.strokeWidth = "4";
+  outline.setAttribute("stroke-dasharray", "10,10");
+  outline.setAttribute("opacity", "0.5");
+  svg.appendChild(outline);
+
+  // Draw colored line on top
   const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
   l.setAttribute("x1", p1.cx);
   l.setAttribute("y1", p1.cy);
   l.setAttribute("x2", p2.cx);
   l.setAttribute("y2", p2.cy);
 
-  l.setAttribute("stroke", color || "white");
+  l.style.stroke = color || "white";
   l.setAttribute("marker-end", "none");
-  l.setAttribute("stroke-width", "2"); // Increase the stroke width to make the line thicker
-  l.setAttribute("stroke-dasharray", "10,10"); // Set dash pattern: 10px dash, 10px gap
-  l.setAttribute("opacity", "0.5"); // Optional: make the line semi-transparent
+  l.style.strokeWidth = "2";
+  l.setAttribute("stroke-dasharray", "10,10");
+  l.setAttribute("opacity", "0.5");
 
   svg.appendChild(l);
 }
@@ -696,8 +724,9 @@ function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, s
   c.setAttribute("cy", cy);
   c.setAttribute("r", 6);
   c.classList.add("map-point");
-  c.setAttribute("fill", color);
-  c.setAttribute("stroke", color);
+  c.style.fill = color;
+  c.style.stroke = "#000000";
+  c.style.strokeWidth = "2";
   if (secondary){
     c.classList.add("secondary");
   }
@@ -711,6 +740,19 @@ function drawArrow(svg, from, to, backwards, color, pamiNum) {
   const p1 = mapToScreen(from.x, from.y);
   const p2 = mapToScreen(to.x, to.y);
 
+  // Draw black outline first (thicker)
+  const outline = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  outline.setAttribute("x1", p1.cx);
+  outline.setAttribute("y1", p1.cy);
+  outline.setAttribute("x2", p2.cx);
+  outline.setAttribute("y2", p2.cy);
+  outline.classList.add("arrow", backwards ? "backward" : "forward");
+  outline.style.stroke = "#000000";
+  outline.style.strokeWidth = "4";
+  outline.setAttribute("marker-end", "none");
+  svg.appendChild(outline);
+
+  // Draw colored line on top
   const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
   l.setAttribute("x1", p1.cx);
   l.setAttribute("y1", p1.cy);
@@ -718,6 +760,7 @@ function drawArrow(svg, from, to, backwards, color, pamiNum) {
   l.setAttribute("y2", p2.cy);
   l.classList.add("arrow", backwards ? "backward" : "forward");
   l.style.stroke = color;
+  l.style.strokeWidth = "2";
   l.setAttribute("marker-end", `url(#arrowhead-${pamiNum})`);
 
   svg.appendChild(l);
