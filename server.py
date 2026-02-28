@@ -868,10 +868,11 @@ def stop_strategy():
 
 # -------------------------------------------------
 # Test PAMI strategy
-# POST /test_pami
+# POST /test_pami (also accepts /test-pami for compatibility)
 # Automatically finds and tests the selected strategy
 # -------------------------------------------------
 @app.route("/test_pami", methods=["POST"])
+@app.route("/test-pami", methods=["POST"])
 def test_pami():
     """Run pami_test_manager for the selected strategy"""
     global pami_process
