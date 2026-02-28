@@ -33,6 +33,8 @@ const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_
 let contextActionIndex = null;
 let contextPamiNumber = null;
 let robot_on_map = null;
+let undoStack = [];
+let redoStack = [];
 
 // ------------------------------
 // Load selected strategy
@@ -68,6 +70,11 @@ async function get_selected_strategy() {
   
   // Set the default selected strategy
   selected_strategy = loaded_strategies[pami_number];
+  
+  // Initialize undo stack
+  undoStack.length = 0;
+  undoStack.push(JSON.stringify(loaded_strategies));
+  redoStack.length = 0;
   
   if (viewAll) {
     // Multi-PAMI mode: show selector and all PAMIs
@@ -143,6 +150,47 @@ function setupPamiCheckboxes() {
   
   // Initialize ALL checkbox state
   updateAllCheckboxState();
+}
+
+function saveToUndoStack() {
+  if (undoStack.length > 100) undoStack.shift();
+  undoStack.push(JSON.stringify(loaded_strategies));
+  redoStack.length = 0;
+}
+
+function undo() {
+  if (undoStack.length < 2) return;
+
+  redoStack.push(undoStack.pop());
+
+  loaded_strategies = JSON.parse(
+    undoStack[undoStack.length - 1]
+  );
+
+  renderTasks(isViewAllMode);
+  renderMap();
+  
+  // Save all PAMIs
+  Object.values(loaded_strategies).forEach(strategy => {
+    savePamiStrategy(strategy);
+  });
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+
+  const state = redoStack.pop();
+  undoStack.push(state);
+
+  loaded_strategies = JSON.parse(state);
+
+  renderTasks(isViewAllMode);
+  renderMap();
+  
+  // Save all PAMIs
+  Object.values(loaded_strategies).forEach(strategy => {
+    savePamiStrategy(strategy);
+  });
 }
 
 function updateAllCheckboxState() {
@@ -347,6 +395,7 @@ function setupActionEventListeners(actionDiv, actionIndex, pamiNum, actionList) 
 
           loaded_strategies[toPami].sequence.splice(insertIndex, 0, movedAction);
 
+          saveToUndoStack();
           renderTasks(isViewAllMode);
           renderMap();
           savePamiStrategy(loaded_strategies[toPami]);
@@ -385,6 +434,7 @@ function setupActionListDropZone(actionList, pamiNum) {
 
         loaded_strategies[pamiNum].sequence.push(movedAction);
 
+        saveToUndoStack();
         renderTasks(isViewAllMode);
         renderMap();
         savePamiStrategy(loaded_strategies[pamiNum]);
@@ -409,6 +459,7 @@ function setupContextMenuHandlers() {
 
     document.getElementById("action-context-menu").classList.add("hidden");
 
+    saveToUndoStack();
     renderTasks(isViewAllMode);
     renderMap();
     savePamiStrategy(loaded_strategies[pamiToSave]);
@@ -693,8 +744,6 @@ function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, c
 
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexX] = x.toFixed(2);
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexY] = y.toFixed(2);
-
-  renderMap();
 }
 function hightlightAction(actionIndex) {
     //const actionItems = document.querySelectorAll(".action-item");
@@ -841,7 +890,8 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
     if (!dragging) return;
 
     dragging = false;          // ← drag is over
-    renderTasks();
+    saveToUndoStack();
+    renderTasks(isViewAllMode);
     savePamiStrategy(loaded_strategies[pamiNum]);
   });
 }
@@ -856,6 +906,29 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   const firstVisiblePami = Array.from(visible_pamis)[0];
   const targetStrategy = loaded_strategies[firstVisiblePami];
   contextPamiNumber = firstVisiblePami;
+  
+  // Show PAMI selector if in multi-PAMI mode
+  const pamiSelectorModal = document.getElementById("pami-selector-modal");
+  const pamiSelectDropdown = document.getElementById("pami-select-modal");
+  
+  if (isViewAllMode && visible_pamis.size > 1) {
+    pamiSelectorModal.classList.remove("hidden");
+    
+    // Populate dropdown with only visible PAMIs
+    pamiSelectDropdown.innerHTML = "";
+    visible_pamis.forEach(pamiNum => {
+      const option = document.createElement("option");
+      option.value = pamiNum;
+      option.textContent = `PAMI ${pamiNum}`;
+      option.style.color = pami_colors[pamiNum];
+      pamiSelectDropdown.appendChild(option);
+    });
+    
+    // Set default to first visible PAMI
+    pamiSelectDropdown.value = firstVisiblePami;
+  } else {
+    pamiSelectorModal.classList.add("hidden");
+  }
   
   const opt = actionSelect.options[index];
   const command = opt.textContent;
@@ -933,7 +1006,18 @@ document.getElementById("modal-cancel").addEventListener("click", () => {
 
 document.getElementById("modal-confirm").addEventListener("click", () => {
   let action = null;
-  const targetPami = contextPamiNumber || Array.from(visible_pamis)[0]; // Use context PAMI or first visible
+  
+  // If adding new action (not modifying), check PAMI selector
+  let targetPami;
+  if (contextActionIndex == null && isViewAllMode && visible_pamis.size > 1) {
+    // Use selected PAMI from dropdown
+    const pamiSelectDropdown = document.getElementById("pami-select-modal");
+    targetPami = parseInt(pamiSelectDropdown.value);
+  } else {
+    // Use context PAMI (for modify) or first visible (for add in single mode)
+    targetPami = contextPamiNumber || Array.from(visible_pamis)[0];
+  }
+  
   const targetStrategy = loaded_strategies[targetPami];
   
   if (contextActionIndex == null){
@@ -980,10 +1064,26 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     }
   }
   modal.classList.add("hidden");
+  saveToUndoStack();
   renderTasks(isViewAllMode);
   renderMap();
   savePamiStrategy(targetStrategy);
 });
+
+document.addEventListener("keydown", (e) => {
+  const isCtrl = e.ctrlKey || e.metaKey;
+
+  if (isCtrl && e.key === "z") {
+    e.preventDefault();
+    undo();
+  }
+
+  if (isCtrl && e.key === "y") {
+    e.preventDefault();
+    redo();
+  }
+});
+
 await get_selected_strategy();
 populateAddList();
 renderMap();
