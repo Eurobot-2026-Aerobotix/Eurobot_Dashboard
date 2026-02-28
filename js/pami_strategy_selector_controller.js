@@ -76,8 +76,37 @@ for (let i = 0; i < pamiBtnsLength; i++) {
     continue;
   }
   
+  // Check if this is the TEST square
+  if (pamiBtns[i].classList.contains('test-square')) {
+    pamiBtns[i].addEventListener("click", () => {
+      // Save the current strategy path for testing
+      const strategyName = params.get("name");
+      const testPath = `strategies/${strategyName}.yaml`;
+      
+      // Save to localStorage
+      localStorage.setItem('pami_test_strategy_path', testPath);
+      localStorage.setItem('pami_test_strategy_name', strategyName);
+      
+      // Visual feedback
+      pamiBtns[i].style.transform = 'scale(0.95)';
+      pamiBtns[i].style.opacity = '0.7';
+      setTimeout(() => {
+        pamiBtns[i].style.transform = '';
+        pamiBtns[i].style.opacity = '';
+      }, 200);
+      
+      alert(`Test strategy set to: ${strategyName}`);
+    });
+    
+    // No context menu for TEST square
+    pamiBtns[i].addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+    continue;
+  }
+  
   // Regular PAMI squares - also open with multi-PAMI view
-  const pamiNumber = i; // i=1 -> PAMI 1, i=2 -> PAMI 2, etc.
+  const pamiNumber = i - 1; // Adjusted because of ALL and TEST squares
   pamiBtns[i].addEventListener("click", () => {
     // Open with PAMI selector visible, this PAMI selected by default
     window.location.href =`pami_strategy_viewer.html?pami=${pamiNumber}&name=${params.get("name")}`;

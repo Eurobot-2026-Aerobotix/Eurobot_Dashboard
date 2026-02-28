@@ -394,18 +394,30 @@ async function stopStrategy() {
 
 async function testPami() {
     testPamiBtn.disabled = true;
-    showStatus('Running PAMI test...', 'info');
+    
+    // Check if a test strategy was saved
+    const testStrategyPath = localStorage.getItem('pami_test_strategy_path');
+    const testStrategyName = localStorage.getItem('pami_test_strategy_name');
+    
+    if (testStrategyPath) {
+        showStatus(`Running PAMI test with: ${testStrategyName}`, 'info');
+    } else {
+        showStatus('Running PAMI test...', 'info');
+    }
     
     try {
         // Add timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
+        const requestBody = testStrategyPath ? { strategy_path: testStrategyPath } : {};
+        
         const response = await fetch(`${API_URL}/test_pami`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
+            body: JSON.stringify(requestBody),
             signal: controller.signal
         });
         clearTimeout(timeoutId);

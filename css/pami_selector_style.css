@@ -58,6 +58,19 @@
   box-shadow: 0 16px 50px rgba(102, 126, 234, 0.8) !important;
 }
 
+.test-square {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  font-size: 3rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  box-shadow: 0 12px 40px rgba(245, 87, 108, 0.6) !important;
+  grid-column: span 1;
+}
+
+.test-square:hover {
+  box-shadow: 0 16px 50px rgba(245, 87, 108, 0.8) !important;
+}
+
 .back-button{
     position: absolute;
     top: 20px;
