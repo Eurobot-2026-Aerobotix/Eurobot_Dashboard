@@ -895,8 +895,15 @@ def test_pami():
             if not os.path.exists(script_path):
                 return jsonify({"status": "error", "error": "pami.sh not found"}), 404
             
-            # Find the selected strategy (same logic as start.sh)
-            selected_strategy_path = get_selected_strategy_path()
+            # Check if a specific test strategy path was provided
+            selected_strategy_path = None
+            if request.is_json:
+                data = request.get_json()
+                selected_strategy_path = data.get('strategy_path')
+            
+            # Fall back to the default selected strategy if not provided
+            if not selected_strategy_path:
+                selected_strategy_path = get_selected_strategy_path()
             
             if not selected_strategy_path:
                 return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
@@ -906,6 +913,8 @@ def test_pami():
             
             # Extract strategy name for display
             strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
+            
+            print(f"🚀 Starting PAMI test manager with strategy file: {strategy_abs_path}")
             
             # Run pami.sh with the strategy path as argument
             env = os.environ.copy()
