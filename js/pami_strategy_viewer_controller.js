@@ -607,7 +607,7 @@ function drawBezier(svg, start, params, backwards, actionIndex, color, pamiNum) 
   path.classList.add(backwards ? "backward" : "forward");
   path.setAttribute("fill", "none");
   path.setAttribute("stroke-width", "2");
-  path.setAttribute("stroke", color);
+  path.style.stroke = color;
 
   svg.appendChild(path);
 
@@ -666,7 +666,7 @@ function drawArrow(svg, from, to, backwards, color, pamiNum) {
   l.setAttribute("x2", p2.cx);
   l.setAttribute("y2", p2.cy);
   l.classList.add("arrow", backwards ? "backward" : "forward");
-  l.setAttribute("stroke", color);
+  l.style.stroke = color;
   l.setAttribute("marker-end", `url(#arrowhead-${pamiNum})`);
 
   svg.appendChild(l);
