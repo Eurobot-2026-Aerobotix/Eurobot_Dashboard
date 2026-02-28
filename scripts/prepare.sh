@@ -8,7 +8,7 @@ pkill -9 -f "hybrid_astar_node"
 pkill -9 -f "web_handler.py"
 pkill -9 -f "rosbridge_websocket"
 pkill -9 -f "ros2 launch rosbridge_server"
-#pkill -9 -f "micro_ros_agent"
+pkill -9 -f "micro_ros_agent"
 pkill -9 -f "robot_only.launch.py"
 # Wait for processes to fully terminate
 sleep 2
@@ -34,32 +34,32 @@ sleep 2
 mkdir -p /tmp/micro_ros_logs
 
 echo "  Starting agent on /dev/ttyACM0..."
-#ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 > /tmp/micro_ros_logs/agent_ACM0.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 > /tmp/micro_ros_logs/agent_ACM0.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ESP1..."
-#ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP1 > /tmp/micro_ros_logs/agent_ESP1.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP1 > /tmp/micro_ros_logs/agent_ESP1.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ESP2..."
-#ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP2 > /tmp/micro_ros_logs/agent_ESP2.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP2 > /tmp/micro_ros_logs/agent_ESP2.log 2>&1 &
 sleep 1
 
 echo "  Starting agent on /dev/ESP3..."
-#ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP3 > /tmp/micro_ros_logs/agent_ESP3.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP3 > /tmp/micro_ros_logs/agent_ESP3.log 2>&1 &
 sleep 1
 
 echo "  Starting UDP4 agent on port 8888..."
-#ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888 > /tmp/micro_ros_logs/agent_udp_8888.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888 > /tmp/micro_ros_logs/agent_udp_8888.log 2>&1 &
 sleep 2
 
 # Check which agents are running
 echo "📊 Agent status:"
 pgrep -f "micro_ros_agent serial --dev /dev/ttyACM0" > /dev/null && echo "  ✅ ACM0 running" || echo "  ❌ ACM0 failed"
-pgrep -f "micro_ros_agent serial --dev /dev/ESP1" > /dev/null && echo "  ✅ ACM1 running" || echo "  ❌ ACM1 failed"
-pgrep -f "micro_ros_agent serial --dev /dev/ESP2" > /dev/null && echo "  ✅ ACM2 running" || echo "  ❌ ACM2 failed"
-pgrep -f "micro_ros_agent serial --dev /dev/ESP3" > /dev/null && echo "  ✅ ACM3 running" || echo "  ❌ ACM3 failed"
-#pgrep -f "micro_ros_agent udp4 --port 8888" > /dev/null && echo "  ✅ UDP4:8888 running" || echo "  ❌ UDP4:8888 failed"
+pgrep -f "micro_ros_agent serial --dev /dev/ESP1" > /dev/null && echo "  ✅ ESP1 running" || echo "  ❌ ESP1 failed"
+pgrep -f "micro_ros_agent serial --dev /dev/ESP2" > /dev/null && echo "  ✅ ESP2 running" || echo "  ❌ ESP2 failed"
+pgrep -f "micro_ros_agent serial --dev /dev/ESP3" > /dev/null && echo "  ✅ ESP3 running" || echo "  ❌ ESP3 failed"
+pgrep -f "micro_ros_agent udp4 --port 8888" > /dev/null && echo "  ✅ UDP4:8888 running" || echo "  ❌ UDP4:8888 failed"
 echo "📁 Logs available at: /tmp/micro_ros_logs/"
 
 echo "🔌 Starting rosbridge..."
