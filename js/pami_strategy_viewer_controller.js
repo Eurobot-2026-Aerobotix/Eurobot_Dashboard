@@ -935,6 +935,7 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
     dragging = false;          // ← drag is over
     saveToUndoStack();
     renderTasks(isViewAllMode);
+    renderMap();
     savePamiStrategy(loaded_strategies[pamiNum]);
   });
 }

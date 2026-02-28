@@ -1,3 +1,20 @@
+"""
+Eurobot Dashboard Server - Multi-User Safe Edition
+
+IMPROVEMENTS FOR MULTI-USER SUPPORT:
+✓ Broadcasting: Output streams now broadcast to all connected clients (not round-robin)
+✓ File locking: All obstacles file operations are protected with locks (no race conditions)
+✓ Per-client web batches: Each pathfinding simulation can have its own batches (use client_id)
+✓ Bug fixes: Fixed delete_strategy() variable name reuse and added locks to strategy file ops
+✓ Force run: Can start scripts even if processes are already running (for manual process management)
+
+USAGE NOTES:
+- Multiple users can edit strategies/PAMI strategies simultaneously (safe)
+- Multiple users can view output streams simultaneously (broadcasts to all)
+- Multiple users can manage obstacles simultaneously (safe with locks)
+- Scripts can be restarted at any time (useful if you manually kill processes)
+"""
+
 from flask import Flask, request, jsonify, abort, Response
 from flask_cors import CORS
 import os
@@ -8,34 +25,83 @@ import queue
 import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from socketserver import ThreadingMixIn
+import fcntl
+from collections import defaultdict
 
 STRATEGIES_DIR = "strategies"
 PAMI_STRATEGIES_DIR = "pami_strategies"
 OBSTACLES_FILE = "resources/obstacles.yaml"
 SELECTED_STRATEGY_PATH = ""
 
-# Queues for streaming output
-strategy_output_queue = queue.Queue()
-pathfinding_output_queue = queue.Queue()
-pami_output_queue = queue.Queue()
+# Queues for streaming output - using multiple queues for broadcasting
+strategy_output_subscribers = []  # List of queues for broadcasting
+pathfinding_output_subscribers = []
+pami_output_subscribers = []
+subscribers_lock = threading.Lock()
+
+# Limits to prevent memory leaks
+MAX_QUEUE_SIZE = 1000  # Max messages per client queue
+MAX_WEB_BATCHES_CLIENTS = 50  # Max client_ids stored
+OLD_DATA_CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
+
 start_process = None
 pathfinding_process = None
 prepare_process = None
 pami_process = None
+last_cleanup_time = time.time()
 
-# Storage for web batches (for pathfinding simulation)
-web_batches_storage = []
+# Storage for web batches (for pathfinding simulation) - per client
+web_batches_storage = {}
 web_batches_lock = threading.Lock()
 
 # Locks for thread-safe operations
 strategy_lock = threading.Lock()  # Protects SELECTED_STRATEGY_PATH and strategy file operations
 process_lock = threading.Lock()   # Protects start/stop/prepare process operations
+obstacles_lock = threading.Lock()  # Protects obstacles file operations
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ensure directory exists
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
+
+
+# -------------------------------------------------
+# Periodic cleanup to remove stale subscribers
+# -------------------------------------------------
+def cleanup_dead_subscribers():
+    """Periodically check and remove disconnected/dead subscribers"""
+    while True:
+        time.sleep(60)  # Check every minute
+        
+        with subscribers_lock:
+            # Clean strategy subscribers
+            alive = []
+            for q in strategy_output_subscribers:
+                if q.qsize() < MAX_QUEUE_SIZE:  # Queue not jammed
+                    alive.append(q)
+            strategy_output_subscribers.clear()
+            strategy_output_subscribers.extend(alive)
+            
+            # Clean pathfinding subscribers
+            alive = []
+            for q in pathfinding_output_subscribers:
+                if q.qsize() < MAX_QUEUE_SIZE:
+                    alive.append(q)
+            pathfinding_output_subscribers.clear()
+            pathfinding_output_subscribers.extend(alive)
+            
+            # Clean pami subscribers
+            alive = []
+            for q in pami_output_subscribers:
+                if q.qsize() < MAX_QUEUE_SIZE:
+                    alive.append(q)
+            pami_output_subscribers.clear()
+            pami_output_subscribers.extend(alive)
+
+
+# Start cleanup thread
+threading.Thread(target=cleanup_dead_subscribers, daemon=True).start()
 
 
 # -------------------------------------------------
@@ -87,8 +153,9 @@ def read_strategy(filename):
     if not os.path.exists(path):
         abort(404, "File not found")
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    with strategy_lock:  # Protect file read
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
 
     return jsonify(data)
 
@@ -104,8 +171,9 @@ def read_pami_strategy(filename):
     if not os.path.exists(path):
         abort(404, "File not found")
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    with strategy_lock:  # Protect file read
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
 
     return jsonify(data)
 
@@ -212,16 +280,22 @@ def delete_strategy(filename):
     if not os.path.exists(path):
         abort(404, "File not found")
 
-    # Delete associated PAMI strategies
-    for filename in os.listdir(PAMI_STRATEGIES_DIR):
-        if filename.startswith(os.path.splitext(filename.split("_pami_")[0])[0]) and "_pami_" in filename:
-            pami_path = os.path.join(PAMI_STRATEGIES_DIR, filename)
-            with open(pami_path, "r") as f:
-                pami_data = yaml.safe_load(f)
-            if pami_data and pami_data.get("strategy_name") == os.path.splitext(os.path.basename(path))[0]:
-                os.remove(pami_path)
-    
-    os.remove(path)
+    with strategy_lock:  # Protect file operations
+        strategy_name = os.path.splitext(os.path.basename(path))[0]
+        
+        # Delete associated PAMI strategies
+        for pami_filename in os.listdir(PAMI_STRATEGIES_DIR):  # Fixed variable name!
+            if pami_filename.startswith(strategy_name) and "_pami_" in pami_filename:
+                pami_path = os.path.join(PAMI_STRATEGIES_DIR, pami_filename)
+                try:
+                    with open(pami_path, "r") as f:
+                        pami_data = yaml.safe_load(f)
+                    if pami_data and pami_data.get("strategy_name") == strategy_name:
+                        os.remove(pami_path)
+                except Exception as e:
+                    print(f"Warning: Could not delete {pami_filename}: {e}")
+        
+        os.remove(path)
     return jsonify({"status": "deleted", "file": filename})
 
 
@@ -234,8 +308,9 @@ def get_obstacles():
     if not os.path.exists(OBSTACLES_FILE):
         abort(404, "Obstacles file not found")
     
-    with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    with obstacles_lock:  # Protect file read
+        with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
     
     return jsonify(data)
 
@@ -252,42 +327,43 @@ def add_batch():
     
     new_batch = request.get_json()
     
-    # Load existing data
-    if os.path.exists(OBSTACLES_FILE):
-        with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-    else:
-        data = {"batches": []}
-    
-    # Ensure batches array exists
-    if "batches" not in data:
-        data["batches"] = []
-    
-    # Generate new batch_id
-    if data["batches"]:
-        max_id = max(batch.get("batch_id", 0) for batch in data["batches"])
-        batch_id = max_id + 1
-    else:
-        batch_id = 1
-    
-    # Reorder the batch dictionary to have batch_id first
-    ordered_batch = {
-        "batch_id": batch_id,
-        "known_id": new_batch.get("known_id"),
-        "count": new_batch.get("count"),
-        "direction": new_batch.get("direction"),
-        "phi_deg": new_batch.get("phi_deg"),
-        "avg_adjacent_dist_m": new_batch.get("avg_adjacent_dist_m"),
-        "center": new_batch.get("center"),
-        "members": new_batch.get("members")
-    }
-    
-    # Add the new batch
-    data["batches"].append(ordered_batch)
-    
-    # Save back to file
-    with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+    with obstacles_lock:  # Protect entire read-modify-write operation
+        # Load existing data
+        if os.path.exists(OBSTACLES_FILE):
+            with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        else:
+            data = {"batches": []}
+        
+        # Ensure batches array exists
+        if "batches" not in data:
+            data["batches"] = []
+        
+        # Generate new batch_id
+        if data["batches"]:
+            max_id = max(batch.get("batch_id", 0) for batch in data["batches"])
+            batch_id = max_id + 1
+        else:
+            batch_id = 1
+        
+        # Reorder the batch dictionary to have batch_id first
+        ordered_batch = {
+            "batch_id": batch_id,
+            "known_id": new_batch.get("known_id"),
+            "count": new_batch.get("count"),
+            "direction": new_batch.get("direction"),
+            "phi_deg": new_batch.get("phi_deg"),
+            "avg_adjacent_dist_m": new_batch.get("avg_adjacent_dist_m"),
+            "center": new_batch.get("center"),
+            "members": new_batch.get("members")
+        }
+        
+        # Add the new batch
+        data["batches"].append(ordered_batch)
+        
+        # Save back to file
+        with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
     
     return jsonify({"status": "saved", "batch_id": batch_id})
 
@@ -301,23 +377,24 @@ def delete_batch(batch_id):
     if not os.path.exists(OBSTACLES_FILE):
         abort(404, "Obstacles file not found")
     
-    # Load existing data
-    with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    if "batches" not in data or not data["batches"]:
-        abort(404, "No batches found")
-    
-    # Find and remove the batch
-    original_length = len(data["batches"])
-    data["batches"] = [b for b in data["batches"] if b.get("batch_id") != batch_id]
-    
-    if len(data["batches"]) == original_length:
-        abort(404, f"Batch with ID {batch_id} not found")
-    
-    # Save back to file
-    with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+    with obstacles_lock:  # Protect entire read-modify-write operation
+        # Load existing data
+        with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        
+        if "batches" not in data or not data["batches"]:
+            abort(404, "No batches found")
+        
+        # Find and remove the batch
+        original_length = len(data["batches"])
+        data["batches"] = [b for b in data["batches"] if b.get("batch_id") != batch_id]
+        
+        if len(data["batches"]) == original_length:
+            abort(404, f"Batch with ID {batch_id} not found")
+        
+        # Save back to file
+        with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
     
     return jsonify({"status": "deleted", "batch_id": batch_id})
 
@@ -337,30 +414,31 @@ def update_batch(batch_id):
     if not os.path.exists(OBSTACLES_FILE):
         abort(404, "Obstacles file not found")
     
-    # Load existing data
-    with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    if "batches" not in data or not data["batches"]:
-        abort(404, "No batches found")
-    
-    # Find the batch to update
-    batch_index = None
-    for i, batch in enumerate(data["batches"]):
-        if batch.get("batch_id") == batch_id:
-            batch_index = i
-            break
-    
-    if batch_index is None:
-        abort(404, f"Batch with ID {batch_id} not found")
-    
-    # Update the batch members (colors and aruco_ids)
-    # Keep the same structure but update member info
-    data["batches"][batch_index]["members"] = update_data.get("members")
-    
-    # Save back to file
-    with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+    with obstacles_lock:  # Protect entire read-modify-write operation
+        # Load existing data
+        with open(OBSTACLES_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        
+        if "batches" not in data or not data["batches"]:
+            abort(404, "No batches found")
+        
+        # Find the batch to update
+        batch_index = None
+        for i, batch in enumerate(data["batches"]):
+            if batch.get("batch_id") == batch_id:
+                batch_index = i
+                break
+        
+        if batch_index is None:
+            abort(404, f"Batch with ID {batch_id} not found")
+        
+        # Update the batch members (colors and aruco_ids)
+        # Keep the same structure but update member info
+        data["batches"][batch_index]["members"] = update_data.get("members")
+        
+        # Save back to file
+        with open(OBSTACLES_FILE, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
     
     return jsonify({"status": "updated", "batch_id": batch_id})
 
@@ -374,30 +452,41 @@ def update_batch(batch_id):
 def store_web_batches():
     """
     Store batches from web pathfinding page to be served via ROS2 GetStableBatches service.
-    This endpoint is called by the web interface when sending batches.
+    Uses client_id to support multiple concurrent simulations.
     """
+    global last_cleanup_time
+    
     if not request.is_json:
         abort(400, "Expected JSON body")
     
     data = request.get_json()
     batches_data = data.get('batches', [])
+    client_id = data.get('client_id', 'default')  # Support per-client storage
     
     if not batches_data:
         return jsonify({"status": "error", "message": "No batches provided"}), 400
     
+    # Periodic cleanup of old clients to prevent unbounded growth
+    current_time = time.time()
+    if current_time - last_cleanup_time > OLD_DATA_CLEANUP_INTERVAL:
+        with web_batches_lock:
+            # Keep only most recent MAX_WEB_BATCHES_CLIENTS entries
+            if len(web_batches_storage) > MAX_WEB_BATCHES_CLIENTS:
+                # Remove oldest entries (keep most recent)
+                items = list(web_batches_storage.items())
+                web_batches_storage.clear()
+                web_batches_storage.update(dict(items[-MAX_WEB_BATCHES_CLIENTS:]))
+        last_cleanup_time = current_time
+    
     # Store batches in memory with thread-safe access
     with web_batches_lock:
-        web_batches_storage.clear()
-        web_batches_storage.extend(batches_data)
-    
-    print(f"📦 Stored {len(batches_data)} batches from web interface")
-    for batch in batches_data:
-        print(f"  - {batch.get('known_id')}: {batch.get('count')} members, direction={batch.get('direction')}")
+        web_batches_storage[client_id] = batches_data
     
     return jsonify({
         "status": "success", 
         "message": f"Stored {len(batches_data)} batches",
-        "count": len(batches_data)
+        "count": len(batches_data),
+        "client_id": client_id
     })
 
 
@@ -408,10 +497,14 @@ def store_web_batches():
 @app.route("/web_batches", methods=["GET"])
 def get_web_batches():
     """Retrieve currently stored web batches"""
+    client_id = request.args.get('client_id', 'default')
     with web_batches_lock:
+        batches = web_batches_storage.get(client_id, [])
         return jsonify({
-            "batches": list(web_batches_storage),
-            "count": len(web_batches_storage)
+            "batches": batches,
+            "count": len(batches),
+            "client_id": client_id,
+            "all_clients": list(web_batches_storage.keys())
         })
 
 
@@ -424,6 +517,27 @@ def prepare_robot():
     global pathfinding_process, prepare_process
     with process_lock:  # Protect process start operation
         try:
+            # Kill old process if still running to prevent zombies
+            if pathfinding_process and pathfinding_process.poll() is None:
+                try:
+                    pathfinding_process.terminate()
+                    pathfinding_process.wait(timeout=2)
+                except:
+                    try:
+                        pathfinding_process.kill()
+                    except:
+                        pass
+            
+            if prepare_process and prepare_process.poll() is None:
+                try:
+                    prepare_process.terminate()
+                    prepare_process.wait(timeout=2)
+                except:
+                    try:
+                        prepare_process.kill()
+                    except:
+                        pass
+            
             script_path = "./scripts/prepare.sh"
             pathfinding_script = "./scripts/pathfinding.sh"
             
@@ -433,13 +547,10 @@ def prepare_robot():
             if not os.path.exists(pathfinding_script):
                 return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
             
-            # Execute the prepare script with visible output in server terminal
-            print("\n=== Starting prepare.sh ===", flush=True)
+            # Execute the prepare script
             prepare_process = subprocess.Popen(["bash", script_path], stdout=None, stderr=None)
             
-            # Clear the pathfinding queue
-            while not pathfinding_output_queue.empty():
-                pathfinding_output_queue.get()
+            # No need to clear queues - each client gets a fresh queue when subscribing
             
             # Execute pathfinding script and capture output
             # Use unbuffered output for real-time streaming
@@ -473,6 +584,17 @@ def start_strategy():
     global start_process
     with process_lock:  # Protect process start operation
         try:
+            # Kill old process if still running to prevent zombies
+            if start_process and start_process.poll() is None:
+                try:
+                    start_process.terminate()
+                    start_process.wait(timeout=2)
+                except:
+                    try:
+                        start_process.kill()
+                    except:
+                        pass
+            
             script_path = "./scripts/start.sh"
             if not os.path.exists(script_path):
                 return jsonify({"status": "error", "error": "start.sh not found"}), 404
@@ -482,9 +604,7 @@ def start_strategy():
                     return jsonify({"status": "error", "error": "No strategy selected"}), 400
                 strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
             
-            # Clear the queue
-            while not strategy_output_queue.empty():
-                strategy_output_queue.get()
+            # No need to clear queues - each client gets a fresh queue when subscribing
             
             # Execute the start script with the strategy path as argument
             start_process = subprocess.Popen(
@@ -509,18 +629,48 @@ def start_strategy():
 
 
 def read_strategy_output(process):
-    """Read strategy process output line by line and put in queue"""
+    """Read strategy process output and broadcast to all subscribers"""
     try:
         for line in process.stdout:
-            strategy_output_queue.put(line.rstrip())
+            output_line = line.rstrip()
+            with subscribers_lock:
+                # Broadcast to all subscribers with non-blocking put
+                dead_subscribers = []
+                for subscriber_queue in strategy_output_subscribers:
+                    try:
+                        subscriber_queue.put(output_line, block=False)  # Non-blocking
+                    except queue.Full:
+                        # Queue is full, mark for removal
+                        dead_subscribers.append(subscriber_queue)
+                    except:
+                        dead_subscribers.append(subscriber_queue)
+                
+                # Clean up dead/full subscribers
+                for dead_q in dead_subscribers:
+                    try:
+                        strategy_output_subscribers.remove(dead_q)
+                    except ValueError:
+                        pass
+        
         process.wait()
-        strategy_output_queue.put("[Process completed]")
+        
+        with subscribers_lock:
+            for subscriber_queue in list(strategy_output_subscribers):
+                try:
+                    subscriber_queue.put("[Process completed]", block=False)
+                except:
+                    pass
     except Exception as e:
-        strategy_output_queue.put(f"[Error reading output: {e}]")
+        with subscribers_lock:
+            for subscriber_queue in list(strategy_output_subscribers):
+                try:
+                    subscriber_queue.put(f"[Error reading output: {e}]", block=False)
+                except:
+                    pass
 
 
 def read_pathfinding_output(process):
-    """Read pathfinding process output line by line and put in queue"""
+    """Read pathfinding process output and broadcast to all subscribers"""
     try:
         buffer = ""
         while True:
@@ -529,18 +679,51 @@ def read_pathfinding_output(process):
                 break
             buffer += char
             if char == '\n':
-                pathfinding_output_queue.put(buffer.rstrip())
+                output_line = buffer.rstrip()
+                with subscribers_lock:
+                    dead_subscribers = []
+                    for subscriber_queue in pathfinding_output_subscribers:
+                        try:
+                            subscriber_queue.put(output_line, block=False)
+                        except queue.Full:
+                            dead_subscribers.append(subscriber_queue)
+                        except:
+                            dead_subscribers.append(subscriber_queue)
+                    
+                    for dead_q in dead_subscribers:
+                        try:
+                            pathfinding_output_subscribers.remove(dead_q)
+                        except ValueError:
+                            pass
                 buffer = ""
+        
         if buffer:
-            pathfinding_output_queue.put(buffer.rstrip())
+            with subscribers_lock:
+                for subscriber_queue in list(pathfinding_output_subscribers):
+                    try:
+                        subscriber_queue.put(buffer.rstrip(), block=False)
+                    except:
+                        pass
+        
         process.wait()
-        pathfinding_output_queue.put("[Process completed]")
+        
+        with subscribers_lock:
+            for subscriber_queue in list(pathfinding_output_subscribers):
+                try:
+                    subscriber_queue.put("[Process completed]", block=False)
+                except:
+                    pass
     except Exception as e:
-        pathfinding_output_queue.put(f"[Error reading output: {e}]")
+        with subscribers_lock:
+            for subscriber_queue in list(pathfinding_output_subscribers):
+                try:
+                    subscriber_queue.put(f"[Error reading output: {e}]", block=False)
+                except:
+                    pass
 
 
 def read_pami_output(process):
-    """Read PAMI process output line by line and put in queue"""
+    """Read PAMI process output and broadcast to all subscribers"""
     try:
         buffer = ""
         while True:
@@ -549,14 +732,47 @@ def read_pami_output(process):
                 break
             buffer += char
             if char == '\n':
-                pami_output_queue.put(buffer.rstrip())
+                output_line = buffer.rstrip()
+                with subscribers_lock:
+                    dead_subscribers = []
+                    for subscriber_queue in pami_output_subscribers:
+                        try:
+                            subscriber_queue.put(output_line, block=False)
+                        except queue.Full:
+                            dead_subscribers.append(subscriber_queue)
+                        except:
+                            dead_subscribers.append(subscriber_queue)
+                    
+                    for dead_q in dead_subscribers:
+                        try:
+                            pami_output_subscribers.remove(dead_q)
+                        except ValueError:
+                            pass
                 buffer = ""
+        
         if buffer:
-            pami_output_queue.put(buffer.rstrip())
+            with subscribers_lock:
+                for subscriber_queue in list(pami_output_subscribers):
+                    try:
+                        subscriber_queue.put(buffer.rstrip(), block=False)
+                    except:
+                        pass
+        
         process.wait()
-        pami_output_queue.put("[Process completed]")
+        
+        with subscribers_lock:
+            for subscriber_queue in list(pami_output_subscribers):
+                try:
+                    subscriber_queue.put("[Process completed]", block=False)
+                except:
+                    pass
     except Exception as e:
-        pami_output_queue.put(f"[Error reading output: {e}]")
+        with subscribers_lock:
+            for subscriber_queue in list(pami_output_subscribers):
+                try:
+                    subscriber_queue.put(f"[Error reading output: {e}]", block=False)
+                except:
+                    pass
 
 
 # -------------------------------------------------
@@ -573,10 +789,22 @@ def stop_strategy():
                 try:
                     start_process.stdin.write('q\n')
                     start_process.stdin.flush()
-                    strategy_output_queue.put("[Sent 'q' - Robot stopped (process still running)]")
+                    # Broadcast stop message to all subscribers
+                    with subscribers_lock:
+                        for subscriber_queue in strategy_output_subscribers:
+                            try:
+                                subscriber_queue.put("[Sent 'q' - Robot stopped (process still running)]")
+                            except:
+                                pass
                     return jsonify({"status": "success", "message": "Robot stopped"})
                 except Exception as e:
-                    strategy_output_queue.put(f"[Failed to send 'q': {e}]")
+                    # Broadcast error message to all subscribers
+                    with subscribers_lock:
+                        for subscriber_queue in strategy_output_subscribers:
+                            try:
+                                subscriber_queue.put(f"[Failed to send 'q': {e}]")
+                            except:
+                                pass
                     return jsonify({"status": "error", "error": f"Failed to send stop command: {e}"}), 500
             elif start_process and start_process.poll() is not None:
                 return jsonify({"status": "success", "message": "Strategy already stopped"})
@@ -595,54 +823,61 @@ def stop_strategy():
 def test_pami():
     """Run pami_test_manager for the selected strategy"""
     global pami_process
-    try:
-        script_path = "./scripts/pami.sh"
-        if not os.path.exists(script_path):
-            return jsonify({"status": "error", "error": "pami.sh not found"}), 404
-        
-        # Find the selected strategy (same logic as start.sh)
-        selected_strategy_path = get_selected_strategy_path()
-        
-        if not selected_strategy_path:
-            return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
-        
-        # Convert to absolute path
-        strategy_abs_path = os.path.abspath(selected_strategy_path)
-        
-        # Extract strategy name for display
-        strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
-        
-        print(f"\n=== Running PAMI test for strategy: {strategy_name} ===")
-        print(f"Strategy file: {strategy_abs_path}")
-        
-        # Clear the queue
-        while not pami_output_queue.empty():
-            pami_output_queue.get()
-        
-        # Run pami.sh with the strategy path as argument
-        env = os.environ.copy()
-        env['PYTHONUNBUFFERED'] = '1'
-        env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
-        
-        pami_process = subprocess.Popen(
-            ["bash", script_path, strategy_abs_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=0,  # Unbuffered
-            env=env
-        )
-        
-        # Start thread to read output
-        threading.Thread(target=read_pami_output, args=(pami_process,), daemon=True).start()
-        
-        return jsonify({
-            "status": "success",
-            "message": f"PAMI test started for strategy: {strategy_name}"
-        })
-        
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+    with process_lock:
+        try:
+            # Kill old process if still running to prevent zombies
+            if pami_process and pami_process.poll() is None:
+                try:
+                    pami_process.terminate()
+                    pami_process.wait(timeout=2)
+                except:
+                    try:
+                        pami_process.kill()
+                    except:
+                        pass
+            
+            script_path = "./scripts/pami.sh"
+            if not os.path.exists(script_path):
+                return jsonify({"status": "error", "error": "pami.sh not found"}), 404
+            
+            # Find the selected strategy (same logic as start.sh)
+            selected_strategy_path = get_selected_strategy_path()
+            
+            if not selected_strategy_path:
+                return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
+            
+            # Convert to absolute path
+            strategy_abs_path = os.path.abspath(selected_strategy_path)
+            
+            # Extract strategy name for display
+            strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
+            
+            # Run pami.sh with the strategy path as argument
+            env = os.environ.copy()
+            env['PYTHONUNBUFFERED'] = '1'
+            env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+            
+            pami_process = subprocess.Popen(
+                ["bash", script_path, strategy_abs_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=0,  # Unbuffered
+                env=env
+            )
+            
+            # Start thread to read output
+            threading.Thread(target=read_pami_output, args=(pami_process,), daemon=True).start()
+            
+            return jsonify({
+                "status": "success",
+                "message": f"PAMI test started for strategy: {strategy_name}"
+            })
+            
+        except Exception as e:
+            return jsonify({"status": "error", "error": str(e)}), 500
+
+
 # -------------------------------------------------
 # Git commit
 # POST /git_commit
@@ -755,19 +990,38 @@ def stream_output(source):
     if source not in ['strategy', 'pathfinding', 'pami']:
         abort(400, "Invalid source. Use 'strategy', 'pathfinding', or 'pami'")
     
-    output_queue = strategy_output_queue if source == 'strategy' else \
-                   pathfinding_output_queue if source == 'pathfinding' else \
-                   pami_output_queue
+    # Create a new queue with size limit for this specific client/subscriber
+    client_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
+    
+    # Subscribe to the appropriate output stream
+    with subscribers_lock:
+        if source == 'strategy':
+            strategy_output_subscribers.append(client_queue)
+            subscriber_list = strategy_output_subscribers
+        elif source == 'pathfinding':
+            pathfinding_output_subscribers.append(client_queue)
+            subscriber_list = pathfinding_output_subscribers
+        else:  # pami
+            pami_output_subscribers.append(client_queue)
+            subscriber_list = pami_output_subscribers
     
     def generate():
-        while True:
-            try:
-                # Wait for output with timeout
-                line = output_queue.get(timeout=1)
-                yield f"data: {line}\n\n"
-            except queue.Empty:
-                # Send keepalive
-                yield ": keepalive\n\n"
+        try:
+            while True:
+                try:
+                    # Wait for output with timeout
+                    line = client_queue.get(timeout=30)  # 30s timeout
+                    yield f"data: {line}\n\n"
+                except queue.Empty:
+                    # Send keepalive
+                    yield ": keepalive\n\n"
+        finally:
+            # Cleanup: remove this subscriber when client disconnects
+            with subscribers_lock:
+                try:
+                    subscriber_list.remove(client_queue)
+                except ValueError:
+                    pass  # Already removed
     
     return Response(generate(), mimetype="text/event-stream")
 
