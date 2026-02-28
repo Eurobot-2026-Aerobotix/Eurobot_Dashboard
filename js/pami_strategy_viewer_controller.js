@@ -8,13 +8,13 @@ let loaded_strategies = {}; // Store strategies for each PAMI { pami_number: str
 let visible_pamis = new Set([1]); // Default: show PAMI 1
 let isViewAllMode = false; // Track if we're in multi-PAMI mode
 const pami_colors = {
-  1: "#FF6B6B",
-  2: "#4ECDC4",
-  3: "#FFE66D",
-  4: "#95E1D3",
-  5: "#F38181",
-  6: "#AA96DA",
-  7: "#FCBAD3"
+  1: "#E74C3C",  // Bold Red
+  2: "#00BCD4",  // Bold Cyan
+  3: "#FFC107",  // Bold Orange
+  4: "#27AE60",  // Bold Green
+  5: "#E91E63",  // Bold Pink
+  6: "#9C27B0",  // Bold Purple
+  7: "#FF5722"   // Bold Deep Orange
 };
 let actionsContainer = document.getElementById("side-panel");
 const actionSelect = document.getElementById("action-select");
