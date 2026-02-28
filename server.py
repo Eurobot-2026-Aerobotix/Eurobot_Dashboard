@@ -105,6 +105,32 @@ threading.Thread(target=cleanup_dead_subscribers, daemon=True).start()
 
 
 # -------------------------------------------------
+# Health check endpoint
+# GET /health
+# -------------------------------------------------
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for monitoring"""
+    status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "processes": {
+            "start": start_process.poll() is None if start_process else False,
+            "pathfinding": pathfinding_process.poll() is None if pathfinding_process else False,
+            "prepare": prepare_process.poll() is None if prepare_process else False,
+            "pami": pami_process.poll() is None if pami_process else False
+        },
+        "subscribers": {
+            "strategy": len(strategy_output_subscribers),
+            "pathfinding": len(pathfinding_output_subscribers),
+            "pami": len(pami_output_subscribers)
+        },
+        "web_batches_clients": len(web_batches_storage)
+    }
+    return jsonify(status)
+
+
+# -------------------------------------------------
 # Root redirect to static file server
 # GET /
 # -------------------------------------------------
@@ -154,8 +180,13 @@ def read_strategy(filename):
         abort(404, "File not found")
 
     with strategy_lock:  # Protect file read
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            return jsonify({"status": "error", "error": f"Invalid YAML: {str(e)}"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "error": f"Failed to read file: {str(e)}"}), 500
 
     return jsonify(data)
 
@@ -172,8 +203,13 @@ def read_pami_strategy(filename):
         abort(404, "File not found")
 
     with strategy_lock:  # Protect file read
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            return jsonify({"status": "error", "error": f"Invalid YAML: {str(e)}"}), 400
+        except Exception as e:
+            return jsonify({"status": "error", "error": f"Failed to read file: {str(e)}"}), 500
 
     return jsonify(data)
 
@@ -196,7 +232,11 @@ def get_pami_strategies():
         with open(file_path, "r") as f:
             try:
                 data = yaml.safe_load(f)
-            except Exception:
+            except yaml.YAMLError as e:
+                print(f"Warning: Invalid YAML in {filename}: {e}")
+                continue
+            except Exception as e:
+                print(f"Warning: Error reading {filename}: {e}")
                 continue
 
         if not data:
@@ -522,21 +562,27 @@ def prepare_robot():
                 try:
                     pathfinding_process.terminate()
                     pathfinding_process.wait(timeout=2)
-                except:
+                except subprocess.TimeoutExpired:
+                    print("Warning: pathfinding_process did not terminate, killing...")
                     try:
                         pathfinding_process.kill()
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Error killing pathfinding_process: {e}")
+                except Exception as e:
+                    print(f"Error terminating pathfinding_process: {e}")
             
             if prepare_process and prepare_process.poll() is None:
                 try:
                     prepare_process.terminate()
                     prepare_process.wait(timeout=2)
-                except:
+                except subprocess.TimeoutExpired:
+                    print("Warning: prepare_process did not terminate, killing...")
                     try:
                         prepare_process.kill()
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Error killing prepare_process: {e}")
+                except Exception as e:
+                    print(f"Error terminating prepare_process: {e}")
             
             script_path = "./scripts/prepare.sh"
             pathfinding_script = "./scripts/pathfinding.sh"
@@ -589,11 +635,14 @@ def start_strategy():
                 try:
                     start_process.terminate()
                     start_process.wait(timeout=2)
-                except:
+                except subprocess.TimeoutExpired:
+                    print("Warning: start_process did not terminate, killing...")
                     try:
                         start_process.kill()
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Error killing start_process: {e}")
+                except Exception as e:
+                    print(f"Error terminating start_process: {e}")
             
             script_path = "./scripts/start.sh"
             if not os.path.exists(script_path):
@@ -642,7 +691,8 @@ def read_strategy_output(process):
                     except queue.Full:
                         # Queue is full, mark for removal
                         dead_subscribers.append(subscriber_queue)
-                    except:
+                    except Exception as e:
+                        print(f"Error broadcasting to strategy subscriber: {e}")
                         dead_subscribers.append(subscriber_queue)
                 
                 # Clean up dead/full subscribers
@@ -687,7 +737,8 @@ def read_pathfinding_output(process):
                             subscriber_queue.put(output_line, block=False)
                         except queue.Full:
                             dead_subscribers.append(subscriber_queue)
-                        except:
+                        except Exception as e:
+                            print(f"Error broadcasting to pathfinding subscriber: {e}")
                             dead_subscribers.append(subscriber_queue)
                     
                     for dead_q in dead_subscribers:
@@ -740,7 +791,8 @@ def read_pami_output(process):
                             subscriber_queue.put(output_line, block=False)
                         except queue.Full:
                             dead_subscribers.append(subscriber_queue)
-                        except:
+                        except Exception as e:
+                            print(f"Error broadcasting to pami subscriber: {e}")
                             dead_subscribers.append(subscriber_queue)
                     
                     for dead_q in dead_subscribers:
@@ -830,11 +882,14 @@ def test_pami():
                 try:
                     pami_process.terminate()
                     pami_process.wait(timeout=2)
-                except:
+                except subprocess.TimeoutExpired:
+                    print("Warning: pami_process did not terminate, killing...")
                     try:
                         pami_process.kill()
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Error killing pami_process: {e}")
+                except Exception as e:
+                    print(f"Error terminating pami_process: {e}")
             
             script_path = "./scripts/pami.sh"
             if not os.path.exists(script_path):

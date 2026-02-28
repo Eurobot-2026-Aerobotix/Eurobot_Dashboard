@@ -27,9 +27,23 @@ let pamiEventSource = null;
 let currentSource = 'strategy';
 
 // Separate output buffers for each source - persist in localStorage
-let strategyOutput = JSON.parse(localStorage.getItem('strategyOutput') || '[]');
-let pathfindingOutput = JSON.parse(localStorage.getItem('pathfindingOutput') || '[]');
-let pamiOutput = JSON.parse(localStorage.getItem('pamiOutput') || '[]');
+// Limit size to prevent memory issues (keep last 1000 lines)
+const MAX_OUTPUT_LINES = 1000;
+
+function loadOutput(key) {
+    try {
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        return data.slice(-MAX_OUTPUT_LINES); // Keep only last 1000 lines
+    } catch (e) {
+        console.error(`Failed to load ${key} from localStorage:`, e);
+        localStorage.removeItem(key); // Clear corrupted data
+        return [];
+    }
+}
+
+let strategyOutput = loadOutput('strategyOutput');
+let pathfindingOutput = loadOutput('pathfindingOutput');
+let pamiOutput = loadOutput('pamiOutput');
 
 // Load saved current source
 const savedSource = localStorage.getItem('currentSource');
@@ -41,14 +55,12 @@ if (savedSource) {
 // Display existing output on page load
 displayCurrentOutput();
 
-// Auto-reconnect to streams if processes are running
-if (strategyOutput.length > 0) {
+// Auto-reconnect to current stream only (not all streams) to conserve connections
+if (currentSource === 'strategy' && strategyOutput.length > 0) {
     startStreaming('strategy');
-}
-if (pathfindingOutput.length > 0) {
+} else if (currentSource === 'pathfinding' && pathfindingOutput.length > 0) {
     startStreaming('pathfinding');
-}
-if (pamiOutput.length > 0) {
+} else if (currentSource === 'pami' && pamiOutput.length > 0) {
     startStreaming('pami');
 }
 
@@ -56,6 +68,33 @@ if (pamiOutput.length > 0) {
 outputSelector.addEventListener('change', function() {
     currentSource = outputSelector.value;
     localStorage.setItem('currentSource', currentSource);
+    
+    // Close EventSources for sources we're not viewing to free up connections
+    if (currentSource !== 'strategy' && strategyEventSource) {
+        console.log('Closing strategy EventSource (not viewing)');
+        strategyEventSource.close();
+        strategyEventSource = null;
+    }
+    if (currentSource !== 'pathfinding' && pathfindingEventSource) {
+        console.log('Closing pathfinding EventSource (not viewing)');
+        pathfindingEventSource.close();
+        pathfindingEventSource = null;
+    }
+    if (currentSource !== 'pami' && pamiEventSource) {
+        console.log('Closing pami EventSource (not viewing)');
+        pamiEventSource.close();
+        pamiEventSource = null;
+    }
+    
+    // Start streaming for the selected source if it has output
+    if (currentSource === 'strategy' && strategyOutput.length > 0 && !strategyEventSource) {
+        startStreaming('strategy');
+    } else if (currentSource === 'pathfinding' && pathfindingOutput.length > 0 && !pathfindingEventSource) {
+        startStreaming('pathfinding');
+    } else if (currentSource === 'pami' && pamiOutput.length > 0 && !pamiEventSource) {
+        startStreaming('pami');
+    }
+    
     displayCurrentOutput();
 });
 
@@ -76,16 +115,30 @@ function displayCurrentOutput() {
 }
 
 function startStreaming(source) {
+    console.log('Starting stream for:', source);
+    
     if (source === 'strategy') {
         if (strategyEventSource) {
+            console.log('Closing existing strategy EventSource');
             strategyEventSource.close();
+            strategyEventSource = null;
         }
         
         strategyEventSource = new EventSource(`${API_URL}/stream/strategy`);
         
         strategyEventSource.onmessage = function(event) {
             strategyOutput.push(event.data);
-            localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            // Limit array size to prevent memory overflow
+            if (strategyOutput.length > MAX_OUTPUT_LINES) {
+                strategyOutput = strategyOutput.slice(-MAX_OUTPUT_LINES);
+            }
+            try {
+                localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            } catch (e) {
+                console.error('localStorage quota exceeded, clearing old data');
+                strategyOutput = strategyOutput.slice(-500); // Keep fewer lines
+                localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            }
             
             if (currentSource === 'strategy') {
                 const line = document.createElement('div');
@@ -98,17 +151,37 @@ function startStreaming(source) {
         
         strategyEventSource.onerror = function(error) {
             console.error('Strategy EventSource error:', error);
+            // Auto-reconnect after 3 seconds if connection drops
+            if (strategyEventSource.readyState === EventSource.CLOSED) {
+                console.log('Strategy stream closed, reconnecting in 3s...');
+                setTimeout(() => {
+                    if (currentSource === 'strategy') {
+                        startStreaming('strategy');
+                    }
+                }, 3000);
+            }
         };
     } else if (source === 'pathfinding') {
         if (pathfindingEventSource) {
+            console.log('Closing existing pathfinding EventSource');
             pathfindingEventSource.close();
+            pathfindingEventSource = null;
         }
         
         pathfindingEventSource = new EventSource(`${API_URL}/stream/pathfinding`);
         
         pathfindingEventSource.onmessage = function(event) {
             pathfindingOutput.push(event.data);
-            localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            if (pathfindingOutput.length > MAX_OUTPUT_LINES) {
+                pathfindingOutput = pathfindingOutput.slice(-MAX_OUTPUT_LINES);
+            }
+            try {
+                localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            } catch (e) {
+                console.error('localStorage quota exceeded');
+                pathfindingOutput = pathfindingOutput.slice(-500);
+                localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            }
             
             if (currentSource === 'pathfinding') {
                 const line = document.createElement('div');
@@ -121,17 +194,36 @@ function startStreaming(source) {
         
         pathfindingEventSource.onerror = function(error) {
             console.error('Pathfinding EventSource error:', error);
+            if (pathfindingEventSource.readyState === EventSource.CLOSED) {
+                console.log('Pathfinding stream closed, reconnecting in 3s...');
+                setTimeout(() => {
+                    if (currentSource === 'pathfinding') {
+                        startStreaming('pathfinding');
+                    }
+                }, 3000);
+            }
         };
     } else if (source === 'pami') {
         if (pamiEventSource) {
+            console.log('Closing existing pami EventSource');
             pamiEventSource.close();
+            pamiEventSource = null;
         }
         
         pamiEventSource = new EventSource(`${API_URL}/stream/pami`);
         
         pamiEventSource.onmessage = function(event) {
             pamiOutput.push(event.data);
-            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            if (pamiOutput.length > MAX_OUTPUT_LINES) {
+                pamiOutput = pamiOutput.slice(-MAX_OUTPUT_LINES);
+            }
+            try {
+                localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            } catch (e) {
+                console.error('localStorage quota exceeded');
+                pamiOutput = pamiOutput.slice(-500);
+                localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            }
             
             if (currentSource === 'pami') {
                 const line = document.createElement('div');
@@ -144,6 +236,14 @@ function startStreaming(source) {
         
         pamiEventSource.onerror = function(error) {
             console.error('PAMI EventSource error:', error);
+            if (pamiEventSource.readyState === EventSource.CLOSED) {
+                console.log('PAMI stream closed, reconnecting in 3s...');
+                setTimeout(() => {
+                    if (currentSource === 'pami') {
+                        startStreaming('pami');
+                    }
+                }, 3000);
+            }
         };
     }
 }
@@ -165,9 +265,15 @@ async function prepareRobot() {
     showStatus('Preparing robot...', 'info');
     
     try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(`${API_URL}/prepare`, {
-            method: 'POST'
+            method: 'POST',
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         const data = await response.json();
         
@@ -176,7 +282,11 @@ async function prepareRobot() {
             
             // Clear pathfinding output and start streaming
             pathfindingOutput = [];
-            localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            try {
+                localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            } catch (e) {
+                console.error('localStorage error:', e);
+            }
             outputDiv.innerHTML = '';
             outputSelector.value = 'pathfinding';
             currentSource = 'pathfinding';
@@ -186,7 +296,11 @@ async function prepareRobot() {
             showStatus(data.error || 'Failed to prepare robot', 'error');
         }
     } catch (error) {
-        showStatus(`Error: ${error.message}`, 'error');
+        if (error.name === 'AbortError') {
+            showStatus('Request timeout - too many open connections. Try refreshing the page.', 'error');
+        } else {
+            showStatus(`Error: ${error.message}`, 'error');
+        }
     } finally {
         prepareBtn.disabled = false;
     }
@@ -197,9 +311,15 @@ async function startStrategy() {
     showStatus('Starting strategy...', 'info');
     
     try {
+        // Add timeout to prevent hanging forever
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(`${API_URL}/start`, {
-            method: 'POST'
+            method: 'POST',
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         const data = await response.json();
         
@@ -208,7 +328,11 @@ async function startStrategy() {
             
             // Clear strategy output and start streaming
             strategyOutput = [];
-            localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            try {
+                localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            } catch (e) {
+                console.error('localStorage error:', e);
+            }
             outputDiv.innerHTML = '';
             outputSelector.value = 'strategy';
             currentSource = 'strategy';
@@ -218,7 +342,11 @@ async function startStrategy() {
             showStatus(data.error || 'Failed to start strategy', 'error');
         }
     } catch (error) {
-        showStatus(`Error: ${error.message}`, 'error');
+        if (error.name === 'AbortError') {
+            showStatus('Request timeout - too many open connections. Try refreshing the page.', 'error');
+        } else {
+            showStatus(`Error: ${error.message}`, 'error');
+        }
     } finally {
         startBtn.disabled = false;
     }
@@ -229,9 +357,15 @@ async function stopStrategy() {
     showStatus('Stopping strategy...', 'info');
     
     try {
+        // Add timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(`${API_URL}/stop`, {
-            method: 'POST'
+            method: 'POST',
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -248,7 +382,11 @@ async function stopStrategy() {
             showStatus(data.error || 'Failed to stop strategy', 'error');
         }
     } catch (error) {
-        showStatus(`Error: ${error.message}`, 'error');
+        if (error.name === 'AbortError') {
+            showStatus('Request timeout - too many open connections. Try refreshing the page.', 'error');
+        } else {
+            showStatus(`Error: ${error.message}`, 'error');
+        }
     } finally {
         stopBtn.disabled = false;
     }
@@ -259,12 +397,18 @@ async function testPami() {
     showStatus('Running PAMI test...', 'info');
     
     try {
+        // Add timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(`${API_URL}/test_pami`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -281,7 +425,11 @@ async function testPami() {
             
             // Clear PAMI output and start streaming
             pamiOutput = [];
-            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            try {
+                localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            } catch (e) {
+                console.error('localStorage error:', e);
+            }
             outputDiv.innerHTML = '';
             outputSelector.value = 'pami';
             currentSource = 'pami';
@@ -291,7 +439,11 @@ async function testPami() {
             showStatus(data.error || 'Failed to run PAMI test', 'error');
         }
     } catch (error) {
-        showStatus(`Error: ${error.message}`, 'error');
+        if (error.name === 'AbortError') {
+            showStatus('Request timeout - too many open connections. Try refreshing the page.', 'error');
+        } else {
+            showStatus(`Error: ${error.message}`, 'error');
+        }
     } finally {
         testPamiBtn.disabled = false;
     }

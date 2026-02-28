@@ -524,23 +524,54 @@ function updateLastUpdateDisplay() {
     }
 }
 
-// Update last update display every second
-setInterval(updateLastUpdateDisplay, 1000);
+// Update last update display every second, but only when page is visible
+let updateDisplayInterval = null;
 
-// Handle window resize
+function startUpdateDisplayInterval() {
+    if (!updateDisplayInterval) {
+        updateDisplayInterval = setInterval(updateLastUpdateDisplay, 1000);
+    }
+}
+
+function stopUpdateDisplayInterval() {
+    if (updateDisplayInterval) {
+        clearInterval(updateDisplayInterval);
+        updateDisplayInterval = null;
+    }
+}
+
+// Start interval
+startUpdateDisplayInterval();
+
+// Stop interval when page is hidden to save CPU
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopUpdateDisplayInterval();
+    } else {
+        startUpdateDisplayInterval();
+        updateLastUpdateDisplay(); // Update immediately when becoming visible
+    }
+});
+
+// Throttle resize events for performance
+let resizeTimeout = null;
 window.addEventListener('resize', () => {
-    if (robotMarker && robotPose.x !== 0) {
-        updateRobotMarker();
-    }
-    if (enemyRobotMarker && enemyRobot) {
-        updateEnemyRobotMarker();
-    }
-    if (obstacles.length > 0) {
-        drawObstacles();
-    }
-    if (currentPath.length > 0) {
-        drawPath();
-    }
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        if (robotMarker && robotPose.x !== 0) {
+            updateRobotMarker();
+        }
+        if (enemyRobotMarker && enemyRobot) {
+            updateEnemyRobotMarker();
+        }
+        if (obstacles.length > 0) {
+            drawObstacles();
+        }
+        if (currentPath.length > 0) {
+            drawPath();
+        }
+        resizeTimeout = null;
+    }, 250); // Debounce resize to 250ms
 });
 
 console.log('✅ Real-time robot tracking initialized');

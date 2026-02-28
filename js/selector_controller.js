@@ -45,8 +45,14 @@ function renderList() {
 
   listDivYellow.innerHTML = "";
   listDivBlue.innerHTML = "";
+  
+  // Use document fragments for better performance
+  const yellowFragment = document.createDocumentFragment();
+  const blueFragment = document.createDocumentFragment();
+  const strategiesLength = strategies.length;
 
-  strategies.forEach((s, i) => {
+  for (let i = 0; i < strategiesLength; i++) {
+    const s = strategies[i];
     const div = document.createElement("div");
     div.className = "strategy-item";
     if (i === clickedIndex) div.classList.add("selected");
@@ -81,12 +87,21 @@ function renderList() {
     const startHold = (e) => {
       e.preventDefault();
       holdTimer = setTimeout(async () => {
-        strategies.forEach((st, j) => st.selected = (j === i));
-        await Promise.all(strategies.map(st => updateStrategy(st)));
+        const strats = strategies; // cache reference
+        const stratsLength = strats.length;
+        for (let j = 0; j < stratsLength; j++) {
+          strats[j].selected = (j === i);
+        }
+        await Promise.all(strats.map(st => updateStrategy(st)));
         renderList();
       }, HOLD_MS);
     };
-    const cancelHold = () => clearTimeout(holdTimer);
+    const cancelHold = () => {
+      if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+    };
 
     div.addEventListener("mousedown", startHold);
     div.addEventListener("touchstart", startHold, { passive: false });
@@ -96,11 +111,15 @@ function renderList() {
     div.addEventListener("touchcancel", cancelHold);
 
     if (s.color === "yellow") {
-      listDivYellow.appendChild(div);
+      yellowFragment.appendChild(div);
     } else {
-      listDivBlue.appendChild(div);
+      blueFragment.appendChild(div);
     }
-  });
+  }
+  
+  // Append fragments to DOM in one operation (better performance)
+  listDivYellow.appendChild(yellowFragment);
+  listDivBlue.appendChild(blueFragment);
 }
 
 function updateButtons() {

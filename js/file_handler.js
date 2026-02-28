@@ -23,39 +23,70 @@ const getPamiStrategiesBaseURL = () => {
 
 const PAMI_STRATEGY_BASE_URL = getPamiStrategiesBaseURL();
 
+// Fetch with timeout to prevent hanging when multiple windows open
+async function fetchWithTimeout(url, timeout = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - server may be busy with other windows');
+    }
+    throw error;
+  }
+}
+
 /**
  * Load all strategies as Strategy objects
+ * Uses parallel fetching for better performance with multiple windows
  */
 export async function loadAllStrategies() {
-  const res = await fetch(STRATEGY_BASE_URL);
+  const res = await fetchWithTimeout(STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
 
-  const strategies = [];
-  for (const file of files) {
-    const fileRes = await fetch(`${STRATEGY_BASE_URL}/${file}`);
-    if (!fileRes.ok) continue; // skip failed files
-    const data = await fileRes.json();
-    strategies.push(Strategy.fromObject(data));
-  }
+  // Fetch all files in parallel instead of sequentially
+  const fetchPromises = files.map(async (file) => {
+    try {
+      const fileRes = await fetchWithTimeout(`${STRATEGY_BASE_URL}/${file}`);
+      if (!fileRes.ok) return null; // skip failed files
+      const data = await fileRes.json();
+      return Strategy.fromObject(data);
+    } catch (error) {
+      console.warn(`Failed to load strategy ${file}:`, error.message);
+      return null; // skip failed files
+    }
+  });
 
-  return strategies;
+  const results = await Promise.all(fetchPromises);
+  return results.filter(s => s !== null); // remove failed loads
 }
 
 export async function loadPAMIStrategies() {
-  const res = await fetch(PAMI_STRATEGY_BASE_URL);
+  const res = await fetchWithTimeout(PAMI_STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
 
-  const strategies = [];
-  for (const file of files) {
-    const fileRes = await fetch(`${PAMI_STRATEGY_BASE_URL}/${file}`);
-    if (!fileRes.ok) continue; // skip failed files
-    const data = await fileRes.json();
-    strategies.push(Pami_Strategy.fromObject(data));
-  }
+  // Fetch all files in parallel instead of sequentially
+  const fetchPromises = files.map(async (file) => {
+    try {
+      const fileRes = await fetchWithTimeout(`${PAMI_STRATEGY_BASE_URL}/${file}`);
+      if (!fileRes.ok) return null; // skip failed files
+      const data = await fileRes.json();
+      return Pami_Strategy.fromObject(data);
+    } catch (error) {
+      console.warn(`Failed to load PAMI strategy ${file}:`, error.message);
+      return null; // skip failed files
+    }
+  });
 
-  return strategies;
+  const results = await Promise.all(fetchPromises);
+  return results.filter(s => s !== null); // remove failed loads
 }
 
 
@@ -65,14 +96,27 @@ export async function loadPAMIStrategies() {
  * @param {Strategy} strategy - Strategy object to save
  */
 export async function saveStrategy(strategy) {
-  const res = await fetch(`${STRATEGY_BASE_URL}/${strategy.name}.yaml`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(strategy),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const res = await fetch(`${STRATEGY_BASE_URL}/${strategy.name}.yaml`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(strategy),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-  if (!res.ok) throw new Error("Failed to save strategy");
-  return await res.json();
+    if (!res.ok) throw new Error("Failed to save strategy");
+    return await res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Save timeout - server may be busy');
+    }
+    throw error;
+  }
 }
 
 /**
@@ -81,14 +125,27 @@ export async function saveStrategy(strategy) {
  * @param {Strategy} strategy - Strategy object to save
  */
 export async function savePamiStrategy(strategy) {
-  const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${strategy.strategy_name}/${strategy.pami_number}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(strategy),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${strategy.strategy_name}/${strategy.pami_number}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(strategy),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-  if (!res.ok) throw new Error("Failed to save strategy");
-  return await res.json();
+    if (!res.ok) throw new Error("Failed to save strategy");
+    return await res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Save timeout - server may be busy');
+    }
+    throw error;
+  }
 }
 
 /**
@@ -96,12 +153,25 @@ export async function savePamiStrategy(strategy) {
  * @param {string} filename - e.g., "myStrategy.yaml"
  */
 export async function deleteStrategy(filename) {
-  const res = await fetch(`${STRATEGY_BASE_URL}/${filename}`, {
-    method: "DELETE",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const res = await fetch(`${STRATEGY_BASE_URL}/${filename}`, {
+      method: "DELETE",
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-  if (!res.ok) throw new Error("Failed to delete strategy");
-  return await res.json();
+    if (!res.ok) throw new Error("Failed to delete strategy");
+    return await res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Delete timeout - server may be busy');
+    }
+    throw error;
+  }
 }
 
 async function calculate_global_poses(strategy) {

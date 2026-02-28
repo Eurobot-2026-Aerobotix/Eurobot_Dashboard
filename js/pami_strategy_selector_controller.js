@@ -59,7 +59,9 @@ function hideMenu() {
   context_strategy_number = null;
 }
 
-for (let i = 0; i < pamiBtns.length; i++) {
+// Cache array length for performance
+const pamiBtnsLength = pamiBtns.length;
+for (let i = 0; i < pamiBtnsLength; i++) {
   // Check if this is the ALL square
   if (pamiBtns[i].classList.contains('all-square')) {
     pamiBtns[i].addEventListener("click", () => {
@@ -109,8 +111,18 @@ function distanceFromMenu(x, y) {
 
   return Math.sqrt(dx * dx + dy * dy);
 }
+
+// Throttle mousemove for performance
+let lastMouseMoveCheck = 0;
+const mouseMoveThrottle = 100; // Check every 100ms
+
 document.addEventListener("mousemove", (e) => {
   if (menu.classList.contains("hidden")) return;
+  
+  // Throttle to reduce CPU usage
+  const now = Date.now();
+  if (now - lastMouseMoveCheck < mouseMoveThrottle) return;
+  lastMouseMoveCheck = now;
 
   const dist = distanceFromMenu(e.clientX, e.clientY);
 
@@ -122,7 +134,9 @@ document.addEventListener("mousemove", (e) => {
       }, 150);
     }
   } else {
-    clearTimeout(menuCloseTimeout);
-    menuCloseTimeout = null;
+    if (menuCloseTimeout) {
+      clearTimeout(menuCloseTimeout);
+      menuCloseTimeout = null;
+    }
   }
 });

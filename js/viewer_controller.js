@@ -819,58 +819,86 @@ function calculate_x_y_phi_after_action(point, action) {
   const xy = screenToMap(x, y);
   return [xy.x, xy.y, phi];
 }
+
+// Cache DOM elements and mousemove handler to prevent memory leaks
+let cachedMapElement_viewer = null;
+let cachedOverlayElement_viewer = null;
+let activeDragHandler_viewer = null;
+let activeMouseUpHandler_viewer = null;
+
 function enableDrag(el, action, paramIndexX, paramIndexY) {
   let dragging = false;
+  const isSecondary = el.classList.contains("secondary");
+  
+  // Cache DOM elements
+  if (!cachedMapElement_viewer) cachedMapElement_viewer = document.getElementById("map");
+  if (!cachedOverlayElement_viewer) cachedOverlayElement_viewer = document.getElementById("map-overlay");
 
   el.addEventListener("mouseover", e => {
     hightlightAction(action);
-    if (el.classList.contains("secondary")) return;
+    if (isSecondary) return;
     let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
+    draw_robot_on_map(cachedOverlayElement_viewer, x, y, phi);
   });
+  
   el.addEventListener("mouseout", e => {
     unHightlightActions();
-    if (el.classList.contains("secondary")) return;
-    clear_robot_off_map(document.getElementById("map-overlay"));
+    if (isSecondary) return;
+    clear_robot_off_map(cachedOverlayElement_viewer);
   });
 
   el.addEventListener("mousedown", e => {
     dragging = true;
     e.stopPropagation();
-    if (el.classList.contains("secondary")) return;
+    if (isSecondary) return;
     let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi);
-  });
+    draw_robot_on_map(cachedOverlayElement_viewer, x, y, phi);
+    
+    // Remove previous handlers if they exist to prevent memory leaks
+    if (activeDragHandler_viewer) window.removeEventListener("mousemove", activeDragHandler_viewer);
+    if (activeMouseUpHandler_viewer) window.removeEventListener("mouseup", activeMouseUpHandler_viewer);
+    
+    // Create new handlers
+    const rect = cachedMapElement_viewer.getBoundingClientRect();
+    let lastUpdate = 0;
+    const throttleMs = 16; // ~60fps
+    
+    activeDragHandler_viewer = (e) => {
+      if (!dragging) return;
+      
+      // Throttle updates for performance
+      const now = Date.now();
+      if (now - lastUpdate < throttleMs) return;
+      lastUpdate = now;
 
-  window.addEventListener("mousemove", e => {
-    if (!dragging) return;
+      const x = e.clientY - rect.top;
+      const y = e.clientX - rect.left;
 
-    const map = document.getElementById("map");
-    const rect = map.getBoundingClientRect();
+      el.setAttribute("cx", y);
+      el.setAttribute("cy", x);
 
-    const x = e.clientY - rect.top;
-    const y = e.clientX - rect.left;
-
-    el.setAttribute("cx", y);
-    el.setAttribute("cy", x);
-
-    updateActionParamsFromDrag(
-      action,
-      paramIndexX,
-      paramIndexY,
-      y,
-      x
-    );
-    if (el.classList.contains("secondary")) return;
-    let [x1, y1, phi] = calculate_x_y_phi_after_action(el, action);
-    draw_robot_on_map(document.getElementById("map-overlay"), x1, y1, phi);
-  });
-
-  window.addEventListener("mouseup", () => {
-    if (!dragging) return;
-
-    dragging = false;          // ← drag is over
-    update();
+      updateActionParamsFromDrag(action, paramIndexX, paramIndexY, y, x);
+      if (!isSecondary) {
+        let [x1, y1, phi] = calculate_x_y_phi_after_action(el, action);
+        draw_robot_on_map(cachedOverlayElement_viewer, x1, y1, phi);
+      }
+    };
+    
+    activeMouseUpHandler_viewer = () => {
+      if (!dragging) return;
+      dragging = false;
+      
+      // Clean up handlers after drag ends
+      window.removeEventListener("mousemove", activeDragHandler_viewer);
+      window.removeEventListener("mouseup", activeMouseUpHandler_viewer);
+      activeDragHandler_viewer = null;
+      activeMouseUpHandler_viewer = null;
+      
+      update();
+    };
+    
+    window.addEventListener("mousemove", activeDragHandler_viewer);
+    window.addEventListener("mouseup", activeMouseUpHandler_viewer);
   });
 }
 

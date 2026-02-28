@@ -885,58 +885,82 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     const xy = screenToMap(x, y);
     return [xy.x, xy.y, phi];
 }
+// Cache DOM elements and mousemove handler to prevent memory leaks
+let cachedMapElement = null;
+let cachedOverlayElement = null;
+let activeDragHandler = null;
+let activeMouseUpHandler = null;
+
 function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   let dragging = false;
+  
+  // Cache DOM elements
+  if (!cachedMapElement) cachedMapElement = document.getElementById("map");
+  if (!cachedOverlayElement) cachedOverlayElement = document.getElementById("map-overlay");
 
   el.addEventListener("mouseover", e => {
     hightlightAction(actionIndex);
     let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi, pamiNum);
+    draw_robot_on_map(cachedOverlayElement, x, y, phi, pamiNum);
   });
+  
   el.addEventListener("mouseout", e => {
     unHightlightActions();
-    clear_robot_off_map(document.getElementById("map-overlay"));
+    clear_robot_off_map(cachedOverlayElement);
   });
 
   el.addEventListener("mousedown", e => {
     dragging = true;
     e.stopPropagation();
     let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
-    draw_robot_on_map(document.getElementById("map-overlay"), x, y, phi, pamiNum);
-  });
+    draw_robot_on_map(cachedOverlayElement, x, y, phi, pamiNum);
+    
+    // Remove previous handlers if they exist to prevent memory leaks
+    if (activeDragHandler) window.removeEventListener("mousemove", activeDragHandler);
+    if (activeMouseUpHandler) window.removeEventListener("mouseup", activeMouseUpHandler);
+    
+    // Create new handlers
+    const rect = cachedMapElement.getBoundingClientRect();
+    let lastUpdate = 0;
+    const throttleMs = 16; // ~60fps
+    
+    activeDragHandler = (e) => {
+      if (!dragging) return;
+      
+      // Throttle updates for performance
+      const now = Date.now();
+      if (now - lastUpdate < throttleMs) return;
+      lastUpdate = now;
 
-  window.addEventListener("mousemove", e => {
-    if (!dragging) return;
+      const x = e.clientY - rect.top;
+      const y = e.clientX - rect.left;
 
-    const map = document.getElementById("map");
-    const rect = map.getBoundingClientRect();
+      el.setAttribute("cx", y);
+      el.setAttribute("cy", x);
 
-    const x = e.clientY - rect.top;
-    const y = e.clientX - rect.left;
-
-    el.setAttribute("cx", y);
-    el.setAttribute("cy", x);
-
-    updateActionParamsFromDrag(
-      actionIndex,
-      paramIndexX,
-      paramIndexY,
-      y,
-      x,
-      pamiNum
-    );
-    let [x1, y1, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
-    draw_robot_on_map(document.getElementById("map-overlay"), x1, y1, phi, pamiNum);
-  });
-
-  window.addEventListener("mouseup", () => {
-    if (!dragging) return;
-
-    dragging = false;          // ← drag is over
-    saveToUndoStack();
-    renderTasks(isViewAllMode);
-    renderMap();
-    savePamiStrategy(loaded_strategies[pamiNum]);
+      updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, y, x, pamiNum);
+      let [x1, y1, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
+      draw_robot_on_map(cachedOverlayElement, x1, y1, phi, pamiNum);
+    };
+    
+    activeMouseUpHandler = () => {
+      if (!dragging) return;
+      dragging = false;
+      
+      // Clean up handlers after drag ends
+      window.removeEventListener("mousemove", activeDragHandler);
+      window.removeEventListener("mouseup", activeMouseUpHandler);
+      activeDragHandler = null;
+      activeMouseUpHandler = null;
+      
+      saveToUndoStack();
+      renderTasks(isViewAllMode);
+      renderMap();
+      savePamiStrategy(loaded_strategies[pamiNum]);
+    };
+    
+    window.addEventListener("mousemove", activeDragHandler);
+    window.addEventListener("mouseup", activeMouseUpHandler);
   });
 }
 
