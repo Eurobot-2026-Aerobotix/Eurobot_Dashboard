@@ -1,3 +1,15 @@
 strategy_name: one_batch_one_spot
 pami_number: 4
-sequence: []
+sequence:
+- - 3
+  - '50.34'
+  - '74.21'
+  - 0
+- - 0
+  - 1
+- - 0
+  - 9500
+- - 1
+  - 1070
+  - 69.12
+  - 400

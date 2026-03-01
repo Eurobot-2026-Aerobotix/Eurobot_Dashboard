@@ -1,5 +1,5 @@
 name: one_batch_one_spot
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1

@@ -23,7 +23,7 @@ const go_to_args = ["x", "y", "speed"];
 const go_to_args_pami7 = ["x", "y", "speed", "direction"];
 const orientate_args = ["angle"];
 const set_position_args = ["x", "y", "angle"];
-const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed"]
+const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed", "direction"]
 const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
 const walking_args = [];
@@ -1044,6 +1044,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     if (arg === "up_down") {
       input.placeholder = "1: up, 0: down";
     }
+    if (arg === "direction") {
+      input.placeholder = "enter direction value";
+    }
     label.appendChild(input);
     argsContainer.appendChild(label);
   });
@@ -1092,13 +1095,14 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     const index = actionSelect.value - 1;
 
     action = [index];
+    const inputs = document.querySelectorAll("#args-container input");
     if (index == 0){
-      document.querySelectorAll("#args-container input").forEach(input => {
+      inputs.forEach(input => {
         const value = parseFloat(input.value) || 1000;
         action.push(value != 0 ? value : 1000);
       });
     } else{
-      document.querySelectorAll("#args-container input").forEach(input => {
+      inputs.forEach(input => {
         const value = parseFloat(input.value) || 0;
         action.push(value != 0 ? value : 0);
       });
@@ -1108,16 +1112,19 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
     targetStrategy.sequence.push(action);
   }else{
-    action = targetStrategy.sequence[contextActionIndex];
-    if (action[0] == 0){
-      document.querySelectorAll("#args-container input").forEach((input, index) => {
+    const commandType = targetStrategy.sequence[contextActionIndex][0];
+    action = [commandType];
+    const inputs = document.querySelectorAll("#args-container input");
+    
+    if (commandType == 0){
+      inputs.forEach((input) => {
         const value = parseFloat(input.value) || 1000;
-        action[index + 1] = (value != 0 ? value : 1200);
+        action.push(value != 0 ? value : 1200);
       });
     } else{
-      document.querySelectorAll("#args-container input").forEach((input, index) => {
+      inputs.forEach((input) => {
         const value = parseFloat(input.value) || 0;
-        action[index + 1] = (value != 0 ? value : 0);
+        action.push(value != 0 ? value : 0);
       });
     }
 
