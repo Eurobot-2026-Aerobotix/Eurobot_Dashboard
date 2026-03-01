@@ -275,6 +275,19 @@ tasks:
     - 1000
     wait: true
   - device: STM
+    command: bezier
+    params:
+    - 700
+    - 420
+    - 700
+    - 400
+    - 700
+    - 800
+    - 700
+    - 800
+    - 1100
+    wait: false
+  - device: STM
     command: go_to
     params:
     - 700
@@ -301,19 +314,19 @@ tasks:
     wait: false
 - description: Task 14
   global_goal:
-    x: 300
-    y: 345
-    theta: 180
+    x: 250
+    y: 225
+    theta: 0
   sequence:
   - device: STM
-    command: bezier
+    command: bezier_backwards
     params:
     - 700
     - 250
     - 600
-    - 345
-    - 300
-    - 345
+    - 225
+    - 250
+    - 225
     - 1000
     - 1000
     - 1100
