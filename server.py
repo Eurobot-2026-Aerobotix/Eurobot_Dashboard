@@ -25,7 +25,7 @@ import queue
 import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from socketserver import ThreadingMixIn
-import fcntl
+#import fcntl
 from collections import defaultdict
 
 STRATEGIES_DIR = "strategies"
@@ -1098,6 +1098,8 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         # Set directory for serving files
         super().__init__(*args, directory="/home/harissa/Eurobot_Dashboard", **kwargs)
+        # dashboard_dir = os.path.dirname(os.path.abspath(__file__))
+        # super().__init__(*args, directory=dashboard_dir, **kwargs)
     
     def do_GET(self):
         # Redirect root to /html/index.html
