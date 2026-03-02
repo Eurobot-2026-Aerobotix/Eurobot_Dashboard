@@ -268,13 +268,6 @@ tasks:
     theta: 90
   sequence:
   - device: STM
-    command: go_to
-    params:
-    - 1200
-    - 420
-    - 1000
-    wait: true
-  - device: STM
     command: bezier
     params:
     - 700
@@ -286,21 +279,7 @@ tasks:
     - 700
     - 800
     - 1100
-    wait: false
-  - device: STM
-    command: go_to
-    params:
-    - 700
-    - 400
-    - 1100
-    wait: false
-  - device: STM
-    command: go_to
-    params:
-    - 700
-    - 800
-    - 1000
-    wait: false
+    wait: true
 - description: Task 13
   global_goal:
     x: 700
