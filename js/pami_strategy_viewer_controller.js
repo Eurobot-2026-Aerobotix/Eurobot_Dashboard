@@ -28,7 +28,7 @@ const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
 const walking_args = [];
 const delay_args = ["duration"];
-const commandCodes = ["delay", "go_to", "orientate", "set_position", "bezier"];
+const commandCodes = ["delay", "go_to", "orientate", "set_position", "bezier", "wait_for"];
 const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
 let contextActionIndex = null;
 let contextPamiNumber = null;
@@ -253,6 +253,8 @@ function renderTasks(isMultiMode = true) {
           actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
         }else if (action[0] == 4 && strategy.pami_number === 7){
           actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
+        }else if (action[0] == 5 && !(strategy.pami_number === 7) ){
+          actionDiv.textContent = `wait_for(${action[1]}ms)`;
         }else if (action[0] == 5 && strategy.pami_number === 7){
           actionDiv.textContent = `put_down()`;
         }else if (action[0] == 6 && strategy.pami_number === 7){
@@ -321,6 +323,8 @@ function renderTasks(isMultiMode = true) {
             actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
           }else if (action[0] == 4 && strategy.pami_number === 7){
             actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
+          }else if (action[0] == 5 && !(strategy.pami_number === 7) ){
+            actionDiv.textContent = `wait_for(${action[1]}ms)`;
           }else if (action[0] == 5 && strategy.pami_number === 7){
             actionDiv.textContent = `put_down()`;
           }else if (action[0] == 6 && strategy.pami_number === 7){
@@ -487,11 +491,11 @@ function setupContextMenuHandlers() {
       args_table = bezier_args;
     } else if (command_type == 4) {
       args_table = pick_up_args;
-    } else if (command_type == 5) {
+    } else if (command_type == 5 && strategy.pami_number === 7) {
       args_table = put_down_args;
     } else if (command_type == 6) {
       args_table = walking_args;
-    } else if (command_type == 0) {
+    } else if (command_type == 0 || (command_type == 5 && strategy.pami_number !== 7)) {
       args_table = delay_args;
     }
 
@@ -555,7 +559,8 @@ function populateAddList() {
       "go_to",
       "orientate",
       "set_position",
-      "bezier"
+      "bezier",
+      "wait_for"
     ];
   }
   actionSelect.innerHTML = '<option value="">select action</option>';
@@ -1024,7 +1029,7 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   else if (command.includes("walking")) {
     args_table = walking_args;
   }
-  else if (command.includes("delay")) {
+  else if (command.includes("delay") || command.includes("wait_for")) {
     args_table = delay_args;
   }
   const argsContainer = document.getElementById("args-container");
