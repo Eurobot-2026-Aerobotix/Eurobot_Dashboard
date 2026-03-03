@@ -1,0 +1,15 @@
+strategy_name: PAMI prepare nest
+pami_number: 6
+sequence:
+- - 3
+  - '271.02'
+  - '69.12'
+  - 0
+- - 5
+  - 15000
+- - 0
+  - 9000
+- - 1
+  - 1082.57
+  - 709.81
+  - 600

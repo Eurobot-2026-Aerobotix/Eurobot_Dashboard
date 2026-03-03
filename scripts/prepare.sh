@@ -50,7 +50,7 @@ ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ESP3 > /tmp/micro_ros
 sleep 1
 
 echo "  Starting UDP4 agent on port 8888..."
-ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888 > /tmp/micro_ros_logs/agent_udp_8888.log 2>&1 &
+ros2 run micro_ros_agent micro_ros_agent udp4 --host 10.42.1.1 --port 8888 > /tmp/micro_ros_logs/agent_udp_8888.log 2>&1 &
 sleep 2
 
 # Check which agents are running
