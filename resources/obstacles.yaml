@@ -8,7 +8,7 @@ goal_point:
   theta: 90
 batches:
 - batch_id: 1
-  known_id: V_TOP_LEFT1
+  known_id: S1_WEB
   count: 4
   direction: horizontal
   phi_deg: 0.0
@@ -43,7 +43,7 @@ batches:
       z: 0
     color: yellow
 - batch_id: 2
-  known_id: V_TOP_RIGHT
+  known_id: S2_WEB
   count: 4
   direction: horizontal
   phi_deg: 0.0
@@ -78,7 +78,7 @@ batches:
       z: 0
     color: blue
 - batch_id: 5
-  known_id: H_RIGHT_TOP
+  known_id: S4_WEB
   count: 4
   direction: vertical
   phi_deg: 90.0
@@ -113,7 +113,7 @@ batches:
       z: 0
     color: blue
 - batch_id: 6
-  known_id: mid left
+  known_id: S3_WEB
   count: 4
   direction: vertical
   phi_deg: 0
@@ -148,7 +148,7 @@ batches:
       z: 0
     color: yellow
 - batch_id: 7
-  known_id: right bottom
+  known_id: S6_WEB
   count: 4
   direction: vertical
   phi_deg: 0

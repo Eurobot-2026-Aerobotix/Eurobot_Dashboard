@@ -35,6 +35,7 @@ let contextMenuPosition = null; // Store click position for context menu
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
 const findPathBtn = document.getElementById('findPathBtn');
+const stealBatchBtn = document.getElementById('stealBatchBtn');
 const orientationSelector = document.getElementById('orientationSelector');
 const orientationInput = document.getElementById('orientationInput');
 const confirmBtn = document.getElementById('confirmBtn');
@@ -61,6 +62,7 @@ loadSavedState();
 
 // Initialize event listeners
 findPathBtn.addEventListener('click', findPath);
+stealBatchBtn.addEventListener('click', stealBatch);
 mapWrapper.addEventListener('click', handleMapClick);
 mapWrapper.addEventListener('contextmenu', handleContextMenu);
 confirmBtn.addEventListener('click', confirmPose);
@@ -1041,6 +1043,75 @@ function subscribeToPathResult() {
             }
         } catch (error) {
             console.error('Error parsing path result:', error);
+        }
+        
+        // Unsubscribe after receiving result
+        listener.unsubscribe();
+    });
+}
+
+function stealBatch() {
+    if (!isConnected) {
+        console.warn('⚠️ Cannot steal batch: Not connected to ROS2');
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+    
+    console.log('🎯 Requesting batch steal...');
+    
+    const topic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/steal_batch',
+        messageType: 'std_msgs/String'
+    });
+    
+    // Request to steal any available batch (can be customized with UI controls)
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            batch_type: null,      // null = any type (fx, sx)
+            device: null,          // null = auto-select optimal device
+            min_members: 1         // minimum number of members required
+        })
+    });
+    
+    topic.publish(message);
+    console.log('✅ Batch steal requested');
+    
+    // Listen for steal batch result
+    subscribeToStealBatchResult();
+}
+
+function subscribeToStealBatchResult() {
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/steal_batch_result',
+        messageType: 'std_msgs/String'
+    });
+    
+    listener.subscribe(function(message) {
+        try {
+            const result = JSON.parse(message.data);
+            console.log('📥 Steal batch result received:', result);
+            
+            if (result.success) {
+                console.log('✅ Batch steal task generated!');
+                console.log('Task:', result.task);
+                
+                // Show success message
+                alert(`Success! Generated batch steal task: ${result.task.name}\n\nTarget: (${result.task.global_goal.x}mm, ${result.task.global_goal.y}mm, ${result.task.global_goal.theta}°)\nSequence steps: ${result.task.sequence.length}`);
+                
+                // Optionally visualize the goal on map
+                if (result.task.global_goal) {
+                    const goal = result.task.global_goal;
+                    // You could add a marker or highlight on the map here
+                    console.log(`🎯 Batch goal: (${goal.x}, ${goal.y}, ${goal.theta}°)`);
+                }
+            } else {
+                console.error('❌ Batch steal failed:', result.message);
+                alert('Batch steal failed: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error parsing steal batch result:', error);
         }
         
         // Unsubscribe after receiving result
