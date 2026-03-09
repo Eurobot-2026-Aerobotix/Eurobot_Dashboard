@@ -1096,14 +1096,48 @@ function subscribeToStealBatchResult() {
             if (result.success) {
                 console.log('✅ Batch steal task generated!');
                 console.log('Task:', result.task);
+                console.log('Full sequence:', result.task.sequence);
+                
+                // Extract waypoints from task sequence
+                const waypoints = [];
+                
+                // Add start position as first waypoint
+                if (poses.start) {
+                    waypoints.push({
+                        x: poses.start.x,
+                        y: poses.start.y
+                    });
+                    console.log(`📍 Added start position: (${poses.start.x}, ${poses.start.y})`);
+                }
+                
+                if (result.task && result.task.sequence) {
+                    result.task.sequence.forEach((step, idx) => {
+                        console.log(`Step ${idx}:`, step.device, step.command, step.params);
+                        if (step.device === 'STM' && (step.command === 'go_to' || step.command === 'go_to_backwards')) {
+                            // params: [x, y, speed, {...}]
+                            waypoints.push({
+                                x: step.params[0],
+                                y: step.params[1]
+                            });
+                        }
+                    });
+                    
+                    console.log(`📊 Extracted ${waypoints.length} total waypoints (including start)`);
+                }
                 
                 // Show success message
-                alert(`Success! Generated batch steal task: ${result.task.name}\n\nTarget: (${result.task.global_goal.x}mm, ${result.task.global_goal.y}mm, ${result.task.global_goal.theta}°)\nSequence steps: ${result.task.sequence.length}`);
+                alert(`Success! Generated batch steal task: ${result.task.name}\n\nTarget: (${result.task.global_goal.x}mm, ${result.task.global_goal.y}mm, ${result.task.global_goal.theta}°)\nSequence steps: ${result.task.sequence.length}\nPath waypoints: ${waypoints.length}`);
+                
+                // Draw path on map
+                if (waypoints.length > 0) {
+                    drawPath(waypoints);
+                } else {
+                    console.warn('⚠️ No waypoints found in task sequence');
+                }
                 
                 // Optionally visualize the goal on map
                 if (result.task.global_goal) {
                     const goal = result.task.global_goal;
-                    // You could add a marker or highlight on the map here
                     console.log(`🎯 Batch goal: (${goal.x}, ${goal.y}, ${goal.theta}°)`);
                 }
             } else {
