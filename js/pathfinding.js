@@ -3,6 +3,8 @@ const MAP_WIDTH_MM = 3000;  // 3000mm = 3m
 const MAP_HEIGHT_MM = 2000; // 2000mm = 2m
 const MAP_WIDTH_PX = 3000;  // pixels
 const MAP_HEIGHT_PX = 2000; // pixels
+const ROBOT_WIDTH_MM = 300;  // Robot width in mm (30cm)
+const ROBOT_HEIGHT_MM = 300; // Robot height in mm (30cm)
 
 // ROS2 Bridge Configuration - use smart IP config
 const ROSBRIDGE_URL = window.ipConfig ? window.ipConfig.getWebSocketURL() : 'ws://localhost:9090';
@@ -1094,51 +1096,153 @@ function subscribeToStealBatchResult() {
             console.log('📥 Steal batch result received:', result);
             
             if (result.success) {
-                console.log('✅ Batch steal task generated!');
-                console.log('Task:', result.task);
-                console.log('Full sequence:', result.task.sequence);
+                console.log('✅ Batch steal tasks generated!');
+                console.log('Tasks:', result.tasks);
+                console.log('Task count:', result.task_count);
                 
-                // Extract waypoints from task sequence
+                // Extract waypoints from all task sequences
                 const waypoints = [];
+                const taskGoalWaypoints = []; // Store last waypoint of each task for footprint drawing
                 
                 // Add start position as first waypoint
                 if (poses.start) {
                     waypoints.push({
                         x: poses.start.x,
-                        y: poses.start.y
+                        y: poses.start.y,
+                        theta: poses.start.theta || 0
                     });
-                    console.log(`📍 Added start position: (${poses.start.x}, ${poses.start.y})`);
+                    console.log(`📍 Added start position: (${poses.start.x}, ${poses.start.y}, ${poses.start.theta || 0}°)`);
                 }
                 
-                if (result.task && result.task.sequence) {
-                    result.task.sequence.forEach((step, idx) => {
-                        console.log(`Step ${idx}:`, step.device, step.command, step.params);
-                        if (step.device === 'STM' && (step.command === 'go_to' || step.command === 'go_to_backwards')) {
-                            // params: [x, y, speed, {...}]
-                            waypoints.push({
-                                x: step.params[0],
-                                y: step.params[1]
+                // Process all tasks (pickup + putdown)
+                if (result.tasks && Array.isArray(result.tasks)) {
+                    result.tasks.forEach((task, taskIdx) => {
+                        console.log(`\n🔹 Task ${taskIdx + 1}: ${task.name}`);
+                        console.log(`   Goal: (${task.global_goal.x}mm, ${task.global_goal.y}mm, ${task.global_goal.theta}°)`);
+                        console.log(`   Sequence steps: ${task.sequence.length}`);
+                        
+                        let taskLastWaypoint = null; // Track last waypoint of this task
+                        
+                        if (task.sequence) {
+                            let currentTheta = poses.start ? poses.start.theta : 0; // Track orientation
+                            let lastX = poses.start ? poses.start.x : null;
+                            let lastY = poses.start ? poses.start.y : null;
+                            
+                            task.sequence.forEach((step, idx) => {
+                                if (step.device === 'STM' && step.command === 'go_to') {
+                                    // go_to: robot rotates to face target, then moves forward
+                                    const targetX = step.params[0];
+                                    const targetY = step.params[1];
+                                    
+                                    // Calculate angle to target only if there's movement
+                                    if (lastX !== null && lastY !== null) {
+                                        const dx = targetX - lastX;
+                                        const dy = targetY - lastY;
+                                        const distance = Math.sqrt(dx*dx + dy*dy);
+                                        
+                                        // Only recalculate theta if moving more than 1mm
+                                        if (distance > 1) {
+                                            currentTheta = Math.atan2(dy, dx) * 180 / Math.PI;
+                                        }
+                                        // else: keep currentTheta (e.g., from previous orientate command)
+                                    }
+                                    
+                                    const wp = {
+                                        x: targetX,
+                                        y: targetY,
+                                        theta: currentTheta
+                                    };
+                                    waypoints.push(wp);
+                                    taskLastWaypoint = wp; // Update last waypoint
+                                    
+                                    lastX = targetX;
+                                    lastY = targetY;
+                                } else if (step.device === 'STM' && step.command === 'go_to_backwards') {
+                                    // go_to_backwards: robot rotates 180° from target direction, then moves backward
+                                    const targetX = step.params[0];
+                                    const targetY = step.params[1];
+                                    
+                                    // Calculate angle to target only if there's movement
+                                    if (lastX !== null && lastY !== null) {
+                                        const dx = targetX - lastX;
+                                        const dy = targetY - lastY;
+                                        const distance = Math.sqrt(dx*dx + dy*dy);
+                                        
+                                        // Only recalculate theta if moving more than 1mm
+                                        if (distance > 1) {
+                                            let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                                            currentTheta = angle + 180; // Face away from target
+                                            // Normalize to -180 to 180
+                                            if (currentTheta > 180) currentTheta -= 360;
+                                        }
+                                        // else: keep currentTheta (e.g., from previous orientate command)
+                                    }
+                                    
+                                    const wp = {
+                                        x: targetX,
+                                        y: targetY,
+                                        theta: currentTheta
+                                    };
+                                    waypoints.push(wp);
+                                    taskLastWaypoint = wp; // Update last waypoint
+                                    
+                                    lastX = targetX;
+                                    lastY = targetY;
+                                } else if (step.device === 'STM' && step.command === 'orientate') {
+                                    // Update orientation for subsequent waypoints
+                                    // params: [angle, is_radian]
+                                    const angle = step.params[0];
+                                    const isRadian = step.params[1];
+                                    currentTheta = isRadian ? (angle * 180 / Math.PI) : angle;
+                                    console.log(`   🔄 Orientation change: ${currentTheta}°`);
+                                    
+                                    // Add waypoint at same position with new orientation
+                                    if (lastX !== null && lastY !== null) {
+                                        const wp = {
+                                            x: lastX,
+                                            y: lastY,
+                                            theta: currentTheta
+                                        };
+                                        waypoints.push(wp);
+                                        taskLastWaypoint = wp; // Update last waypoint
+                                    }
+                                }
                             });
+                            
+                            // Store the last waypoint of this task
+                            if (taskLastWaypoint) {
+                                taskGoalWaypoints.push(taskLastWaypoint);
+                            }
                         }
                     });
                     
                     console.log(`📊 Extracted ${waypoints.length} total waypoints (including start)`);
                 }
                 
-                // Show success message
-                alert(`Success! Generated batch steal task: ${result.task.name}\n\nTarget: (${result.task.global_goal.x}mm, ${result.task.global_goal.y}mm, ${result.task.global_goal.theta}°)\nSequence steps: ${result.task.sequence.length}\nPath waypoints: ${waypoints.length}`);
+                // Build alert message with all task info
+                let alertMsg = `Success! Generated ${result.task_count} task(s):\n\n`;
+                result.tasks.forEach((task, idx) => {
+                    alertMsg += `${idx + 1}. ${task.name}\n`;
+                    alertMsg += `   Target: (${task.global_goal.x}mm, ${task.global_goal.y}mm, ${task.global_goal.theta}°)\n`;
+                    alertMsg += `   Steps: ${task.sequence.length}\n\n`;
+                });
+                alertMsg += `Total path waypoints: ${waypoints.length}`;
+                
+                alert(alertMsg);
                 
                 // Draw path on map
                 if (waypoints.length > 0) {
-                    drawPath(waypoints);
+                    drawPath(waypoints, taskGoalWaypoints);
                 } else {
-                    console.warn('⚠️ No waypoints found in task sequence');
+                    console.warn('⚠️ No waypoints found in task sequences');
                 }
                 
-                // Optionally visualize the goal on map
-                if (result.task.global_goal) {
-                    const goal = result.task.global_goal;
-                    console.log(`🎯 Batch goal: (${goal.x}, ${goal.y}, ${goal.theta}°)`);
+                // Visualize both goals on map
+                if (result.tasks && result.tasks.length > 0) {
+                    result.tasks.forEach((task, idx) => {
+                        const goal = task.global_goal;
+                        console.log(`🎯 Task ${idx + 1} goal: (${goal.x}, ${goal.y}, ${goal.theta}°)`);
+                    });
                 }
             } else {
                 console.error('❌ Batch steal failed:', result.message);
@@ -1153,12 +1257,15 @@ function subscribeToStealBatchResult() {
     });
 }
 
-function drawPath(waypoints) {
-    // Remove existing path
+function drawPath(waypoints, taskGoalWaypoints = []) {
+    // Remove existing path and footprints
     const existingPath = document.querySelector('.path-line');
     if (existingPath) {
         existingPath.remove();
     }
+    
+    const existingFootprints = document.querySelectorAll('.robot-footprint');
+    existingFootprints.forEach(fp => fp.remove());
     
     if (!waypoints || waypoints.length === 0) {
         console.warn('⚠️ No waypoints to draw');
@@ -1168,6 +1275,7 @@ function drawPath(waypoints) {
     console.log('📊 Drawing path with', waypoints.length, 'waypoints');
     console.log('First waypoint:', waypoints[0]);
     console.log('Last waypoint:', waypoints[waypoints.length - 1]);
+    console.log('Task goal waypoints:', taskGoalWaypoints.length);
     
     const displayWidth = map.offsetWidth;
     const displayHeight = map.offsetHeight;
@@ -1187,14 +1295,16 @@ function drawPath(waypoints) {
     let pathData = '';
     waypoints.forEach((wp, index) => {
         // Waypoint can be [x, y, theta] array or {x, y, theta} object
-        let x_mm, y_mm;
+        let x_mm, y_mm, theta;
         
         if (Array.isArray(wp)) {
             x_mm = wp[0];
             y_mm = wp[1];
+            theta = wp[2] || 0;
         } else {
             x_mm = wp.x;
             y_mm = wp.y;
+            theta = wp.theta || 0;
         }
         
         // Waypoints are already in mm, just convert to pixels
@@ -1226,6 +1336,54 @@ function drawPath(waypoints) {
     mapWrapper.appendChild(svg);
     
     console.log('✅ Path drawn on map with', waypoints.length, 'points');
+    
+    // Draw robot footprints only at task goal positions
+    taskGoalWaypoints.forEach((wp, idx) => {
+        console.log(`🤖 Drawing footprint ${idx + 1} at (${wp.x}, ${wp.y}, ${wp.theta}°)`);
+        drawRobotFootprint(wp.x, wp.y, wp.theta);
+    });
+}
+
+function drawRobotFootprint(x_mm, y_mm, theta_deg) {
+    const displayWidth = map.offsetWidth;
+    const displayHeight = map.offsetHeight;
+    
+    // Convert position to pixels (swap x/y for coordinate system)
+    const center_x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+    const center_y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+    
+    // Convert robot dimensions to pixels
+    const robot_width_px = (ROBOT_HEIGHT_MM / MAP_HEIGHT_MM) * displayHeight;
+    const robot_height_px = (ROBOT_WIDTH_MM / MAP_WIDTH_MM) * displayWidth;
+    
+    // Create robot footprint div
+    const footprint = document.createElement('div');
+    footprint.classList.add('robot-footprint');
+    footprint.style.position = 'absolute';
+    footprint.style.width = robot_width_px + 'px';
+    footprint.style.height = robot_height_px + 'px';
+    footprint.style.left = (center_x_px - robot_width_px / 2) + 'px';
+    footprint.style.top = (center_y_px - robot_height_px / 2) + 'px';
+    footprint.style.border = '2px solid rgba(0, 150, 255, 0.6)';
+    footprint.style.backgroundColor = 'rgba(0, 150, 255, 0.15)';
+    footprint.style.transform = `rotate(${-theta_deg}deg)`; // Negative for coordinate system
+    footprint.style.transformOrigin = 'center';
+    footprint.style.pointerEvents = 'none';
+    footprint.style.zIndex = '9';
+    footprint.style.boxSizing = 'border-box';
+    
+    // Add direction indicator (small line at front)
+    const indicator = document.createElement('div');
+    indicator.style.position = 'absolute';
+    indicator.style.width = '3px';
+    indicator.style.height = '20px';
+    indicator.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+    indicator.style.top = '-10px';
+    indicator.style.left = '50%';
+    indicator.style.transform = 'translateX(-50%)';
+    footprint.appendChild(indicator);
+    
+    mapWrapper.appendChild(footprint);
 }
 
 // -------------------------------------------------
