@@ -15,6 +15,7 @@ const orientate_args = ["angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "backup x", "backup y", "speed"];
 const set_position_args = ["x", "y", "angle"];
 const wait_enf_game_args = ["duration"];
+const steal_args = ["sx count","fx count"];
 const options = [
     new Action("STM", "set_position"),
     new Action("STM", "go_to"),
@@ -28,7 +29,8 @@ const options = [
     new Action("ESP_back", "put_down"),
     new Action("RASP_PI", "Wait for manual start"),
     new Action("RASP_PI", "Start pamiyeet"),
-    new Action("RASP_PI","wait_end_game")
+    new Action("RASP_PI","wait_end_game"),
+    new Action("RASP_PI","steal")
   ];
 let contextAction = null;
 let contextTask = null;
@@ -420,6 +422,7 @@ function renderTasks() {
     else if (command.includes("orientate")) args_table = orientate_args;
     else if (command.includes("set_position")) args_table = set_position_args;
     else if (command.includes("wait_end_game")) args_table = wait_enf_game_args;
+    else if (command.includes("steal")) args_table = steal_args;
 
     const argsContainer = document.getElementById("args-container");
     argsContainer.innerHTML = "";
@@ -926,6 +929,9 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   }
   else if (command.includes("wait_end_game")) {
     args_table = wait_enf_game_args;
+  }
+  else if (command.includes("steal")) {
+    args_table = steal_args;
   }
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
