@@ -1,5 +1,5 @@
 name: test_steal
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -71,15 +71,50 @@ tasks:
     wait: true
 - description: Task 5
   global_goal:
-    x: '1191.54'
-    y: '455.55'
-    theta: 89.39110065746291
+    x: '689.31'
+    y: '791.22'
+    theta: -90
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1191.54'
-    - '455.55'
+    - '689.31'
+    - '791.22'
     - 1000
     wait: true
+  - device: STM
+    command: orientate
+    params:
+    - -90
+    wait: false
+- description: Task 13
+  global_goal:
+    x: '689.31'
+    y: '791.22'
+    theta: -90
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
+    params:
+    - 12
+    wait: false
+- description: Task 6
+  global_goal:
+    x: 300
+    y: 300
+    theta: 0
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 690
+    - 300
+    - 300
+    - 300
+    - 300
+    - 300
+    - 1000
+    - 1000
+    - 1100
+    wait: false
 order: 25
