@@ -5,16 +5,17 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/ubuntu/EUROBOT/Eurobot_Dashboard
+User=harissa
+WorkingDirectory=/home/harissa/Eurobot_Dashboard
 Environment="ROS_DISTRO=jazzy"
 Environment="ROS_VERSION=2"
 Environment="ROS_PYTHON_VERSION=3"
 Environment="MICRO_ROS_BAUDRATE=115200"
-ExecStart=/bin/bash /home/ubuntu/EUROBOT/Eurobot_Dashboard/scripts/start_micro_ros_agents.sh
+ExecStart=/bin/bash /home/harissa/Eurobot_Dashboard/scripts/start_micro_ros_agents.sh
 Restart=always
 RestartSec=2
 StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

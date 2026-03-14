@@ -1,28 +1,23 @@
 #!/bin/bash
-# Install Eurobot micro-ROS agents as a user systemd service
+# Install Eurobot micro-ROS agents as a systemd service
 
-set -e
+set -euo pipefail
 
-SERVICE_NAME="eurobot-micro-ros-agents.service"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-USER_SYSTEMD_DIR="$HOME/.config/systemd/user"
+SYSTEMD_DIR="/etc/systemd/system"
 
-echo "Installing $SERVICE_NAME as user service..."
+echo "Installing eurobot-micro-ros-agents.service as system service..."
 
-mkdir -p "$USER_SYSTEMD_DIR"
 chmod +x "$SCRIPT_DIR/scripts/start_micro_ros_agents.sh"
-cp "$SCRIPT_DIR/$SERVICE_NAME" "$USER_SYSTEMD_DIR/$SERVICE_NAME"
+sudo cp "$SCRIPT_DIR/eurobot-micro-ros-agents.service" "$SYSTEMD_DIR/eurobot-micro-ros-agents.service"
 
-systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME"
+sudo systemctl daemon-reload
+sudo systemctl enable --now "eurobot-micro-ros-agents.service"
 
 echo ""
 echo "✅ Micro-ROS agents service installed and started"
 echo ""
-echo "Check status:  systemctl --user status $SERVICE_NAME"
-echo "Stop service:   systemctl --user stop $SERVICE_NAME"
-echo "Start service:  systemctl --user start $SERVICE_NAME"
-echo "View logs:      journalctl --user -u $SERVICE_NAME -f"
-echo ""
-echo "Optional for boot without login (requires sudo):"
-echo "  sudo loginctl enable-linger $USER"
+echo "Check status:  sudo systemctl status eurobot-micro-ros-agents.service"
+echo "Stop service:   sudo systemctl stop eurobot-micro-ros-agents.service"
+echo "Start service:  sudo systemctl start eurobot-micro-ros-agents.service"
+echo "View logs:      sudo journalctl -u eurobot-micro-ros-agents.service -f"
