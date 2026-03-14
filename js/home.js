@@ -20,11 +20,47 @@ const testPamiBtn = document.getElementById('testPamiBtn');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 const outputSelector = document.getElementById('outputSelector');
+const frontStatusDot = document.getElementById('frontStatusDot');
+const backStatusDot = document.getElementById('backStatusDot');
+const pneumaticStatusDot = document.getElementById('pneumaticStatusDot');
+const frontStatusLabel = document.getElementById('frontStatusLabel');
+const backStatusLabel = document.getElementById('backStatusLabel');
+const pneumaticStatusLabel = document.getElementById('pneumaticStatusLabel');
 
 let strategyEventSource = null;
 let pathfindingEventSource = null;
 let pamiEventSource = null;
 let currentSource = 'strategy';
+let rosStatusConnection = null;
+let rosReconnectTimeout = null;
+
+const STATUS_TIMEOUT_MS = 2000;
+const STATUS_CHECK_INTERVAL_MS = 500;
+const ROS_RECONNECT_DELAY_MS = 3000;
+
+const espStatusState = {
+    front: {
+        dot: frontStatusDot,
+        label: frontStatusLabel,
+        lastMessageAt: 0,
+        connected: false,
+        topic: null
+    },
+    back: {
+        dot: backStatusDot,
+        label: backStatusLabel,
+        lastMessageAt: 0,
+        connected: false,
+        topic: null
+    },
+    pneumatic: {
+        dot: pneumaticStatusDot,
+        label: pneumaticStatusLabel,
+        lastMessageAt: 0,
+        connected: false,
+        topic: null
+    }
+};
 
 // Separate output buffers for each source - persist in localStorage
 // Limit size to prevent memory issues (keep last 1000 lines)
@@ -259,6 +295,144 @@ function showStatus(message, type = 'info') {
         statusMsg.remove();
     }, 5000);
 }
+
+function setEspConnectionState(key, isConnected) {
+    const entry = espStatusState[key];
+    if (!entry) {
+        return;
+    }
+
+    entry.connected = isConnected;
+    entry.dot.classList.toggle('connected', isConnected);
+    entry.dot.classList.toggle('disconnected', !isConnected);
+    entry.label.textContent = isConnected ? 'Connected' : 'Disconnected';
+}
+
+function markEspMessageReceived(key) {
+    const entry = espStatusState[key];
+    if (!entry) {
+        return;
+    }
+
+    entry.lastMessageAt = Date.now();
+    setEspConnectionState(key, true);
+}
+
+function createStatusSubscription(key, topicName) {
+    const entry = espStatusState[key];
+    if (!rosStatusConnection || !entry) {
+        return null;
+    }
+
+    const topic = new ROSLIB.Topic({
+        ros: rosStatusConnection,
+        name: topicName,
+        messageType: 'std_msgs/msg/Int32'
+    });
+
+    topic.subscribe(() => {
+        markEspMessageReceived(key);
+    });
+
+    entry.topic = topic;
+    return topic;
+}
+
+function subscribeFrontStatus() {
+    return createStatusSubscription('front', '/front/status');
+}
+
+function subscribeBackStatus() {
+    return createStatusSubscription('back', '/back/status');
+}
+
+function subscribePneumaticStatus() {
+    return createStatusSubscription('pneumatic', '/pneumatic/status');
+}
+
+function disconnectAllEspTopics() {
+    Object.values(espStatusState).forEach((entry) => {
+        if (entry.topic) {
+            try {
+                entry.topic.unsubscribe();
+            } catch (error) {
+                console.warn('Failed to unsubscribe ESP status topic:', error);
+            }
+            entry.topic = null;
+        }
+
+        entry.lastMessageAt = 0;
+        setEspConnectionState(
+            Object.keys(espStatusState).find((key) => espStatusState[key] === entry),
+            false
+        );
+    });
+}
+
+function scheduleRosReconnect() {
+    if (rosReconnectTimeout) {
+        return;
+    }
+
+    rosReconnectTimeout = setTimeout(() => {
+        rosReconnectTimeout = null;
+        initializeEspStatusMonitoring();
+    }, ROS_RECONNECT_DELAY_MS);
+}
+
+function initializeEspStatusMonitoring() {
+    if (typeof ROSLIB === 'undefined') {
+        console.error('ROSLIB is not available on the home page');
+        return;
+    }
+
+    if (rosStatusConnection) {
+        try {
+            rosStatusConnection.close();
+        } catch (error) {
+            console.warn('Failed to close previous ROS connection:', error);
+        }
+    }
+
+    disconnectAllEspTopics();
+
+    rosStatusConnection = new ROSLIB.Ros({
+        url: window.ipConfig.getWebSocketURL()
+    });
+
+    rosStatusConnection.on('connection', () => {
+        console.log('Connected to ROS bridge for ESP status monitoring');
+        subscribeFrontStatus();
+        subscribeBackStatus();
+        subscribePneumaticStatus();
+    });
+
+    rosStatusConnection.on('error', (error) => {
+        console.error('ROS bridge error:', error);
+        disconnectAllEspTopics();
+        scheduleRosReconnect();
+    });
+
+    rosStatusConnection.on('close', () => {
+        console.warn('ROS bridge closed for ESP status monitoring');
+        disconnectAllEspTopics();
+        scheduleRosReconnect();
+    });
+}
+
+setInterval(() => {
+    const now = Date.now();
+
+    Object.entries(espStatusState).forEach(([key, entry]) => {
+        if (entry.lastMessageAt === 0) {
+            setEspConnectionState(key, false);
+            return;
+        }
+
+        const isFresh = (now - entry.lastMessageAt) <= STATUS_TIMEOUT_MS;
+        setEspConnectionState(key, isFresh);
+    });
+}, STATUS_CHECK_INTERVAL_MS);
 
 async function prepareRobot() {
     prepareBtn.disabled = true;
@@ -642,3 +816,21 @@ function showSettingsMessage(message, type) {
 
 ////////////////////////////////////
 updateSelectedStrategyDisplay()
+initializeEspStatusMonitoring();
+
+window.addEventListener('beforeunload', () => {
+    if (rosReconnectTimeout) {
+        clearTimeout(rosReconnectTimeout);
+        rosReconnectTimeout = null;
+    }
+
+    disconnectAllEspTopics();
+
+    if (rosStatusConnection) {
+        try {
+            rosStatusConnection.close();
+        } catch (error) {
+            console.warn('Failed to close ROS bridge on unload:', error);
+        }
+    }
+});

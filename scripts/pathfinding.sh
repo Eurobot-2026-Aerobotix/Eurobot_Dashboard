@@ -3,6 +3,10 @@
 echo "🧹 Cleaning up old pathfinding processes..."
 pkill -9 -f "hybrid_astar_node"
 pkill -9 -f "hybrid_astar.launch.py"
+# Prevent duplicate consumers on /web/test_controller
+# (hybrid_astar.launch.py starts web_handler_node itself)
+pkill -9 -f "web_handler.py"
+pkill -9 -f "hybrid_astar web_handler"
 sleep 1
 
 echo "🚀 Starting pathfinding node..."

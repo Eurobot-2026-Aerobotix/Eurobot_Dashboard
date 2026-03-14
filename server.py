@@ -23,6 +23,7 @@ import threading
 import subprocess
 import queue
 import time
+import signal
 from http.server import SimpleHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from socketserver import ThreadingMixIn
 #import fcntl
@@ -58,6 +59,33 @@ web_batches_lock = threading.Lock()
 strategy_lock = threading.Lock()  # Protects SELECTED_STRATEGY_PATH and strategy file operations
 process_lock = threading.Lock()   # Protects start/stop/prepare process operations
 obstacles_lock = threading.Lock()  # Protects obstacles file operations
+
+
+def terminate_process_group(proc, name="process", timeout=3):
+    """Terminate a process and its process group to avoid orphan child processes."""
+    if not proc or proc.poll() is not None:
+        return
+
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        proc.wait(timeout=timeout)
+    except ProcessLookupError:
+        return
+    except Exception:
+        try:
+            proc.terminate()
+            proc.wait(timeout=timeout)
+        except Exception:
+            pass
+
+    if proc.poll() is None:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -558,31 +586,8 @@ def prepare_robot():
     with process_lock:  # Protect process start operation
         try:
             # Kill old process if still running to prevent zombies
-            if pathfinding_process and pathfinding_process.poll() is None:
-                try:
-                    pathfinding_process.terminate()
-                    pathfinding_process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    print("Warning: pathfinding_process did not terminate, killing...")
-                    try:
-                        pathfinding_process.kill()
-                    except Exception as e:
-                        print(f"Error killing pathfinding_process: {e}")
-                except Exception as e:
-                    print(f"Error terminating pathfinding_process: {e}")
-            
-            if prepare_process and prepare_process.poll() is None:
-                try:
-                    prepare_process.terminate()
-                    prepare_process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    print("Warning: prepare_process did not terminate, killing...")
-                    try:
-                        prepare_process.kill()
-                    except Exception as e:
-                        print(f"Error killing prepare_process: {e}")
-                except Exception as e:
-                    print(f"Error terminating prepare_process: {e}")
+            terminate_process_group(pathfinding_process, "pathfinding_process")
+            terminate_process_group(prepare_process, "prepare_process")
             
             script_path = "./scripts/prepare.sh"
             pathfinding_script = "./scripts/pathfinding.sh"
@@ -594,7 +599,12 @@ def prepare_robot():
                 return jsonify({"status": "error", "error": "pathfinding.sh not found"}), 404
             
             # Execute the prepare script
-            prepare_process = subprocess.Popen(["bash", script_path], stdout=None, stderr=None)
+            prepare_process = subprocess.Popen(
+                ["bash", script_path],
+                stdout=None,
+                stderr=None,
+                preexec_fn=os.setsid  # Create new process group for reliable cleanup
+            )
             
             # No need to clear queues - each client gets a fresh queue when subscribing
             
@@ -610,7 +620,8 @@ def prepare_robot():
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=0,  # Unbuffered
-                env=env
+                env=env,
+                preexec_fn=os.setsid  # Create new process group for reliable cleanup
             )
             
             # Start thread to read pathfinding output
@@ -1155,7 +1166,6 @@ def get_selected_strategy_path():
 # -------------------------------------------------
 def cleanup():
     """Kill all spawned processes on exit"""
-    import signal
     print("\n=== Cleaning up processes ===")
     
     # Kill rosbridge and ROS2 processes
@@ -1165,29 +1175,10 @@ def cleanup():
     subprocess.run(["pkill", "-f", "pami_test_manager"], stderr=subprocess.DEVNULL)
     
     # Kill tracked processes
-    if start_process and start_process.poll() is None:
-        try:
-            os.killpg(os.getpgid(start_process.pid), signal.SIGTERM)
-        except:
-            pass
-    
-    if pathfinding_process and pathfinding_process.poll() is None:
-        try:
-            pathfinding_process.terminate()
-        except:
-            pass
-    
-    if prepare_process and prepare_process.poll() is None:
-        try:
-            prepare_process.terminate()
-        except:
-            pass
-    
-    if pami_process and pami_process.poll() is None:
-        try:
-            pami_process.terminate()
-        except:
-            pass
+    terminate_process_group(start_process, "start_process")
+    terminate_process_group(pathfinding_process, "pathfinding_process")
+    terminate_process_group(prepare_process, "prepare_process")
+    terminate_process_group(pami_process, "pami_process")
     
     print("=== Cleanup complete ===")
 
@@ -1195,7 +1186,6 @@ def cleanup():
 # Run server
 # -------------------------------------------------
 if __name__ == "__main__":
-    import signal
     import atexit
     
     # Register cleanup on exit

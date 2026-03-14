@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST Controller Panel</title>
+    <link rel="stylesheet" href="../css/home.css">
+    <link rel="stylesheet" href="../css/test_controller.css">
+    <link rel="icon" type="image/png" href="../resources/harissa.png">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="strategy_selector.html" class="nav-link">Strategy</a>
+            <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
+            <a href="realtime_robot.html" class="nav-link">Real-Time</a>
+            <a href="test_controller.html" class="nav-link active">TEST</a>
+        </div>
+    </nav>
+
+    <div class="logo-container">
+        <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
+    </div>
+
+    <div class="test-page">
+        <div class="test-header">
+            <div>
+                <h1>TEST Controller Panel</h1>
+                <p>Manual commands for front/back systems and pneumatic outputs through ROS bridge.</p>
+            </div>
+            <div id="rosStatus" class="ros-status-pill disconnected">
+                <span class="status-indicator"></span>
+                <span id="rosStatusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="test-grid">
+            <section class="test-card">
+                <div class="card-header">
+                    <h2>Front / Back Systems</h2>
+                    <span class="card-badge">Shared commands</span>
+                </div>
+
+                <div class="control-row">
+                    <label for="espTargetSelect">Target ESP</label>
+                    <select id="espTargetSelect">
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                    </select>
+                </div>
+
+                <div class="function-group">
+                    <div class="function-title">Kabech</div>
+                    <div class="button-row">
+                        <button class="action-btn" data-action="kabech" data-value="1">kabech(1)</button>
+                        <button class="action-btn secondary" data-action="kabech" data-value="0">kabech(0)</button>
+                    </div>
+                </div>
+
+                <div class="function-group">
+                    <div class="function-title">Dawer</div>
+                    <div class="button-row">
+                        <button class="action-btn" data-action="dawer" data-value="1">dawer(1)</button>
+                        <button class="action-btn secondary" data-action="dawer" data-value="0">dawer(0)</button>
+                    </div>
+                </div>
+
+                <div class="function-group">
+                    <div class="function-title">N20</div>
+                    <div class="inline-input-row">
+                        <input id="n20ValueInput" type="number" step="1" placeholder="Enter Int32 value">
+                        <button id="sendN20Btn" class="action-btn">Send n20</button>
+                    </div>
+                    <small>Publishes directly to `/front/n20` or `/back/n20`.</small>
+                </div>
+            </section>
+
+            <section class="test-card">
+                <div class="card-header">
+                    <h2>Pneumatic</h2>
+                    <span class="card-badge">Topic-based</span>
+                </div>
+
+                <div class="control-row">
+                    <label for="pneumaticTargetSelect">Target side</label>
+                    <select id="pneumaticTargetSelect">
+                        <option value="front">Front</option>
+                        <option value="back">Back</option>
+                    </select>
+                </div>
+
+                <div class="function-group">
+                    <div class="function-title">Pump control</div>
+                    <div class="button-row">
+                        <button id="pumpBtn" class="action-btn">Pump</button>
+                        <button id="disablePumpBtn" class="action-btn secondary">Disable Pump</button>
+                    </div>
+                    <small>`Pump` sends 15 and `Disable Pump` sends 16 to the pneumatic topics used by the controller.</small>
+                </div>
+            </section>
+        </div>
+
+        <section class="test-card log-card">
+            <div class="card-header">
+                <h2>Command Log</h2>
+                <button id="clearLogBtn" class="ghost-btn">Clear</button>
+            </div>
+            <div id="commandStatus" class="command-status info">Ready.</div>
+            <div id="commandLog" class="command-log"></div>
+        </section>
+    </div>
+
+    <script src="../js/lib/roslib.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/test_controller.js"></script>
+</body>
+</html>

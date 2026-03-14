@@ -2,15 +2,32 @@
 source ~/.bashrc
 
 echo "🧹 Cleaning up old processes..."
-echo "sdzqdzd"
-# Kill any existing ROS2 nodes to avoid conflicts
-pkill -9 -f "hybrid_astar_node"
-pkill -9 -f "web_handler.py"
-pkill -9 -f "rosbridge_websocket"
-pkill -9 -f "ros2 launch rosbridge_server"
-pkill -9 -f "micro_ros_agent"
-pkill -9 -f "robot_only.launch.py"
-# Wait for processes to fully terminate
+# Graceful stop first (then force kill if needed)
+pkill -TERM -f "hybrid_astar_node" 2>/dev/null || true
+pkill -TERM -f "web_handler.py" 2>/dev/null || true
+pkill -TERM -f "rosbridge_websocket" 2>/dev/null || true
+pkill -TERM -f "rosapi_node" 2>/dev/null || true
+pkill -TERM -f "ros2 launch rosbridge_server" 2>/dev/null || true
+pkill -TERM -f "micro_ros_agent" 2>/dev/null || true
+pkill -TERM -f "robot_only.launch.py" 2>/dev/null || true
+pkill -TERM -f "lidar_obstacle_warning/lidar" 2>/dev/null || true
+pkill -TERM -f "nav2_map_server/map_server" 2>/dev/null || true
+pkill -TERM -f "nav2_lifecycle_manager/lifecycle_manager" 2>/dev/null || true
+pkill -TERM -f "static_transform_publisher.*base_laser" 2>/dev/null || true
+sleep 1
+
+# Force kill any leftovers
+pkill -9 -f "hybrid_astar_node" 2>/dev/null || true
+pkill -9 -f "web_handler.py" 2>/dev/null || true
+pkill -9 -f "rosbridge_websocket" 2>/dev/null || true
+pkill -9 -f "rosapi_node" 2>/dev/null || true
+pkill -9 -f "ros2 launch rosbridge_server" 2>/dev/null || true
+pkill -9 -f "micro_ros_agent" 2>/dev/null || true
+pkill -9 -f "robot_only.launch.py" 2>/dev/null || true
+pkill -9 -f "lidar_obstacle_warning/lidar" 2>/dev/null || true
+pkill -9 -f "nav2_map_server/map_server" 2>/dev/null || true
+pkill -9 -f "nav2_lifecycle_manager/lifecycle_manager" 2>/dev/null || true
+pkill -9 -f "static_transform_publisher.*base_laser" 2>/dev/null || true
 sleep 2
 
 # Double-check and kill anything still on port 9090
@@ -21,10 +38,6 @@ done
 # Final wait to ensure port is released
 sleep 1
 
-echo "🌐 Starting web_handler..."
-source ~/ROS2-WS-EURO/install/setup.bash
-ros2 run hybrid_astar web_handler.py &
-sleep 2
 echo "🤖 running micro ros agents "
 source ~/ROS2-WS-EURO/install/setup.bash
 source ~/LIDAR_EUROBOT/install/setup.bash

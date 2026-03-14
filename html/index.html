@@ -14,6 +14,7 @@
             <a href="strategy_selector.html" class="nav-link">Strategy</a>
             <a href="pathfinding_simulation.html" class="nav-link">Pathfinding</a>
             <a href="realtime_robot.html" class="nav-link">Real-Time</a>
+            <a href="test_controller.html" class="nav-link">TEST</a>
             <button id="saveBtn" class="settings-btn" title="Save & Commit" style="margin-right: 10px;">💾</button>
             <button id="settingsBtn" class="settings-btn" title="Server Settings">⚙️</button>
         </div>
@@ -49,6 +50,30 @@
         <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
     </div>
     <h1>Eurobot Dashboard</h1>
+
+    <div class="esp-status-panel">
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="frontStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Front ESP</span>
+                <span class="esp-status-value" id="frontStatusLabel">Disconnected</span>
+            </div>
+        </div>
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="backStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Back ESP</span>
+                <span class="esp-status-value" id="backStatusLabel">Disconnected</span>
+            </div>
+        </div>
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="pneumaticStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Pneumatic ESP</span>
+                <span class="esp-status-value" id="pneumaticStatusLabel">Disconnected</span>
+            </div>
+        </div>
+    </div>
     
     <div class="button-container">
         <div>
@@ -88,6 +113,7 @@
     <div id="output"></div>
     
     <script src="../js/config.js"></script>
+    <script src="../js/lib/roslib.min.js"></script>
     <script src="../js/home.js"></script>
 </body>
 </html>

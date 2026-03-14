@@ -217,3 +217,38 @@ batches:
       y: 1194.3
       z: 0
     color: blue
+- batch_id: 9
+  known_id: f8
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1176.3
+    y: 2202.9
+    z: 0
+  members:
+  - aruco_id: 36
+    map_pos:
+      x: 1176.3
+      y: 2277.9
+      z: 0
+    color: blue
+  - aruco_id: 36
+    map_pos:
+      x: 1176.3
+      y: 2227.9
+      z: 0
+    color: blue
+  - aruco_id: 36
+    map_pos:
+      x: 1176.3
+      y: 2177.9
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1176.3
+      y: 2127.9
+      z: 0
+    color: yellow

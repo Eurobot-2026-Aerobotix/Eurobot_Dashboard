@@ -112,6 +112,64 @@ h1 {
     letter-spacing: 1px;
 }
 
+.esp-status-panel {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: -10px auto 35px;
+}
+
+.esp-status-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 220px;
+    padding: 16px 20px;
+    border-radius: 14px;
+    background: rgba(30, 30, 30, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+}
+
+.esp-status-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.esp-status-dot.connected {
+    background: #35d07f;
+    box-shadow: 0 0 14px rgba(53, 208, 127, 0.7);
+    transform: scale(1.05);
+}
+
+.esp-status-dot.disconnected {
+    background: #ff5d73;
+    box-shadow: 0 0 14px rgba(255, 93, 115, 0.55);
+}
+
+.esp-status-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.esp-status-name {
+    color: #f3f4ff;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.esp-status-value {
+    color: #b8bfd6;
+    font-size: 0.92rem;
+}
+
 .button-container {
     display: flex;
     gap: 20px;
@@ -362,6 +420,15 @@ button:disabled:hover {
     
     h1 {
         font-size: 2em;
+    }
+
+    .esp-status-panel {
+        margin-bottom: 25px;
+    }
+
+    .esp-status-card {
+        width: 100%;
+        min-width: 0;
     }
     
     .button-container {
