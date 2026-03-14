@@ -251,4 +251,4 @@ tasks:
     command: put_down
     params: []
     wait: true
-order: 0
+order: 1
