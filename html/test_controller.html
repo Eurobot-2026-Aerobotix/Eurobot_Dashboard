@@ -97,10 +97,22 @@
 
             <section class="test-card">
                 <div class="card-header">
-                    <h2>Right Section</h2>
-                    <span class="card-badge">Reserved</span>
+                    <h2>Hybrid A* Services</h2>
+                    <span class="card-badge">Map Control</span>
                 </div>
-                <p>Reserved for upcoming adjustments.</p>
+
+                <div class="function-group">
+                    <div class="function-title">Beacon / Map</div>
+                    <div class="button-row">
+                        <button id="resetBeaconBtn" class="action-btn">Reset Beacon</button>
+                        <button id="clearMapBtn" class="action-btn secondary">Clear Map</button>
+                        <button id="updateMapBtn" class="action-btn">Update Map</button>
+                    </div>
+                    <small>
+                        These actions call hybrid_astar services through <code>web_handler</code>: 
+                        <code>/reset_map</code>, <code>/clear_map</code>, and <code>/update_map</code>.
+                    </small>
+                </div>
             </section>
         </div>
 
