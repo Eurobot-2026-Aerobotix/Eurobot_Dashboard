@@ -8,6 +8,9 @@ const n20ValueInput = document.getElementById('n20ValueInput');
 const sendN20Btn = document.getElementById('sendN20Btn');
 const pumpBtn = document.getElementById('pumpBtn');
 const disablePumpBtn = document.getElementById('disablePumpBtn');
+const resetBeaconBtn = document.getElementById('resetBeaconBtn');
+const clearMapBtn = document.getElementById('clearMapBtn');
+const updateMapBtn = document.getElementById('updateMapBtn');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const commandStatus = document.getElementById('commandStatus');
 const commandLog = document.getElementById('commandLog');
@@ -111,6 +114,16 @@ function sendPneumaticCommand(disable = false) {
     );
 }
 
+function sendHybridAstarCommand(action, label) {
+    publishWebHandlerCommand(
+        {
+            controller: 'hybrid_astar',
+            action
+        },
+        `/web/test_controller -> hybrid_astar.${label}`
+    );
+}
+
 function initializeRos() {
     if (ros) {
         try {
@@ -208,6 +221,18 @@ n20ValueInput.addEventListener('keydown', (event) => {
 
 pumpBtn.addEventListener('click', () => sendPneumaticCommand(false));
 disablePumpBtn.addEventListener('click', () => sendPneumaticCommand(true));
+
+if (resetBeaconBtn) {
+    resetBeaconBtn.addEventListener('click', () => sendHybridAstarCommand('reset_beacon', 'reset_beacon()'));
+}
+
+if (clearMapBtn) {
+    clearMapBtn.addEventListener('click', () => sendHybridAstarCommand('clear_map', 'clear_map()'));
+}
+
+if (updateMapBtn) {
+    updateMapBtn.addEventListener('click', () => sendHybridAstarCommand('update_map', 'update_map()'));
+}
 
 clearLogBtn.addEventListener('click', () => {
     commandLog.innerHTML = '';
