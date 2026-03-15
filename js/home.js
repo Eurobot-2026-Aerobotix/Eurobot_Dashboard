@@ -23,9 +23,11 @@ const outputSelector = document.getElementById('outputSelector');
 const frontStatusDot = document.getElementById('frontStatusDot');
 const backStatusDot = document.getElementById('backStatusDot');
 const pneumaticStatusDot = document.getElementById('pneumaticStatusDot');
+const beaconStatusDot = document.getElementById('beaconStatusDot');
 const frontStatusLabel = document.getElementById('frontStatusLabel');
 const backStatusLabel = document.getElementById('backStatusLabel');
 const pneumaticStatusLabel = document.getElementById('pneumaticStatusLabel');
+const beaconStatusLabel = document.getElementById('beaconStatusLabel');
 
 let strategyEventSource = null;
 let pathfindingEventSource = null;
@@ -44,21 +46,32 @@ const espStatusState = {
         label: frontStatusLabel,
         lastMessageAt: 0,
         connected: false,
-        topic: null
+        topic: null,
+        mode: 'heartbeat'
     },
     back: {
         dot: backStatusDot,
         label: backStatusLabel,
         lastMessageAt: 0,
         connected: false,
-        topic: null
+        topic: null,
+        mode: 'heartbeat'
     },
     pneumatic: {
         dot: pneumaticStatusDot,
         label: pneumaticStatusLabel,
         lastMessageAt: 0,
         connected: false,
-        topic: null
+        topic: null,
+        mode: 'heartbeat'
+    },
+    beacon: {
+        dot: beaconStatusDot,
+        label: beaconStatusLabel,
+        lastMessageAt: 0,
+        connected: false,
+        topic: null,
+        mode: 'value'
     }
 };
 
@@ -296,7 +309,7 @@ function showStatus(message, type = 'info') {
     }, 5000);
 }
 
-function setEspConnectionState(key, isConnected) {
+function setEspConnectionState(key, isConnected, customLabel = null) {
     const entry = espStatusState[key];
     if (!entry) {
         return;
@@ -305,7 +318,7 @@ function setEspConnectionState(key, isConnected) {
     entry.connected = isConnected;
     entry.dot.classList.toggle('connected', isConnected);
     entry.dot.classList.toggle('disconnected', !isConnected);
-    entry.label.textContent = isConnected ? 'Connected' : 'Disconnected';
+    entry.label.textContent = customLabel ?? (isConnected ? 'Connected' : 'Disconnected');
 }
 
 function markEspMessageReceived(key) {
@@ -318,7 +331,17 @@ function markEspMessageReceived(key) {
     setEspConnectionState(key, true);
 }
 
-function createStatusSubscription(key, topicName) {
+function setBeaconReadyState(isReady) {
+    setEspConnectionState('beacon', isReady, isReady ? 'Ready' : 'Not Ready');
+}
+
+function markBeaconMessageReceived(message) {
+    const value = Number(message?.data ?? 0);
+    espStatusState.beacon.lastMessageAt = Date.now();
+    setBeaconReadyState(value === 1);
+}
+
+function createStatusSubscription(key, topicName, onMessage = null) {
     const entry = espStatusState[key];
     if (!rosStatusConnection || !entry) {
         return null;
@@ -330,7 +353,12 @@ function createStatusSubscription(key, topicName) {
         messageType: 'std_msgs/msg/Int32'
     });
 
-    topic.subscribe(() => {
+    topic.subscribe((message) => {
+        if (onMessage) {
+            onMessage(message);
+            return;
+        }
+
         markEspMessageReceived(key);
     });
 
@@ -350,8 +378,12 @@ function subscribePneumaticStatus() {
     return createStatusSubscription('pneumatic', '/pneumatic/status');
 }
 
+function subscribeBeaconStatus() {
+    return createStatusSubscription('beacon', '/web/beacon_status', markBeaconMessageReceived);
+}
+
 function disconnectAllEspTopics() {
-    Object.values(espStatusState).forEach((entry) => {
+    Object.entries(espStatusState).forEach(([key, entry]) => {
         if (entry.topic) {
             try {
                 entry.topic.unsubscribe();
@@ -362,10 +394,13 @@ function disconnectAllEspTopics() {
         }
 
         entry.lastMessageAt = 0;
-        setEspConnectionState(
-            Object.keys(espStatusState).find((key) => espStatusState[key] === entry),
-            false
-        );
+
+        if (entry.mode === 'value' && key === 'beacon') {
+            setBeaconReadyState(false);
+            return;
+        }
+
+        setEspConnectionState(key, false);
     });
 }
 
@@ -405,6 +440,7 @@ function initializeEspStatusMonitoring() {
         subscribeFrontStatus();
         subscribeBackStatus();
         subscribePneumaticStatus();
+        subscribeBeaconStatus();
     });
 
     rosStatusConnection.on('error', (error) => {
@@ -424,6 +460,10 @@ setInterval(() => {
     const now = Date.now();
 
     Object.entries(espStatusState).forEach(([key, entry]) => {
+        if (entry.mode !== 'heartbeat') {
+            return;
+        }
+
         if (entry.lastMessageAt === 0) {
             setEspConnectionState(key, false);
             return;
