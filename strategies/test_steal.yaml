@@ -28,7 +28,7 @@ tasks:
   - device: RASP_PI
     command: steal
     params:
-    - 1
+    - 4
     - 0
     wait: false
 order: 27
