@@ -203,6 +203,7 @@ function subscribeToObstacles() {
                                 aruco_id: obs.id || '',
                                 x: obs.pose.x, // Already in mm
                                 y: obs.pose.y, // Already in mm
+                                theta: typeof obs.pose.theta !== 'undefined' ? obs.pose.theta : 0,
                                 color: obs.color,
                                 batch_id: 0,
                                 width_mm: obs.width_mm || 50,
@@ -408,10 +409,10 @@ function drawObstacles() {
         const pos_x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
         const pos_y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
         
-        // Use actual width and height from ROS message
-        // IMPORTANT: Since we swap x/y coordinates, we also need to swap width/height
-        const width_mm = obstacle.height_mm || 50;
-        const height_mm = obstacle.width_mm || 50;
+        // Use actual width and height from ROS message.
+        // With theta-based rotation enabled, dimensions should match ROS directly.
+        const width_mm = obstacle.width_mm || 50;
+        const height_mm = obstacle.height_mm || 50;
         
         // Calculate dimensions in pixels (scaled)
         const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
@@ -420,6 +421,11 @@ function drawObstacles() {
         // Obstacle coordinates are center-based, so anchor marker from center
         const center_x_px = pos_x_px;
         const center_y_px = pos_y_px;
+
+        // Convert map-frame yaw to dashboard screen rotation.
+        // The realtime view swaps map x/y axes, so screen angle = π/2 - theta.
+        const theta = typeof obstacle.theta === 'number' ? obstacle.theta : 0;
+        const screenTheta = -theta + Math.PI / 2;
         
         // Create obstacle marker
         const obstacleMarker = document.createElement('div');
@@ -429,10 +435,10 @@ function drawObstacles() {
         obstacleMarker.style.top = center_y_px + 'px';
         obstacleMarker.style.width = width_px + 'px';
         obstacleMarker.style.height = height_px + 'px';
-        obstacleMarker.style.transform = 'translate(-50%, -50%)';
+        obstacleMarker.style.transform = `translate(-50%, -50%) rotate(${screenTheta}rad)`;
         obstacleMarker.style.zIndex = '50';
         obstacleMarker.style.pointerEvents = 'none';
-        obstacleMarker.title = `Color: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)`;
+        obstacleMarker.title = `Color: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)\nTheta: ${(theta * 180 / Math.PI).toFixed(1)}°`;
         
         mapWrapper.appendChild(obstacleMarker);
     });
