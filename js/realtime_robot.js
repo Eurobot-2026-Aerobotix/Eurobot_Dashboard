@@ -417,20 +417,19 @@ function drawObstacles() {
         const width_px = (width_mm / MAP_WIDTH_MM) * displayWidth;
         const height_px = (height_mm / MAP_HEIGHT_MM) * displayHeight;
         
-        // Position is the left-top corner of the obstacle
-        // CSS left/top also positions the top-left corner, so use directly
-        const left_px = pos_x_px;
-        const top_px = pos_y_px;
+        // Obstacle coordinates are center-based, so anchor marker from center
+        const center_x_px = pos_x_px;
+        const center_y_px = pos_y_px;
         
         // Create obstacle marker
         const obstacleMarker = document.createElement('div');
         obstacleMarker.className = 'obstacle-marker ' + obstacle.color;
         obstacleMarker.style.position = 'absolute';
-        obstacleMarker.style.left = left_px + 'px';
-        obstacleMarker.style.top = top_px + 'px';
+        obstacleMarker.style.left = center_x_px + 'px';
+        obstacleMarker.style.top = center_y_px + 'px';
         obstacleMarker.style.width = width_px + 'px';
         obstacleMarker.style.height = height_px + 'px';
-        obstacleMarker.style.transform = 'none';
+        obstacleMarker.style.transform = 'translate(-50%, -50%)';
         obstacleMarker.style.zIndex = '50';
         obstacleMarker.style.pointerEvents = 'none';
         obstacleMarker.title = `Color: ${obstacle.color}\nPosition: (${obstacle.x.toFixed(1)}mm, ${obstacle.y.toFixed(1)}mm)`;
