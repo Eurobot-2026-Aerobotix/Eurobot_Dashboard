@@ -23,10 +23,9 @@ function _colcon_prefix_chain_powershell_source_script {
 
 # source chained prefixes
 _colcon_prefix_chain_powershell_source_script "/opt/ros/jazzy\local_setup.ps1"
-_colcon_prefix_chain_powershell_source_script "/home/ubuntu/LIDAR_EUROBOT/install\local_setup.ps1"
-_colcon_prefix_chain_powershell_source_script "/home/ubuntu/EUROBOT/ROS2-WS-ENSI/install\local_setup.ps1"
-_colcon_prefix_chain_powershell_source_script "/home/ubuntu/ROS2-WS-EURO/install\local_setup.ps1"
-_colcon_prefix_chain_powershell_source_script "/home/ubuntu/uros_ws/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/harissa/ROS2-WS-EURO/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/harissa/micro_ros_agent_ws/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/harissa/LIDAR_EUROBOT/install\local_setup.ps1"
 
 # source this prefix
 $env:COLCON_CURRENT_PREFIX=(Split-Path $PSCommandPath -Parent)

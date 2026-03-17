@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -169,15 +169,15 @@ tasks:
     wait: true
 - description: Task 3
   global_goal:
-    x: '1698.66'
-    y: '1347.05'
-    theta: 45
+    x: '1341.19'
+    y: '312.28'
+    theta: 43.6620172914065
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1432.58'
-    - '417.10'
+    - '1433.42'
+    - '400.30'
     - 1100
     wait: true
   - device: STM
@@ -191,6 +191,12 @@ tasks:
     command: put_down
     params: []
     wait: true
+- description: Task 2
+  global_goal:
+    x: 1600
+    y: 392.91
+    theta: 90
+  sequence:
   - device: STM
     command: go_to
     params:
@@ -210,6 +216,12 @@ tasks:
     command: pick_up
     params: []
     wait: true
+- description: Task 3
+  global_goal:
+    x: '1394.95'
+    y: '1411.56'
+    theta: 158.19859051364816
+  sequence:
   - device: STM
     command: go_to
     params:
@@ -235,6 +247,12 @@ tasks:
     command: put_down
     params: []
     wait: true
+- description: Task 4
+  global_goal:
+    x: '1698.66'
+    y: '1347.05'
+    theta: 45
+  sequence:
   - device: STM
     command: go_to_backwards
     params:
@@ -250,5 +268,24 @@ tasks:
   - device: ESP_back
     command: put_down
     params: []
+    wait: true
+- description: Task 12
+  global_goal:
+    x: 1200
+    y: 814.93
+    theta: 13.025526105756512
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params:
+    - '1078.57'
+    - '1071.85'
+    - 2000
+    - 1000
+    - 1200
+    - 814.93
+    - 1000
+    - 1000
+    - 1100
     wait: true
 order: 1

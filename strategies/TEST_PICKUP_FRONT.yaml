@@ -8,15 +8,44 @@ tasks:
     y: null
     theta: null
   sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
   - device: STM
     command: set_position
     params:
-    - '818.15'
-    - '425.06'
-    - 0
+    - 800
+    - 600
+    - -90
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 800
+    y: 400
+    theta: 26.56505117707799
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 400
+    - 1100
+    - 1
     wait: false
   - device: ESP_front
     command: pick_up
     params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: 800
+    y: 400
+    theta: 0
+  sequence:
+  - device: STM
+    command: orientate
+    params:
+    - 0
     wait: true
 order: 13

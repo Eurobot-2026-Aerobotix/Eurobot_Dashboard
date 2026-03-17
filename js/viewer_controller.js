@@ -853,9 +853,10 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
   el.addEventListener("mousedown", e => {
     dragging = true;
     e.stopPropagation();
-    if (isSecondary) return;
-    let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
-    draw_robot_on_map(cachedOverlayElement_viewer, x, y, phi);
+    if (!isSecondary) {
+      let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
+      draw_robot_on_map(cachedOverlayElement_viewer, x, y, phi);
+    }
     
     // Remove previous handlers if they exist to prevent memory leaks
     if (activeDragHandler_viewer) window.removeEventListener("mousemove", activeDragHandler_viewer);

@@ -14,6 +14,8 @@ Environment="MICRO_ROS_BAUDRATE=115200"
 ExecStart=/bin/bash /home/harissa/Eurobot_Dashboard/scripts/start_micro_ros_agents.sh
 Restart=always
 RestartSec=2
+KillMode=control-group
+SuccessExitStatus=143 SIGTERM
 StandardOutput=journal
 StandardError=journal
 
