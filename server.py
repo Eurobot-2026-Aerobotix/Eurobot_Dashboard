@@ -955,6 +955,50 @@ def test_pami():
 
 
 # -------------------------------------------------
+# Restart MicroROS Service
+# POST /restart_microros
+# Restarts the eurobot-micro-ros-agents systemd service
+# -------------------------------------------------
+@app.route("/restart_microros", methods=["POST"])
+@app.route("/restart-microros", methods=["POST"])
+def restart_microros():
+    """Restart the eurobot-micro-ros-agents systemd service"""
+    try:
+        result = subprocess.run(
+            ["sudo", "systemctl", "restart", "eurobot-micro-ros-agents.service"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0:
+            print("✓ Successfully restarted eurobot-micro-ros-agents service")
+            return jsonify({
+                "status": "success",
+                "message": "MicroROS service restarted successfully"
+            }), 200
+        else:
+            error_msg = result.stderr or result.stdout or "Unknown error"
+            print(f"✗ Failed to restart service: {error_msg}")
+            return jsonify({
+                "status": "error",
+                "error": f"Failed to restart service: {error_msg}"
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "status": "error",
+            "error": "Service restart command timed out"
+        }), 500
+    except Exception as e:
+        print(f"✗ Error restarting service: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+
+# -------------------------------------------------
 # Git commit
 # POST /git_commit
 # Body: JSON with commit message

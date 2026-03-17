@@ -17,6 +17,7 @@ const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const testPamiBtn = document.getElementById('testPamiBtn');
+const restartMicroRosBtn = document.getElementById('restartMicroRosBtn');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 const outputSelector = document.getElementById('outputSelector');
@@ -675,10 +676,56 @@ async function testPami() {
     }
 }
 
+async function restartMicroRos() {
+    restartMicroRosBtn.disabled = true;
+    
+    showStatus('Restarting MicroROS agents...', 'info');
+    
+    try {
+        // Add timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(`${API_URL}/restart_microros`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            showStatus(`Server error: ${text}`, 'error');
+            restartMicroRosBtn.disabled = false;
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showStatus(data.message || 'MicroROS service restarted successfully!', 'success');
+        } else {
+            showStatus(data.error || 'Failed to restart MicroROS service', 'error');
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            showStatus('Request timeout - could not reach server.', 'error');
+        } else {
+            showStatus(`Error: ${error.message}`, 'error');
+        }
+    } finally {
+        restartMicroRosBtn.disabled = false;
+    }
+}
+
 prepareBtn.addEventListener('click', prepareRobot);
 startBtn.addEventListener('click', startStrategy);
 stopBtn.addEventListener('click', stopStrategy);
 testPamiBtn.addEventListener('click', testPami);
+restartMicroRosBtn.addEventListener('click', restartMicroRos);
 
 // ========== Settings Modal Functions ==========
 
