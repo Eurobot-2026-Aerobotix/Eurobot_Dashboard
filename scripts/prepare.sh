@@ -35,7 +35,7 @@ done
 
 # Final wait to ensure port is released
 sleep 1
-
+sudo systemctl restart eurobot-micro-ros-agents.service
 echo "🤖 Starting robot peripherals"
 source ~/ROS2-WS-EURO/install/setup.bash
 source ~/LIDAR_EUROBOT/install/setup.bash
