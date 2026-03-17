@@ -51,8 +51,13 @@ run_udp_agent_loop() {
 }
 
 cleanup() {
+  # Under systemd, let cgroup teardown handle children to avoid kill race warnings.
+  if [ -n "${INVOCATION_ID:-}" ]; then
+    exit 0
+  fi
   pkill -TERM -P $$ 2>/dev/null || true
-  wait
+  wait || true
+  exit 0
 }
 trap cleanup SIGINT SIGTERM
 
@@ -62,4 +67,4 @@ run_serial_agent_loop "ESP2" "/dev/ESP2" "$LOG_DIR/agent_ESP2.log" &
 run_serial_agent_loop "ESP3" "/dev/ESP3" "$LOG_DIR/agent_ESP3.log" &
 run_udp_agent_loop "$LOG_DIR/agent_udp_8888.log" &
 
-wait
+wait || true
