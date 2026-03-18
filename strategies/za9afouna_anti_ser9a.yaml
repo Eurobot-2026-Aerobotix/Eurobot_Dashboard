@@ -117,7 +117,7 @@ tasks:
     command: put_down
     params: []
     wait: true
-- description: Task 3
+- description: Task 3 (changed)
   global_goal:
     x: 1416.45
     y: 1150
@@ -131,14 +131,14 @@ tasks:
     - 1100
     wait: true
   - device: STM
-    command: go_to_backwards
+    command: go_to
     params:
     - 1416.45
     - 1150
     - 1100
     - 1
     wait: false
-  - device: ESP_back
+  - device: ESP_front
     command: pick_up
     params: []
     wait: true
@@ -149,21 +149,21 @@ tasks:
     theta: -90
   sequence:
   - device: STM
-    command: go_to_backwards
+    command: go_to
     params:
     - 800
     - 1156.22
     - 1100
     wait: true
   - device: STM
-    command: go_to
+    command: go_to_backwards
     params:
     - 800
     - 374.1
     - 1100
     - 1
     wait: false
-  - device: ESP_front
+  - device: ESP_back
     command: pick_up
     params: []
     wait: true
