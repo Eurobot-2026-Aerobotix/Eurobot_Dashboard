@@ -17,6 +17,7 @@ window.addEventListener("pageshow", (e) => {
 
 async function fillPamiMenu(menu, index) {
   const strategies = await loadPAMIStrategies();
+  strategies.sort((a, b) => a.strategy_name.localeCompare(b.strategy_name));
   const header = document.createElement("div");
   header.className = "menu-header";
   header.innerText = `clone from :`;
