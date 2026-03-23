@@ -1,20 +1,13 @@
-name: safe_goto_blue
+name: za9afouna_bleu
 selected: false
 color: blue
 tasks:
 - description: Task 1
   global_goal:
+    theta: null
     x: null
     y: null
-    theta: null
   sequence:
-  - device: STM
-    command: set_position
-    params:
-    - 300
-    - 2755
-    - 0
-    wait: false
   - device: RASP_PI
     command: Wait for manual start
     params: []
@@ -23,34 +16,34 @@ tasks:
     command: set_position
     params:
     - 300
-    - 2755
+    - 2655
     - 0
     wait: false
 - description: Task 2
   global_goal:
-    x: 1610
-    y: 1895
     theta: 0
+    x: 1600
+    y: 1910
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1500
-    - 2085.86
+    - 1470
+    - 2350
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1500
-    - 1895
+    - 1470
+    - 1090
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1610
-    - 1895
+    - 1600
+    - 1090
     - 1100
     - 1
     wait: false
@@ -60,22 +53,23 @@ tasks:
     wait: true
 - description: Task 3
   global_goal:
-    x: 1406.71
-    y: 1845
     theta: 0
+    x: 1200
+    y: 1150
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - 1513.55
-    - 1845
+    - 1500
+    - 1850
     - 1100
+    - 0
     wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - 1406.71
-    - 1845
+    - 1200
+    - 1850
     - 1100
     - 1
     wait: false
@@ -85,16 +79,14 @@ tasks:
     wait: true
 - description: Task 4
   global_goal:
-    x: '1681.44'
-    y: '1640.71'
-    theta: -36.63459596425289
+    theta: 90
+    x: 1200
+    y: 1150
   sequence:
   - device: STM
-    command: go_to
+    command: orientate
     params:
-    - '1681.44'
-    - '1640.71'
-    - 1100
+    - 90
     wait: true
   - device: ESP_front
     command: put_down
@@ -102,28 +94,23 @@ tasks:
     wait: true
 - description: Task 5
   global_goal:
-    x: 1681
-    y: 2310
-    theta: 180
+    theta: 90
+    x: 1200
+    y: 1100
   sequence:
   - device: STM
-    command: go_to_backwards
+    command: go_to
     params:
-    - '1574.48'
-    - '1723.00'
-    - 1000
+    - 1200
+    - 1770
+    - 1100
     wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - 1681
-    - 2310
+    - 1200
+    - 1900
     - 1100
-    wait: false
-  - device: STM
-    command: orientate
-    params:
-    - 180
     wait: false
   - device: ESP_back
     command: put_down
@@ -131,22 +118,29 @@ tasks:
     wait: true
 - description: Task 6
   global_goal:
+    theta: 0
     x: 1600
-    y: 2614.96
-    theta: 90
+    y: 1100
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1600
-    - 2310
-    - 1100
+    - 1200
+    - 1850
+    - 1000
     wait: true
   - device: STM
     command: go_to
     params:
+    - 1386.36
+    - 1900
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to
+    params:
     - 1600
-    - 2614.96
+    - 1900
     - 1100
     - 1
     wait: false
@@ -156,40 +150,33 @@ tasks:
     wait: true
 - description: Task 7
   global_goal:
-    x: 810
-    y: 2620
-    theta: -90
+    theta: 90
+    x: 1600
+    y: 400
   sequence:
-  - device: STM
-    command: go_to
-    params:
-    - 810
-    - 2388.57
-    - 1100
-    wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - 810
-    - 2620
+    - 1600
+    - 2600
     - 1100
     - 1
-    wait: false
+    wait: true
   - device: ESP_back
     command: pick_up
     params: []
     wait: true
 - description: Task 8
   global_goal:
-    x: '1048.04'
-    y: '2340.24'
-    theta: -49.606464582263534
+    theta: 47.4966142189985
+    x: '1714.50'
+    y: '524.94'
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1048.04'
-    - '2340.24'
+    - '1714.50'
+    - '2475.06'
     - 1100
     wait: true
   - device: ESP_front
@@ -198,51 +185,136 @@ tasks:
     wait: true
 - description: Task 9
   global_goal:
-    x: '1083.66'
-    y: '2665.84'
-    theta: -118.80904022891804
+    theta: -90
+    x: 800
+    y: 400
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '959.49'
-    - '2440.06'
+    - '1625.47'
+    - '2571.7200000000003'
     - 1000
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2460
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2600
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 10
+  global_goal:
+    theta: 90
+    x: 1200
+    y: 400
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 2600
+    - 1100
+    wait: true
+  - device: STM
+    command: orientate
+    params:
+    - 90
+    wait: false
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 11
+  global_goal:
+    theta: 90
+    x: 1200
+    y: 345
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 2510
+    - 1100
     wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - '1083.66'
-    - '2665.84'
+    - 1200
+    - 2655
     - 1100
     wait: false
   - device: ESP_back
     command: put_down
     params: []
     wait: true
-- description: Task 10
+- description: Task 12
   global_goal:
-    x: 300
-    y: 2755
-    theta: 0
+    theta: 90
+    x: 840
+    y: 793.71
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1040.41'
-    - '2586.98'
+    - 1200
+    - 2590
     - 1000
     wait: true
   - device: STM
-    command: go_to
+    command: bezier
     params:
-    - 300
-    - 2755
+    - 757.13
+    - 2582.57
+    - 840
+    - 2437.65
+    - 840
+    - 2206.29
+    - 700
+    - 800
     - 1100
     wait: false
-  - device: STM
-    command: orientate
+- description: Task 13
+  global_goal:
+    theta: 90
+    x: 840
+    y: 793.71
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
     params:
-    - 0
+    - 12
     wait: false
-order: 12
+- description: Task 14
+  global_goal:
+    theta: 1.1240077931043402
+    x: 250
+    y: 250
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params:
+    - 840
+    - 2760
+    - 759.68
+    - 2740
+    - 250
+    - 2750
+    - 1000
+    - 1000
+    - 1100
+    wait: false
+order: 31

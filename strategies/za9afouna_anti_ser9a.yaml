@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -128,7 +128,7 @@ tasks:
   global_goal:
     x: 1416.45
     y: 1150
-    theta: -1.385917850812234
+    theta: 178.6140821491878
   sequence:
   - device: STM
     command: go_to_backwards
@@ -153,7 +153,7 @@ tasks:
   global_goal:
     x: 800
     y: 374.1
-    theta: -90
+    theta: 90
   sequence:
   - device: STM
     command: go_to
@@ -332,4 +332,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 1
+order: 2
