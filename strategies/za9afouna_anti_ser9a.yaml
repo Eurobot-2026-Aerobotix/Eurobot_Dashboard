@@ -95,9 +95,9 @@ tasks:
     wait: true
 - description: Task 2
   global_goal:
-    x: '1388.90'
-    y: '944.66'
-    theta: -136.48858884313225
+    x: '1395.26'
+    y: '949.75'
+    theta: -135
   sequence:
   - device: STM
     command: go_to
@@ -109,9 +109,16 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - '1388.90'
-    - '944.66'
+    - '1441.05'
+    - '995.54'
     - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - '1395.26'
+    - '949.75'
+    - 1000
     wait: false
   - device: ESP_front
     command: put_down
@@ -121,7 +128,7 @@ tasks:
   global_goal:
     x: 1416.45
     y: 1150
-    theta: -1.385917850812234
+    theta: 178.6140821491878
   sequence:
   - device: STM
     command: go_to_backwards
@@ -146,7 +153,7 @@ tasks:
   global_goal:
     x: 800
     y: 374.1
-    theta: -90
+    theta: 90
   sequence:
   - device: STM
     command: go_to
@@ -220,7 +227,7 @@ tasks:
   global_goal:
     x: '1518.64'
     y: '1399.99'
-    theta: 162.60428268024484
+    theta: 165.0681155017735
   sequence:
   - device: STM
     command: go_to
@@ -232,8 +239,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1600
-    - 1374.5
+    - '1594.95'
+    - '1379.64'
     - 1000
     wait: false
   - device: STM
@@ -284,19 +291,19 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: 940
-    y: 820.02
-    theta: -90
+    x: '899.23'
+    y: '802.21'
+    theta: -90.25191526508233
   sequence:
   - device: STM
     command: bezier
     params:
-    - '1181.59'
-    - '1102.37'
-    - 940
-    - 1366.92
-    - 940
-    - 820.02
+    - '1097.65'
+    - '977.73'
+    - '901.78'
+    - '1382.18'
+    - '899.23'
+    - '802.21'
     - 1000
     - 1000
     - 1100
@@ -315,8 +322,8 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - '936.12'
-    - '491.88'
+    - '899.23'
+    - '428.28'
     - '923.40'
     - '229.87'
     - '277.29'
@@ -325,4 +332,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 1
+order: 2

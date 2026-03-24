@@ -1,5 +1,5 @@
 name: za9afouna
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -263,8 +263,8 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: 650
-    y: 800
+    x: 840
+    y: 793.71
     theta: 90
   sequence:
   - device: STM
@@ -277,20 +277,20 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - 700
-    - 420
-    - 650
-    - 400
-    - 650
-    - 800
+    - 757.13
+    - 417.43
+    - 840
+    - 562.35
+    - 840
+    - 793.71
     - 700
     - 800
     - 1100
     wait: false
 - description: Task 13
   global_goal:
-    x: 650
-    y: 800
+    x: 840
+    y: 793.71
     theta: 90
   sequence:
   - device: RASP_PI
@@ -301,20 +301,20 @@ tasks:
 - description: Task 14
   global_goal:
     x: 250
-    y: 225
-    theta: 0
+    y: 250
+    theta: 1.1240077931043402
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - 650
+    - 840
+    - 240
+    - 759.68
+    - 260
     - 250
-    - 600
-    - 225
     - 250
-    - 225
     - 1000
     - 1000
     - 1100
     wait: false
-order: 0
+order: 1

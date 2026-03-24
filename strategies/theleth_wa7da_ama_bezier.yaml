@@ -23,7 +23,7 @@ tasks:
   global_goal:
     x: 795
     y: 400
-    theta: 90
+    theta: 90.54991498439415
   sequence:
   - device: STM
     command: bezier
@@ -32,8 +32,8 @@ tasks:
     - 447.94
     - 795
     - 500
-    - 795
-    - 700
+    - '793.61'
+    - '544.82'
     - 1000
     wait: false
   - device: STM
@@ -64,6 +64,8 @@ tasks:
     - '1581.90'
     - '386.92'
     - 1000
+    - 1
+    - null
     - 1
     wait: true
   - device: ESP_front

@@ -1,4 +1,11 @@
-import { loadAllStrategies, deleteStrategy, saveStrategy, updateStrategy } from "./file_handler.js"; 
+import {
+  loadAllStrategies,
+  deleteStrategy,
+  saveStrategy,
+  updateStrategy,
+  loadPAMIStrategies,
+  savePamiStrategy
+} from "./file_handler.js";
 import { Strategy } from "../classes/Strategy.js";
 
 // HTML elements
@@ -174,6 +181,40 @@ function mirror_strategy(strategy) {
   return strategy;
 }
 
+function mirror_pami_strategy(pami_strategy) {
+  const mirrored = JSON.parse(JSON.stringify(pami_strategy)); // deep copy
+
+  mirrored.sequence.forEach(action => {
+    const type = action[0];
+
+    if (type === 1) {
+      // [1, x, y]
+      action[2] = 3000 - action[2];
+    }
+
+    else if (type === 2) {
+      // [2, angle, ?, y1, ?, y2]  (based on your description)
+      action[1] = -action[1]; // angle
+    }
+
+    else if (type === 3) {
+      // [3, y, angle]
+      action[2] = 3000 - action[2]; // y
+      action[3] = -action[3];       // angle
+    }
+
+    else if (type === 4) {
+      // Bezier: [4, x1, y1, x2, y2, x3, y3]
+      // y's are indices 2,4,6
+      if (action.length > 2) action[2] = 3000 - action[2];
+      if (action.length > 4) action[4] = 3000 - action[4];
+      if (action.length > 6) action[6] = 3000 - action[6];
+    }
+  });
+
+  return mirrored;
+}
+
 // CREATE
 createBtn.addEventListener("click", async () => {
   let name = prompt("Enter new strategy name:");
@@ -237,12 +278,36 @@ branchBtn.addEventListener("click", async () => {
   cloned.name = name;
   cloned.selected = false;
   cloned.order = strategies.length ? Math.max(...strategies.map(s => s.order)) + 1 : 1;
-
-  if (confirm("symetric ?")) {
+  
+  const symmetric = confirm("Symmetric?");
+  if (symmetric) {
     cloned = mirror_strategy(cloned);
   }
 
   await saveStrategy(cloned);
+
+  // Clone all PAMI strategies linked to the original strategy name.
+  try {
+    const pamiStrategies = await loadPAMIStrategies();
+    const linkedPamiStrategies = pamiStrategies.filter(
+      (pamiStrategy) => pamiStrategy.strategy_name === original.name
+    );
+
+    await Promise.all(
+      linkedPamiStrategies.map((pamiStrategy) => {
+        let copiedPamiStrategy = JSON.parse(JSON.stringify(pamiStrategy));
+        copiedPamiStrategy.strategy_name = name;
+        if (symmetric) {
+          copiedPamiStrategy = mirror_pami_strategy(copiedPamiStrategy);
+        }
+        return savePamiStrategy(copiedPamiStrategy);
+      })
+    );
+  } catch (error) {
+    console.error("Strategy was branched, but cloning PAMI strategies failed:", error);
+    alert("Strategy branched, but cloning PAMI strategies failed.");
+  }
+
   strategies.push(cloned);
   renderList();
 });

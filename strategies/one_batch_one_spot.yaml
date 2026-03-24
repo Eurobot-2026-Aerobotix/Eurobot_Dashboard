@@ -291,4 +291,4 @@ tasks:
     - 1000
     - 1100
     wait: true
-order: 2
+order: 3
