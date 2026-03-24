@@ -1,5 +1,5 @@
 name: test_steal
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -16,7 +16,7 @@ tasks:
     command: set_position
     params:
     - 300
-    - 350
+    - 2700
     - 0
     wait: false
 - description: Task 2
