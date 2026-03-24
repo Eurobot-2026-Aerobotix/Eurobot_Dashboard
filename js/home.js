@@ -164,6 +164,26 @@ function displayCurrentOutput() {
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
+function isNearBottom(element, threshold = 24) {
+    const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight);
+    return distanceFromBottom <= threshold;
+}
+
+function appendOutputLine(lineText) {
+    const shouldStickToBottom = isNearBottom(outputDiv);
+
+    const line = document.createElement('div');
+    line.className = 'output-line';
+    line.textContent = lineText;
+    outputDiv.appendChild(line);
+
+    // Only auto-scroll when user is already at (or near) bottom.
+    // If user scrolled up to read logs, keep viewport fixed.
+    if (shouldStickToBottom) {
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+}
+
 function startStreaming(source) {
     console.log('Starting stream for:', source);
     
@@ -191,11 +211,7 @@ function startStreaming(source) {
             }
             
             if (currentSource === 'strategy') {
-                const line = document.createElement('div');
-                line.className = 'output-line';
-                line.textContent = event.data;
-                outputDiv.appendChild(line);
-                outputDiv.scrollTop = outputDiv.scrollHeight;
+                appendOutputLine(event.data);
             }
         };
         
@@ -234,11 +250,7 @@ function startStreaming(source) {
             }
             
             if (currentSource === 'pathfinding') {
-                const line = document.createElement('div');
-                line.className = 'output-line';
-                line.textContent = event.data;
-                outputDiv.appendChild(line);
-                outputDiv.scrollTop = outputDiv.scrollHeight;
+                appendOutputLine(event.data);
             }
         };
         
@@ -276,11 +288,7 @@ function startStreaming(source) {
             }
             
             if (currentSource === 'pami') {
-                const line = document.createElement('div');
-                line.className = 'output-line';
-                line.textContent = event.data;
-                outputDiv.appendChild(line);
-                outputDiv.scrollTop = outputDiv.scrollHeight;
+                appendOutputLine(event.data);
             }
         };
         
