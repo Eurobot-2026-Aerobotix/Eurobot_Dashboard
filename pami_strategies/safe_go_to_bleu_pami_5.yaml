@@ -2,7 +2,7 @@ strategy_name: safe_go_to_bleu
 pami_number: 5
 sequence:
 - - 3
-  - 288
+  - 293
   - 2948
   - -90
 - - 5
