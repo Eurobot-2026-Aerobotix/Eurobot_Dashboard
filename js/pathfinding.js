@@ -32,11 +32,13 @@ let editingBatchId = null; // Store ID of batch being edited
 let pendingBatch = null; // Store batch being created
 let contextMenuBatchId = null; // Store batch ID for context menu actions
 let contextMenuPosition = null; // Store click position for context menu
+let roundTimerWasStarted = false;
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
 const findPathBtn = document.getElementById('findPathBtn');
+const timerControlBtn = document.getElementById('timerControlBtn');
 const stealBatchBtn = document.getElementById('stealBatchBtn');
 const orientationSelector = document.getElementById('orientationSelector');
 const orientationInput = document.getElementById('orientationInput');
@@ -64,6 +66,9 @@ loadSavedState();
 
 // Initialize event listeners
 findPathBtn.addEventListener('click', findPath);
+if (timerControlBtn) {
+    timerControlBtn.addEventListener('click', startOrResetRoundTimer);
+}
 stealBatchBtn.addEventListener('click', stealBatch);
 mapWrapper.addEventListener('click', handleMapClick);
 mapWrapper.addEventListener('contextmenu', handleContextMenu);
@@ -117,6 +122,8 @@ orientationInput.addEventListener('input', () => {
 window.addEventListener('resize', () => {
     updateAllRobotModels();
 });
+
+updateTimerControlButtonLabel();
 
 function updateAllRobotModels() {
     // Update start robot if exists
@@ -1010,6 +1017,85 @@ function findPath() {
     
     // Listen for path result
     subscribeToPathResult();
+}
+
+function updateTimerControlButtonLabel() {
+    if (!timerControlBtn) return;
+
+    timerControlBtn.textContent = roundTimerWasStarted
+        ? '🔄 Reset Round Timer'
+        : '⏱️ Start Round Timer';
+}
+
+function startOrResetRoundTimer() {
+    if (!isConnected || !ros) {
+        console.warn('⚠️ Cannot control round timer: Not connected to ROS2');
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+
+    const requestId = `pathfinding-round-timer-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const commandTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/test_controller',
+        messageType: 'std_msgs/String'
+    });
+
+    const resultTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/test_controller_result',
+        messageType: 'std_msgs/String'
+    });
+
+    let isHandled = false;
+    const timeoutHandle = setTimeout(() => {
+        if (isHandled) return;
+        isHandled = true;
+        resultTopic.unsubscribe();
+        alert('Round timer command timeout. Please try again.');
+    }, 5000);
+
+    resultTopic.subscribe((message) => {
+        if (isHandled) return;
+
+        try {
+            const result = JSON.parse(message.data);
+            if (!result || result.request_id !== requestId) {
+                return;
+            }
+
+            isHandled = true;
+            clearTimeout(timeoutHandle);
+            resultTopic.unsubscribe();
+
+            if (result.success) {
+                roundTimerWasStarted = true;
+                updateTimerControlButtonLabel();
+                alert('Round timer started/reset successfully.');
+                console.log('✅ Round timer started/reset');
+            } else {
+                alert(`Round timer command failed: ${result.message || 'Unknown error'}`);
+                console.warn('⚠️ Round timer command failed:', result);
+            }
+        } catch (error) {
+            isHandled = true;
+            clearTimeout(timeoutHandle);
+            resultTopic.unsubscribe();
+            alert(`Failed to parse round timer response: ${error.message}`);
+            console.error('❌ Invalid round timer response:', error);
+        }
+    });
+
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            controller: 'hybrid_astar',
+            action: 'start_round_timer',
+            request_id: requestId
+        })
+    });
+
+    commandTopic.publish(message);
+    console.log('⏱️ Round timer start/reset requested');
 }
 
 function subscribeToPathResult() {

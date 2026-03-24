@@ -8,7 +8,7 @@ goal_point:
   theta: 90
 batches:
 - batch_id: 1
-  known_id: S1_WEB
+  known_id: s1
   count: 4
   direction: horizontal
   phi_deg: 0.0
@@ -43,7 +43,7 @@ batches:
       z: 0
     color: yellow
 - batch_id: 2
-  known_id: S2_WEB
+  known_id: s2
   count: 4
   direction: horizontal
   phi_deg: 0.0
@@ -78,7 +78,7 @@ batches:
       z: 0
     color: blue
 - batch_id: 5
-  known_id: S4_WEB
+  known_id: s3
   count: 4
   direction: vertical
   phi_deg: 90.0
@@ -113,7 +113,7 @@ batches:
       z: 0
     color: blue
 - batch_id: 6
-  known_id: S3_WEB
+  known_id: s4
   count: 4
   direction: vertical
   phi_deg: 0
@@ -148,7 +148,7 @@ batches:
       z: 0
     color: yellow
 - batch_id: 7
-  known_id: S6_WEB
+  known_id: s6
   count: 4
   direction: vertical
   phi_deg: 0
@@ -183,72 +183,247 @@ batches:
       z: 0
     color: yellow
 - batch_id: 8
-  known_id: '&'
+  known_id: s5
   count: 4
   direction: vertical
   phi_deg: 0
   avg_adjacent_dist_m: 0.05
   center:
-    x: 617
-    y: 1119.3
+    x: 1192
+    y: 1843.6
     z: 0
   members:
   - aruco_id: 47
     map_pos:
-      x: 617
-      y: 1044.3
+      x: 1192
+      y: 1768.6
       z: 0
     color: yellow
   - aruco_id: 36
     map_pos:
-      x: 617
-      y: 1094.3
+      x: 1192
+      y: 1818.6
       z: 0
     color: blue
   - aruco_id: 47
     map_pos:
-      x: 617
-      y: 1144.3
+      x: 1192
+      y: 1868.6
       z: 0
     color: yellow
   - aruco_id: 36
     map_pos:
-      x: 617
-      y: 1194.3
+      x: 1192
+      y: 1918.6
       z: 0
     color: blue
 - batch_id: 9
-  known_id: f8
+  known_id: s7
+  count: 4
+  direction: horizontal
+  phi_deg: 90
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 792.6
+    y: 2827.5
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 717.6
+      y: 2827.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 767.6
+      y: 2827.5
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 817.6
+      y: 2827.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 867.6
+      y: 2827.5
+      z: 0
+    color: blue
+- batch_id: 10
+  known_id: s8
+  count: 4
+  direction: horizontal
+  phi_deg: 90
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1600
+    y: 2850.3
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1525
+      y: 2850.3
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1575
+      y: 2850.3
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1625
+      y: 2850.3
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1675
+      y: 2850.3
+      z: 0
+    color: blue
+- batch_id: 11
+  known_id: f3
   count: 4
   direction: vertical
   phi_deg: 0
   avg_adjacent_dist_m: 0.05
   center:
-    x: 1176.3
-    y: 2202.9
+    x: 1196.3
+    y: 782.8
     z: 0
   members:
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
-      x: 1176.3
-      y: 2277.9
+      x: 1196.3
+      y: 707.8
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 36
     map_pos:
-      x: 1176.3
-      y: 2227.9
-      z: 0
-    color: blue
-  - aruco_id: 36
-    map_pos:
-      x: 1176.3
-      y: 2177.9
+      x: 1196.3
+      y: 757.8
       z: 0
     color: blue
   - aruco_id: 47
     map_pos:
-      x: 1176.3
-      y: 2127.9
+      x: 1196.3
+      y: 807.8
       z: 0
     color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1196.3
+      y: 857.8
+      z: 0
+    color: blue
+- batch_id: 12
+  known_id: f1
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1167.8
+    y: 135.5
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1167.8
+      y: 60.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1167.8
+      y: 110.5
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1167.8
+      y: 160.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1167.8
+      y: 210.5
+      z: 0
+    color: blue
+- batch_id: 13
+  known_id: f1
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1863.9
+    y: 674.4
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1863.9
+      y: 599.4
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1863.9
+      y: 649.4
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1863.9
+      y: 699.4
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1863.9
+      y: 749.4
+      z: 0
+    color: blue
+- batch_id: 14
+  known_id: f6
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1179.2
+    y: 1524.2
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1179.2
+      y: 1449.2
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1179.2
+      y: 1499.2
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1179.2
+      y: 1549.2
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1179.2
+      y: 1599.2
+      z: 0
+    color: blue
