@@ -1,5 +1,5 @@
 name: PAMI yellow complete
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -269,4 +269,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 33
+order: 35
