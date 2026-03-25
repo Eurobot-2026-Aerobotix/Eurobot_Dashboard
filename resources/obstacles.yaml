@@ -427,3 +427,38 @@ batches:
       y: 1599.2
       z: 0
     color: blue
+- batch_id: 15
+  known_id: f10
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1203.4
+    y: 2857.4
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1203.4
+      y: 2782.4
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1203.4
+      y: 2832.4
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1203.4
+      y: 2882.4
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1203.4
+      y: 2932.4
+      z: 0
+    color: blue

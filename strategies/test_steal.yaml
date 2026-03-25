@@ -1,5 +1,5 @@
 name: test_steal
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -16,7 +16,7 @@ tasks:
     command: set_position
     params:
     - 300
-    - 2700
+    - 345
     - 0
     wait: false
 - description: Task 2
@@ -29,6 +29,78 @@ tasks:
     command: steal
     params:
     - 4
+    - 0
+    wait: false
+- description: Task 3
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
+    - 0
+    wait: false
+- description: Task 4
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
+    - 0
+    wait: false
+- description: Task 5
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
+    - 0
+    wait: false
+- description: Task 6
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
+    - 0
+    wait: false
+- description: Task 7
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
+    - 0
+    wait: false
+- description: Task 8
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 0
     - 0
     wait: false
 order: 27
