@@ -1,3 +1,7 @@
 strategy_name: za9afouna_anti_ser9a
 pami_number: 7
-sequence: []
+sequence:
+- - 3
+  - '121.88'
+  - '713.89'
+  - 0

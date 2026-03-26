@@ -359,7 +359,7 @@ function createStatusSubscription(key, topicName, onMessage = null) {
     const topic = new ROSLIB.Topic({
         ros: rosStatusConnection,
         name: topicName,
-        messageType: 'std_msgs/msg/Int32'
+        messageType: 'std_msgs/msg/Int64'
     });
 
     topic.subscribe((message) => {
