@@ -1,4 +1,4 @@
-strategy_name: PAMI bleue complete
+strategy_name: PAMI blue complete
 pami_number: 3
 sequence:
 - - 3
@@ -22,9 +22,9 @@ sequence:
 - - 4
   - '1793.38'
   - 2572.59
-  - '1399.86'
-  - '1482.70'
-  - '1776.14'
-  - '1452.19'
+  - '1428.76'
+  - '1622.81'
+  - '1801.19'
+  - '1557.70'
   - 500
   - 1

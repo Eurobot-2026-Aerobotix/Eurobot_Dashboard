@@ -1,5 +1,5 @@
-name: PAMI bleue complete
-selected: false
+name: PAMI blue complete
+selected: true
 color: blue
 tasks:
 - description: Task 1
@@ -216,7 +216,7 @@ tasks:
 - description: Task 10
   global_goal:
     x: '803.73'
-    y: '2120.40'
+    y: '2120.4'
     theta: -89.07560111978877
   sequence:
   - device: STM
@@ -232,9 +232,9 @@ tasks:
     - '973.18'
     - '2570.57'
     - '796.14'
-    - '2590.80'
+    - '2590.8'
     - '803.73'
-    - '2120.40'
+    - '2120.4'
     - 1000
     - 1000
     - 1100
@@ -242,7 +242,7 @@ tasks:
 - description: Task 11
   global_goal:
     x: '803.73'
-    y: '2120.40'
+    y: '2120.4'
     theta: -89.07560111978877
   sequence:
   - device: RASP_PI
@@ -252,21 +252,21 @@ tasks:
     wait: false
 - description: Task 12
   global_goal:
-    x: '257.08'
-    y: '2727.37'
-    theta: 2.2654747061780824
+    x: '251.19'
+    y: '2722.4'
+    theta: -0.35999842884359623
   sequence:
   - device: STM
     command: bezier_backwards
     params:
     - '791.09'
     - '2732.43'
-    - '512.89'
-    - '2737.49'
-    - '257.08'
-    - '2727.37'
+    - '655.44'
+    - '2719.86'
+    - '251.19'
+    - '2722.4'
     - 1000
     - 1000
     - 1100
     wait: false
-order: 35
+order: 40
