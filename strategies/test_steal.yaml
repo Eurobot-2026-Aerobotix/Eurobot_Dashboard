@@ -1,0 +1,34 @@
+name: test_steal
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 345
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 20
+    - 0
+    wait: false
+order: 27

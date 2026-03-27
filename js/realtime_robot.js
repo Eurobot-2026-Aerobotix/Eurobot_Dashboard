@@ -35,6 +35,20 @@ const robotYDisplay = document.getElementById('robotY');
 const robotThetaDisplay = document.getElementById('robotTheta');
 const obstacleCountDisplay = document.getElementById('obstacleCount');
 const lastUpdateDisplay = document.getElementById('lastUpdate');
+const schedulerSourceDisplay = document.getElementById('schedulerSource');
+const schedulerRemainingDisplay = document.getElementById('schedulerRemaining');
+const schedulerFrontEmptyDisplay = document.getElementById('schedulerFrontEmpty');
+const schedulerBackEmptyDisplay = document.getElementById('schedulerBackEmpty');
+const schedulerTrackedTaskDisplay = document.getElementById('schedulerTrackedTask');
+const schedulerQueueSizeDisplay = document.getElementById('schedulerQueueSize');
+const schedulerQueueList = document.getElementById('schedulerQueueList');
+
+// Scheduler UI animation state
+const schedulerQueueNodeByKey = new Map();
+const schedulerQueuePrevIndexByKey = new Map();
+let schedulerQueueHeadKey = null;
+let schedulerTrackedTaskText = 'none';
+const QUEUE_DIRECTION_HOLD_MS = 1400;
 
 // Initialize ROS2 Bridge
 initROS();
@@ -74,6 +88,9 @@ function initROS() {
         
         // Subscribe to path visualization
         subscribeToPathVisualization();
+
+        // Subscribe to task scheduler status
+        subscribeToTaskSchedulerStatus();
     });
 
     ros.on('error', function(error) {
@@ -260,6 +277,256 @@ function subscribeToPathVisualization() {
     });
 }
 
+function subscribeToTaskSchedulerStatus() {
+    console.log('📡 Subscribing to /web/task_scheduler_status');
+
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/task_scheduler_status',
+        messageType: 'std_msgs/String'
+    });
+
+    listener.subscribe(function(message) {
+        try {
+            const data = JSON.parse(message.data || '{}');
+            renderTaskSchedulerStatus(data);
+        } catch (error) {
+            console.error('Failed to parse /web/task_scheduler_status:', error);
+        }
+    });
+}
+
+function renderTaskSchedulerStatus(status) {
+    if (!status || typeof status !== 'object') return;
+
+    if (schedulerSourceDisplay) {
+        schedulerSourceDisplay.textContent = status.source || '-';
+    }
+
+    if (schedulerRemainingDisplay) {
+        if (typeof status.time_left_s === 'number' && isFinite(status.time_left_s)) {
+            schedulerRemainingDisplay.textContent = status.time_left_s.toFixed(1);
+        } else {
+            schedulerRemainingDisplay.textContent = '-';
+        }
+    }
+
+    if (schedulerFrontEmptyDisplay) {
+        schedulerFrontEmptyDisplay.textContent = status.front_empty ? 'empty' : 'holding';
+    }
+
+    if (schedulerBackEmptyDisplay) {
+        schedulerBackEmptyDisplay.textContent = status.back_empty ? 'empty' : 'holding';
+    }
+
+    if (schedulerTrackedTaskDisplay) {
+        const tracked = status.tracked_task;
+        let nextTrackedText = 'none';
+        if (tracked && tracked.target_id) {
+            const scoreText = typeof tracked.score === 'number' ? ` (${tracked.score.toFixed(2)})` : '';
+            nextTrackedText = `${tracked.type || 'task'}:${tracked.target_id}${scoreText}`;
+        }
+
+        if (schedulerTrackedTaskText !== nextTrackedText) {
+            schedulerTrackedTaskDisplay.classList.remove('value-flash');
+            void schedulerTrackedTaskDisplay.offsetWidth;
+            schedulerTrackedTaskDisplay.classList.add('value-flash');
+            schedulerTrackedTaskText = nextTrackedText;
+        }
+
+        schedulerTrackedTaskDisplay.textContent = nextTrackedText;
+    }
+
+    if (schedulerQueueSizeDisplay) {
+        const queueSize = typeof status.queue_size === 'number' ? status.queue_size : 0;
+        schedulerQueueSizeDisplay.textContent = String(queueSize);
+    }
+
+    if (schedulerQueueList) {
+        const queue = Array.isArray(status.queue) ? status.queue : [];
+        renderSchedulerQueue(queue);
+    }
+}
+
+function getSchedulerQueueItemKey(item) {
+    if (!item || typeof item !== 'object') return 'task:?';
+    const type = item.type || 'task';
+    const target = item.target_id || '?';
+    const options = item.options && typeof item.options === 'object'
+        ? JSON.stringify(item.options)
+        : '';
+    return `${type}:${target}:${options}`;
+}
+
+function getSchedulerQueueItemText(item, idx) {
+    const scoreText = typeof item.score === 'number' ? item.score.toFixed(2) : '-';
+    const options = item.options && typeof item.options === 'object'
+        ? Object.entries(item.options).map(([k, v]) => `${k}=${v}`).join(', ')
+        : '';
+    return `${idx + 1}. ${item.type || 'task'}:${item.target_id || '?'} | score=${scoreText}${options ? ` | ${options}` : ''}`;
+}
+
+function renderSchedulerQueue(queue) {
+    if (!schedulerQueueList) return;
+
+    const counts = new Map();
+    const nextKeys = [];
+    const nextKeySet = new Set();
+
+    queue.forEach((item, idx) => {
+        const baseKey = getSchedulerQueueItemKey(item);
+        const occurrence = (counts.get(baseKey) || 0) + 1;
+        counts.set(baseKey, occurrence);
+        const key = `${baseKey}#${occurrence}`;
+        nextKeys.push(key);
+        nextKeySet.add(key);
+
+        const text = getSchedulerQueueItemText(item, idx);
+        let node = schedulerQueueNodeByKey.get(key);
+
+        if (!node) {
+            node = document.createElement('li');
+            node.className = 'queue-item queue-item-enter';
+            node.dataset.key = key;
+            node.textContent = text;
+            node.dataset.text = text;
+            schedulerQueueNodeByKey.set(key, node);
+            requestAnimationFrame(() => {
+                node.classList.remove('queue-item-enter');
+            });
+        } else if (node.dataset.text !== text) {
+            node.textContent = text;
+            node.dataset.text = text;
+
+            // Delay blue "content updated" cue so movement (red/green) remains readable first
+            if (node._queueUpdateDelayTimer) {
+                clearTimeout(node._queueUpdateDelayTimer);
+                node._queueUpdateDelayTimer = null;
+            }
+            if (node._queueUpdateClearTimer) {
+                clearTimeout(node._queueUpdateClearTimer);
+                node._queueUpdateClearTimer = null;
+            }
+
+            node.classList.remove('queue-item-updated');
+            const now = Date.now();
+            const movementRemainingMs = node._queueMoveUntil && node._queueMoveUntil > now
+                ? (node._queueMoveUntil - now)
+                : 0;
+            const delayedUpdateMs = Math.max(700, movementRemainingMs + 120);
+
+            node._queueUpdateDelayTimer = setTimeout(() => {
+                node.classList.remove('queue-item-updated');
+                void node.offsetWidth;
+                node.classList.add('queue-item-updated');
+
+                node._queueUpdateClearTimer = setTimeout(() => {
+                    node.classList.remove('queue-item-updated');
+                    node._queueUpdateClearTimer = null;
+                }, 950);
+
+                node._queueUpdateDelayTimer = null;
+            }, delayedUpdateMs);
+        }
+    });
+
+    for (const [key, node] of schedulerQueueNodeByKey.entries()) {
+        if (!nextKeySet.has(key)) {
+            if (node._queueMoveTimer) {
+                clearTimeout(node._queueMoveTimer);
+                node._queueMoveTimer = null;
+            }
+            if (node._queueUpdateDelayTimer) {
+                clearTimeout(node._queueUpdateDelayTimer);
+                node._queueUpdateDelayTimer = null;
+            }
+            if (node._queueUpdateClearTimer) {
+                clearTimeout(node._queueUpdateClearTimer);
+                node._queueUpdateClearTimer = null;
+            }
+            node.classList.add('queue-item-exit');
+            schedulerQueueNodeByKey.delete(key);
+            setTimeout(() => {
+                if (node.parentNode) node.remove();
+            }, 220);
+        }
+    }
+
+    if (nextKeys.length === 0) {
+        const existing = schedulerQueueList.querySelector('.queue-empty');
+        if (!existing) {
+            const empty = document.createElement('li');
+            empty.className = 'queue-empty';
+            empty.textContent = 'Queue is empty';
+            schedulerQueueList.innerHTML = '';
+            schedulerQueueList.appendChild(empty);
+        }
+        schedulerQueueHeadKey = null;
+        schedulerQueuePrevIndexByKey.clear();
+        return;
+    }
+
+    const emptyNode = schedulerQueueList.querySelector('.queue-empty');
+    if (emptyNode) emptyNode.remove();
+
+    nextKeys.forEach((key, idx) => {
+        const node = schedulerQueueNodeByKey.get(key);
+        if (!node) return;
+
+        const prevIdx = schedulerQueuePrevIndexByKey.get(key);
+        if (typeof prevIdx === 'number' && prevIdx !== idx) {
+            if (idx < prevIdx) {
+                applyQueueMoveClass(node, 'queue-item-move-up');
+            } else {
+                applyQueueMoveClass(node, 'queue-item-move-down');
+            }
+        }
+
+        node.classList.toggle('queue-item-head', idx === 0);
+        if (idx === 0 && schedulerQueueHeadKey !== key) {
+            node.classList.remove('queue-item-head-flash');
+            void node.offsetWidth;
+            node.classList.add('queue-item-head-flash');
+        }
+
+        schedulerQueueList.appendChild(node);
+    });
+
+    schedulerQueueHeadKey = nextKeys[0];
+    schedulerQueuePrevIndexByKey.clear();
+    nextKeys.forEach((key, idx) => {
+        schedulerQueuePrevIndexByKey.set(key, idx);
+    });
+}
+
+function applyQueueMoveClass(node, moveClass) {
+    const oppositeClass = moveClass === 'queue-item-move-up'
+        ? 'queue-item-move-down'
+        : 'queue-item-move-up';
+
+    const alreadySameDirection = node.classList.contains(moveClass) && !node.classList.contains(oppositeClass);
+
+    if (!alreadySameDirection) {
+        node.classList.remove(oppositeClass);
+        node.classList.remove(moveClass);
+        void node.offsetWidth;
+        node.classList.add(moveClass);
+    }
+
+    if (node._queueMoveTimer) {
+        clearTimeout(node._queueMoveTimer);
+        node._queueMoveTimer = null;
+    }
+
+    node._queueMoveTimer = setTimeout(() => {
+        node.classList.remove('queue-item-move-up', 'queue-item-move-down');
+        node._queueMoveUntil = null;
+        node._queueMoveTimer = null;
+    }, QUEUE_DIRECTION_HOLD_MS);
+
+    node._queueMoveUntil = Date.now() + QUEUE_DIRECTION_HOLD_MS;
+}
+
 function initializeRobotMarker() {
     if (robotMarker) {
         robotMarker.remove();
@@ -288,12 +555,18 @@ function initializeRobotMarker() {
 
 function updateRobotDisplay() {
     // Update info overlay
-    robotXDisplay.textContent = robotPose.x.toFixed(3);
-    robotYDisplay.textContent = robotPose.y.toFixed(3);
+    if (robotXDisplay) {
+        robotXDisplay.textContent = robotPose.x.toFixed(3);
+    }
+    if (robotYDisplay) {
+        robotYDisplay.textContent = robotPose.y.toFixed(3);
+    }
     
     // Convert radians to degrees for display
     const thetaDeg = (robotPose.theta * 180 / Math.PI).toFixed(1);
-    robotThetaDisplay.textContent = thetaDeg;
+    if (robotThetaDisplay) {
+        robotThetaDisplay.textContent = thetaDeg;
+    }
 }
 
 function updateRobotMarker() {
@@ -510,7 +783,9 @@ function drawPath() {
 }
 
 function updateObstacleCount() {
-    obstacleCountDisplay.textContent = obstacles.length;
+    if (obstacleCountDisplay) {
+        obstacleCountDisplay.textContent = obstacles.length;
+    }
 }
 
 function updateLastUpdateDisplay() {

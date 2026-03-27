@@ -32,14 +32,16 @@ let editingBatchId = null; // Store ID of batch being edited
 let pendingBatch = null; // Store batch being created
 let contextMenuBatchId = null; // Store batch ID for context menu actions
 let contextMenuPosition = null; // Store click position for context menu
-let roundTimerWasStarted = false;
-
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
 const map = document.getElementById('map');
 const findPathBtn = document.getElementById('findPathBtn');
 const timerControlBtn = document.getElementById('timerControlBtn');
+const roundTimerSecondsInput = document.getElementById('roundTimerSecondsInput');
+const frontEmptyCheckbox = document.getElementById('frontEmptyCheckbox');
+const backEmptyCheckbox = document.getElementById('backEmptyCheckbox');
 const stealBatchBtn = document.getElementById('stealBatchBtn');
+const startTaskSchedulerBtn = document.getElementById('startTaskSchedulerBtn');
 const orientationSelector = document.getElementById('orientationSelector');
 const orientationInput = document.getElementById('orientationInput');
 const confirmBtn = document.getElementById('confirmBtn');
@@ -67,9 +69,12 @@ loadSavedState();
 // Initialize event listeners
 findPathBtn.addEventListener('click', findPath);
 if (timerControlBtn) {
-    timerControlBtn.addEventListener('click', startOrResetRoundTimer);
+    timerControlBtn.addEventListener('click', setRoundTimerSeconds);
 }
 stealBatchBtn.addEventListener('click', stealBatch);
+if (startTaskSchedulerBtn) {
+    startTaskSchedulerBtn.addEventListener('click', startTaskScheduler);
+}
 mapWrapper.addEventListener('click', handleMapClick);
 mapWrapper.addEventListener('contextmenu', handleContextMenu);
 confirmBtn.addEventListener('click', confirmPose);
@@ -122,8 +127,6 @@ orientationInput.addEventListener('input', () => {
 window.addEventListener('resize', () => {
     updateAllRobotModels();
 });
-
-updateTimerControlButtonLabel();
 
 function updateAllRobotModels() {
     // Update start robot if exists
@@ -1019,19 +1022,21 @@ function findPath() {
     subscribeToPathResult();
 }
 
-function updateTimerControlButtonLabel() {
-    if (!timerControlBtn) return;
-
-    timerControlBtn.textContent = roundTimerWasStarted
-        ? '🔄 Reset Round Timer'
-        : '⏱️ Start Round Timer';
-}
-
-function startOrResetRoundTimer() {
+function setRoundTimerSeconds() {
     if (!isConnected || !ros) {
         console.warn('⚠️ Cannot control round timer: Not connected to ROS2');
         alert('Not connected to ROS2. Please check the connection.');
         return;
+    }
+
+    let seconds = 0;
+    if (roundTimerSecondsInput) {
+        const raw = Number(roundTimerSecondsInput.value);
+        if (!Number.isFinite(raw) || raw < 0) {
+            alert('Please enter a valid non-negative number of seconds.');
+            return;
+        }
+        seconds = Math.floor(raw);
     }
 
     const requestId = `pathfinding-round-timer-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -1052,7 +1057,7 @@ function startOrResetRoundTimer() {
         if (isHandled) return;
         isHandled = true;
         resultTopic.unsubscribe();
-        alert('Round timer command timeout. Please try again.');
+        alert('Set round timer command timeout. Please try again.');
     }, 5000);
 
     resultTopic.subscribe((message) => {
@@ -1069,33 +1074,32 @@ function startOrResetRoundTimer() {
             resultTopic.unsubscribe();
 
             if (result.success) {
-                roundTimerWasStarted = true;
-                updateTimerControlButtonLabel();
-                alert('Round timer started/reset successfully.');
-                console.log('✅ Round timer started/reset');
+                alert(`Round timer set to ${seconds}s successfully.`);
+                console.log(`✅ Round timer set to ${seconds}s`);
             } else {
-                alert(`Round timer command failed: ${result.message || 'Unknown error'}`);
-                console.warn('⚠️ Round timer command failed:', result);
+                alert(`Set round timer command failed: ${result.message || 'Unknown error'}`);
+                console.warn('⚠️ Set round timer command failed:', result);
             }
         } catch (error) {
             isHandled = true;
             clearTimeout(timeoutHandle);
             resultTopic.unsubscribe();
-            alert(`Failed to parse round timer response: ${error.message}`);
-            console.error('❌ Invalid round timer response:', error);
+            alert(`Failed to parse set round timer response: ${error.message}`);
+            console.error('❌ Invalid set round timer response:', error);
         }
     });
 
     const message = new ROSLIB.Message({
         data: JSON.stringify({
             controller: 'hybrid_astar',
-            action: 'start_round_timer',
+            action: 'set_round_timer',
+            seconds: seconds,
             request_id: requestId
         })
     });
 
     commandTopic.publish(message);
-    console.log('⏱️ Round timer start/reset requested');
+    console.log(`⏱️ Set round timer requested: ${seconds}s`);
 }
 
 function subscribeToPathResult() {
@@ -1341,6 +1345,92 @@ function subscribeToStealBatchResult() {
         // Unsubscribe after receiving result
         listener.unsubscribe();
     });
+}
+
+function startTaskScheduler() {
+    if (!isConnected || !ros) {
+        console.warn('⚠️ Cannot start task scheduler: Not connected to ROS2');
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+
+    const requestId = `start-task-scheduler-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const commandTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/start_task_scheduler',
+        messageType: 'std_msgs/String'
+    });
+
+    const resultTopic = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/start_task_scheduler_result',
+        messageType: 'std_msgs/String'
+    });
+
+    let isHandled = false;
+    const timeoutHandle = setTimeout(() => {
+        if (isHandled) return;
+        isHandled = true;
+        resultTopic.unsubscribe();
+        alert('Start task scheduler timeout. Please try again.');
+    }, 6000);
+
+    resultTopic.subscribe((message) => {
+        if (isHandled) return;
+
+        try {
+            const result = JSON.parse(message.data);
+            if (!result || result.request_id !== requestId) {
+                return;
+            }
+
+            isHandled = true;
+            clearTimeout(timeoutHandle);
+            resultTopic.unsubscribe();
+
+            if (result.success) {
+                const queueSize = Number(result.task_queue_size ?? 0);
+                const batchCount = Number(result.batch_count ?? 0);
+                const tracked = result.tracked_task_target || 'none';
+                const frontEmpty = result.front_empty;
+                const backEmpty = result.back_empty;
+
+                alert(
+                    `Task Scheduler started.\n` +
+                    `Batches: ${batchCount}\n` +
+                    `Queue size: ${queueSize}\n` +
+                    `Tracked: ${tracked}\n` +
+                    `Front empty: ${frontEmpty}\n` +
+                    `Back empty: ${backEmpty}`
+                );
+                console.log('✅ Start task scheduler result:', result);
+            } else {
+                alert(`Start task scheduler failed: ${result.message || 'Unknown error'}`);
+                console.warn('⚠️ Start task scheduler failed:', result);
+            }
+        } catch (error) {
+            isHandled = true;
+            clearTimeout(timeoutHandle);
+            resultTopic.unsubscribe();
+            alert(`Failed to parse scheduler response: ${error.message}`);
+            console.error('❌ Invalid scheduler response:', error);
+        }
+    });
+
+    const message = new ROSLIB.Message({
+        data: JSON.stringify({
+            request_id: requestId,
+            start_round_timer: true,
+            run_loop_once: true,
+            generate_task: false,
+            manual_holder_override: true,
+            front_empty: frontEmptyCheckbox ? !!frontEmptyCheckbox.checked : true,
+            back_empty: backEmptyCheckbox ? !!backEmptyCheckbox.checked : true
+        })
+    });
+
+    commandTopic.publish(message);
+    console.log('▶️ Start task scheduler requested');
 }
 
 function drawPath(waypoints, taskGoalWaypoints = []) {

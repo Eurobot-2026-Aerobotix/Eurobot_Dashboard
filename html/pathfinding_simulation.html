@@ -96,12 +96,38 @@
                         🔍 Find Path
                     </button>
 
-                    <button class="button timer-control-btn" id="timerControlBtn" style="margin-top: 10px; background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%); color: #1a1a1a;">
-                        ⏱️ Start Round Timer
-                    </button>
+                    <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                        <input
+                            type="number"
+                            id="roundTimerSecondsInput"
+                            min="0"
+                            step="1"
+                            placeholder="Seconds"
+                            value="0"
+                            style="width: 95px; padding: 6px 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 0.9rem;"
+                        >
+                        <button class="button timer-control-btn" id="timerControlBtn" style="margin-top: 0; background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%); color: #1a1a1a; white-space: nowrap;">
+                            ⏱️ Set Round Timer
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 8px; display: flex; gap: 14px; align-items: center; font-size: 0.92rem;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="frontEmptyCheckbox" checked>
+                            Front empty
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="backEmptyCheckbox" checked>
+                            Back empty
+                        </label>
+                    </div>
                     
                     <button class="button steal-batch-btn" id="stealBatchBtn" style="margin-top: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         🎯 Steal Batch
+                    </button>
+
+                    <button class="button" id="startTaskSchedulerBtn" style="margin-top: 10px; background: linear-gradient(135deg, #00b894 0%, #00a37a 100%);">
+                        ▶️ Start Task Scheduler
                     </button>
                 </div>
 

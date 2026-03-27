@@ -234,24 +234,24 @@ batches:
       y: 2827.5
       z: 0
     color: yellow
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 767.6
       y: 2827.5
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 47
     map_pos:
       x: 817.6
       y: 2827.5
       z: 0
     color: yellow
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 867.6
       y: 2827.5
       z: 0
-    color: blue
+    color: yellow
 - batch_id: 10
   known_id: s8
   count: 4
@@ -269,24 +269,24 @@ batches:
       y: 2850.3
       z: 0
     color: yellow
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 1575
       y: 2850.3
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 47
     map_pos:
       x: 1625
       y: 2850.3
       z: 0
     color: yellow
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 1675
       y: 2850.3
       z: 0
-    color: blue
+    color: yellow
 - batch_id: 11
   known_id: f3
   count: 4

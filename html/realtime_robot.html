@@ -40,30 +40,38 @@
                 </div>
 
                 <div class="info-panels">
-                    <div class="robot-info">
-                        <h4>Robot Position</h4>
+                    <div class="scheduler-info">
+                        <h4>Task Scheduler</h4>
                         <div class="info-row">
-                            <span class="label">X:</span>
-                            <span id="robotX" class="value">-</span>
-                            <span class="unit">m</span>
+                            <span class="label">Source:</span>
+                            <span id="schedulerSource" class="value">-</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">Y:</span>
-                            <span id="robotY" class="value">-</span>
-                            <span class="unit">m</span>
+                            <span class="label">Remaining:</span>
+                            <span id="schedulerRemaining" class="value">-</span>
+                            <span class="unit">s</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">θ:</span>
-                            <span id="robotTheta" class="value">-</span>
-                            <span class="unit">°</span>
+                            <span class="label">Front:</span>
+                            <span id="schedulerFrontEmpty" class="value">-</span>
                         </div>
-                    </div>
-
-                    <div class="obstacles-info">
-                        <h4>Obstacles</h4>
                         <div class="info-row">
-                            <span class="label">Detected:</span>
-                            <span id="obstacleCount" class="value">0</span>
+                            <span class="label">Back:</span>
+                            <span id="schedulerBackEmpty" class="value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Tracked:</span>
+                            <span id="schedulerTrackedTask" class="value">none</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Queue:</span>
+                            <span id="schedulerQueueSize" class="value">0</span>
+                        </div>
+                        <div class="queue-box">
+                            <div class="queue-title">Queue Contents</div>
+                            <ul id="schedulerQueueList" class="queue-list">
+                                <li class="queue-empty">No task scheduler data yet</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
