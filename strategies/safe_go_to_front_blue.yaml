@@ -1,0 +1,261 @@
+name: safe_go_to_front_blue
+selected: false
+color: blue
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 2655
+    - 0
+    wait: false
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 1200
+    y: 1850
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '687.52'
+    - '2520.62'
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 850
+    - 1850
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1850
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: 1200
+    y: 1956.02
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 1200
+    - 1956.02
+    - 1100
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 4
+  global_goal:
+    x: 1638.82
+    y: 1900
+    theta: 0
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1200
+    - 1850
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1527.54
+    - 1900
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 1638.82
+    - 1900
+    - 1000
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 5
+  global_goal:
+    x: '1755.16'
+    y: '1693.00'
+    theta: -60.66275120186112
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1755.16'
+    - '1693.00'
+    - 1000
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 6
+  global_goal:
+    x: 1600
+    y: 2614.96
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1600
+    - 2310
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to
+    params:
+    - 1600
+    - 2614.96
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 7
+  global_goal:
+    x: 1600
+    y: 2614.96
+    theta: -44.59104060376961
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1742.51'
+    - '2474.47'
+    - 1100
+    - 0
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 1600
+    - 2614.96
+    - 1100
+    wait: true
+- description: Task 8
+  global_goal:
+    x: 800
+    y: 2646.44
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 800
+    - 2470
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2646.44
+    - 1000
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 9
+  global_goal:
+    x: '991.39'
+    y: '2755.19'
+    theta: 29.60573656832088
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '991.39'
+    - '2755.19'
+    - 1000
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+- description: Task 10
+  global_goal:
+    x: 804
+    y: 2120
+    theta: 90.97308315277533
+  sequence:
+  - device: STM
+    command: bezier_backwards
+    params:
+    - 832.06
+    - 2765.31
+    - 796
+    - 2591
+    - 804
+    - 2120
+    - 1000
+    - 1000
+    - 1100
+    wait: true
+- description: Task 11
+  global_goal:
+    x: 804
+    y: 2120
+    theta: 90.97308315277533
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
+    params:
+    - 12
+    wait: false
+- description: Task 13
+  global_goal:
+    x: 257
+    y: 2727
+    theta: 180
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - 792
+    - 2732
+    - 521
+    - 2727
+    - 257
+    - 2727
+    - 1000
+    - 1000
+    - 1100
+    wait: false
+order: 41
