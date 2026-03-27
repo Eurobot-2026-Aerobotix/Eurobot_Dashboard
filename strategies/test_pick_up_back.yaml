@@ -1,0 +1,55 @@
+name: test_pick_up_back
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 800
+    - 700
+    - 90
+    wait: false
+- description: Task 4
+  global_goal:
+    x: 800
+    y: 400
+    theta: -153.43494882292202
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 800
+    - 400
+    - 1000
+    wait: false
+- description: Task 3
+  global_goal:
+    x: 800
+    y: 400
+    theta: -153.43494882292202
+  sequence:
+  - device: ESP_back
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 4
+  global_goal:
+    x: 800
+    y: 400
+    theta: -153.43494882292202
+  sequence:
+  - device: ESP_back
+    command: put_down
+    params: []
+    wait: true
+order: 38

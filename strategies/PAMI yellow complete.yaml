@@ -1,5 +1,5 @@
 name: PAMI yellow complete
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -252,21 +252,21 @@ tasks:
     wait: false
 - description: Task 12
   global_goal:
-    x: '257.08'
-    y: '272.6300000000001'
-    theta: -2.265474706178111
+    x: '251.19'
+    y: '277.60'
+    theta: 0.3599984288435678
   sequence:
   - device: STM
     command: bezier_backwards
     params:
     - '791.09'
     - '267.57000000000016'
-    - '512.89'
-    - '262.5100000000002'
-    - '257.08'
-    - '272.6300000000001'
+    - '655.44'
+    - '280.14'
+    - '251.19'
+    - '277.60'
     - 1000
     - 1000
     - 1100
     wait: false
-order: 35
+order: 37

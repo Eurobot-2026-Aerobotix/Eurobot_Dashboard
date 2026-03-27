@@ -1,0 +1,50 @@
+name: test_pick_uo_front
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - '797.81'
+    - '656.42'
+    - -90
+    wait: false
+- description: Task 4
+  global_goal:
+    x: 803.84
+    y: 400
+    theta: 26.45546422844083
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 803.84
+    - 400
+    - 1000
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: 803.84
+    y: 400
+    theta: 26.45546422844083
+  sequence:
+  - device: ESP_front
+    command: put_down
+    params: []
+    wait: true
+order: 39

@@ -350,7 +350,7 @@ function markBeaconMessageReceived(message) {
     setBeaconReadyState(value === 1);
 }
 
-function createStatusSubscription(key, topicName, onMessage = null) {
+function createStatusSubscription(key, topicName, onMessage = null, messageType = 'std_msgs/msg/Int64') {
     const entry = espStatusState[key];
     if (!rosStatusConnection || !entry) {
         return null;
@@ -359,7 +359,7 @@ function createStatusSubscription(key, topicName, onMessage = null) {
     const topic = new ROSLIB.Topic({
         ros: rosStatusConnection,
         name: topicName,
-        messageType: 'std_msgs/msg/Int64'
+        messageType
     });
 
     topic.subscribe((message) => {
@@ -388,7 +388,7 @@ function subscribePneumaticStatus() {
 }
 
 function subscribeBeaconStatus() {
-    return createStatusSubscription('beacon', '/web/beacon_status', markBeaconMessageReceived);
+    return createStatusSubscription('beacon', '/web/beacon_status', markBeaconMessageReceived, 'std_msgs/msg/Int32');
 }
 
 function disconnectAllEspTopics() {
