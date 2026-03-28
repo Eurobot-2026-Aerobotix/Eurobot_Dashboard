@@ -8,16 +8,16 @@ tasks:
     y: null
     theta: null
   sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
   - device: STM
     command: set_position
     params:
     - 300
     - 2655
     - 0
-    wait: false
-  - device: RASP_PI
-    command: Wait for manual start
-    params: []
     wait: false
 - description: Task 2
   global_goal:
@@ -213,15 +213,15 @@ tasks:
   global_goal:
     x: 804
     y: 2120
-    theta: 90.97308315277533
+    theta: 93.58983040163886
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - 832.06
-    - 2765.31
-    - 796
-    - 2591
+    - '861.37'
+    - '2705.59'
+    - '777.47'
+    - '2542.88'
     - 804
     - 2120
     - 1000
@@ -232,7 +232,7 @@ tasks:
   global_goal:
     x: 804
     y: 2120
-    theta: 90.97308315277533
+    theta: 93.58983040163886
   sequence:
   - device: RASP_PI
     command: wait_end_game
@@ -248,8 +248,8 @@ tasks:
   - device: STM
     command: bezier
     params:
-    - 792
-    - 2732
+    - '805.44'
+    - '2736.10'
     - 521
     - 2727
     - 257

@@ -1,4 +1,4 @@
-strategy_name: zafa9ouna
+strategy_name: safe_go_to_front_yellow
 pami_number: 3
 sequence:
 - - 3
@@ -21,10 +21,10 @@ sequence:
   - 400
 - - 4
   - 1977.13
-  - 416.84
-  - 1415.74
-  - 1500.3
-  - 1790.77
-  - 1500.51
+  - 416.84000000000015
+  - 1296.26
+  - 1534.3
+  - 1795.74
+  - 1549.9
   - 500
   - 1
