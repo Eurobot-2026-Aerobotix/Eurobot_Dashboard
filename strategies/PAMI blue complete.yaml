@@ -149,21 +149,21 @@ tasks:
     wait: true
 - description: Task 7
   global_goal:
-    x: 810
+    x: 800
     y: 2620
     theta: -90
   sequence:
   - device: STM
     command: go_to
     params:
-    - 810
+    - 800
     - 2388.57
     - 1100
     wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - 810
+    - 800
     - 2620
     - 1100
     - 1
@@ -176,7 +176,7 @@ tasks:
   global_goal:
     x: '1048.04'
     y: '2340.24'
-    theta: -49.606464582263534
+    theta: -48.43925498492803
   sequence:
   - device: STM
     command: go_to
@@ -269,4 +269,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 50
+order: 29
