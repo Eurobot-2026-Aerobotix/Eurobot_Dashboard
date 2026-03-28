@@ -1,5 +1,5 @@
 name: PAMI blue complete
-selected: false
+selected: true
 color: blue
 tasks:
 - description: Task 1
@@ -269,4 +269,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 40
+order: 50

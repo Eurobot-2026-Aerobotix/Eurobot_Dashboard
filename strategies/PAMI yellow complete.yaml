@@ -252,21 +252,21 @@ tasks:
     wait: false
 - description: Task 12
   global_goal:
-    x: '251.19'
-    y: '277.60'
-    theta: 0.3599984288435678
+    x: 251.19
+    y: 285
+    theta: -0.6887917724081944
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - '791.09'
-    - '267.57000000000016'
-    - '655.44'
-    - '280.14'
-    - '251.19'
-    - '277.60'
+    - 791.09
+    - 267.57000000000016
+    - 655.44
+    - 280.14
+    - 251.19
+    - 285
     - 1000
     - 1000
     - 1100
     wait: false
-order: 38
+order: 45

@@ -47,4 +47,4 @@ tasks:
     command: put_down
     params: []
     wait: true
-order: 39
+order: 46

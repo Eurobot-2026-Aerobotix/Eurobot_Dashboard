@@ -308,26 +308,32 @@ tasks:
     - 1000
     - 1100
     wait: true
+- description: Task 15
+  global_goal:
+    x: '899.23'
+    y: '802.21'
+    theta: -90.25191526508233
+  sequence:
   - device: RASP_PI
     command: wait_end_game
     params:
-    - 3
+    - 13
     wait: false
 - description: Task 13
   global_goal:
-    x: '277.29'
-    y: '234.96'
-    theta: 179.54863802629814
+    x: 285
+    y: 234.96
+    theta: 179.5431871268251
   sequence:
   - device: STM
     command: bezier
     params:
-    - '899.23'
-    - '428.28'
-    - '923.40'
-    - '229.87'
-    - '277.29'
-    - '234.96'
+    - '897.99'
+    - '609.71'
+    - 923.4
+    - 229.87
+    - 285
+    - 234.96
     - 1000
     - 1000
     - 1100

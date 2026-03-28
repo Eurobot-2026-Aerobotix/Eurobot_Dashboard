@@ -248,25 +248,25 @@ tasks:
   - device: RASP_PI
     command: wait_end_game
     params:
-    - 12
+    - 13
     wait: false
 - description: Task 12
   global_goal:
-    x: '257.08'
-    y: '2727.37'
-    theta: 2.2654747061780824
+    x: '282.84'
+    y: '2781.75'
+    theta: -0.5896752714182298
   sequence:
   - device: STM
     command: bezier_backwards
     params:
     - '791.09'
     - '2732.43'
-    - '512.89'
-    - '2737.49'
-    - '257.08'
-    - '2727.37'
+    - '535.46'
+    - '2779.15'
+    - '282.84'
+    - '2781.75'
     - 1000
     - 1000
     - 1100
     wait: false
-order: 30
+order: 49

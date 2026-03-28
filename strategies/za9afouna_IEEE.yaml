@@ -3,6 +3,10 @@ selected: false
 color: yellow
 tasks:
 - description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
   sequence:
   - device: RASP_PI
     command: Wait for manual start
@@ -15,11 +19,11 @@ tasks:
     - 345
     - 0
     wait: false
-  global_goal:
-    x: null
-    y: null
-    theta: null
 - description: Task 2
+  global_goal:
+    x: '1381.05'
+    y: '1848.80'
+    theta: -179.4220041774924
   sequence:
   - device: STM
     command: go_to
@@ -47,11 +51,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
-  global_goal:
-    x: '1381.05'
-    y: '1848.80'
-    theta: -179.4220041774924
 - description: Task 3
+  global_goal:
+    x: '1289.52'
+    y: '2011.51'
+    theta: 119.35925818958174
   sequence:
   - device: STM
     command: go_to
@@ -64,11 +68,11 @@ tasks:
     command: put_down
     params: []
     wait: true
-  global_goal:
-    x: '1289.52'
-    y: '2011.51'
-    theta: 119.35925818958174
 - description: Task 4
+  global_goal:
+    x: '1635.29'
+    y: '1909.82'
+    theta: -0.06239479844819392
   sequence:
   - device: STM
     command: go_to_backwards
@@ -89,11 +93,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
-  global_goal:
-    x: '1635.29'
-    y: '1909.82'
-    theta: -0.06239479844819392
 - description: Task 5
+  global_goal:
+    x: 1200
+    y: 1150
+    theta: 0
   sequence:
   - device: STM
     command: go_to_backwards
@@ -115,11 +119,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
+- description: Task 6
   global_goal:
     x: 1200
     y: 1150
-    theta: 0
-- description: Task 6
+    theta: 90
   sequence:
   - device: STM
     command: orientate
@@ -130,11 +134,11 @@ tasks:
     command: put_down
     params: []
     wait: true
+- description: Task 7
   global_goal:
     x: 1200
-    y: 1150
+    y: 1100
     theta: 90
-- description: Task 7
   sequence:
   - device: STM
     command: go_to
@@ -154,11 +158,11 @@ tasks:
     command: put_down
     params: []
     wait: true
-  global_goal:
-    x: 1200
-    y: 1100
-    theta: 90
 - description: Task 8
+  global_goal:
+    x: 1600
+    y: 1100
+    theta: 0
   sequence:
   - device: STM
     command: go_to
@@ -186,11 +190,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
+- description: Task 9
   global_goal:
     x: 1600
-    y: 1100
-    theta: 0
-- description: Task 9
+    y: 400
+    theta: 90
   sequence:
   - device: STM
     command: go_to_backwards
@@ -204,11 +208,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
-  global_goal:
-    x: 1600
-    y: 400
-    theta: 90
 - description: Task 10
+  global_goal:
+    x: '1714.50'
+    y: '524.94'
+    theta: 47.4966142189985
   sequence:
   - device: STM
     command: go_to
@@ -221,11 +225,11 @@ tasks:
     command: put_down
     params: []
     wait: true
-  global_goal:
-    x: '1714.50'
-    y: '524.94'
-    theta: 47.4966142189985
 - description: Task 11
+  global_goal:
+    x: 800
+    y: 400
+    theta: -90
   sequence:
   - device: STM
     command: go_to_backwards
@@ -253,11 +257,11 @@ tasks:
     command: pick_up
     params: []
     wait: true
-  global_goal:
-    x: 800
-    y: 400
-    theta: -90
 - description: Task 12
+  global_goal:
+    x: 1200
+    y: 400
+    theta: 90
   sequence:
   - device: STM
     command: go_to
@@ -275,11 +279,11 @@ tasks:
     command: put_down
     params: []
     wait: true
+- description: Task 13
   global_goal:
     x: 1200
-    y: 400
+    y: 345
     theta: 90
-- description: Task 13
   sequence:
   - device: STM
     command: go_to
@@ -299,11 +303,11 @@ tasks:
     command: put_down
     params: []
     wait: true
-  global_goal:
-    x: 1200
-    y: 345
-    theta: 90
 - description: Task 14
+  global_goal:
+    x: 250
+    y: 250
+    theta: 1.1240077931043402
   sequence:
   - device: STM
     command: go_to
@@ -343,8 +347,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-  global_goal:
-    x: 250
-    y: 250
-    theta: 1.1240077931043402
-order: 46
+order: 28

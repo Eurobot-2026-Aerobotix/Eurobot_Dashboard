@@ -272,23 +272,53 @@ tasks:
     command: put_down
     params: []
     wait: true
-- description: Task 12
+- description: Task 13
   global_goal:
-    x: 226.78
-    y: 2707.15
-    theta: -15.998249659519502
+    x: '905.80'
+    y: '2190.56'
+    theta: 88.71236569906635
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - 887.82
-    - 2442.74
-    - 590.35
-    - 2602.91
-    - 226.78
-    - 2707.15
+    - '911.01'
+    - '2484.86'
+    - '911.01'
+    - '2422.35'
+    - '905.80'
+    - '2190.56'
     - 1000
     - 1000
-    - 1100
+    - 1000
     wait: true
+- description: Task 14
+  global_goal:
+    x: '905.80'
+    y: '2190.56'
+    theta: 88.71236569906635
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
+    params:
+    - 13
+    wait: false
+- description: Task 15
+  global_goal:
+    x: '280.75'
+    y: '2779.15'
+    theta: 179.54962523109063
+  sequence:
+  - device: STM
+    command: bezier
+    params:
+    - '913.62'
+    - '2693.21'
+    - '611.51'
+    - '2776.55'
+    - '280.75'
+    - '2779.15'
+    - 1000
+    - 1000
+    - 1000
+    wait: false
 order: 36

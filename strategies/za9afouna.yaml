@@ -300,9 +300,9 @@ tasks:
     wait: false
 - description: Task 14
   global_goal:
-    x: 250
+    x: 285
     y: 250
-    theta: 1.1240077931043402
+    theta: 1.206861582589255
   sequence:
   - device: STM
     command: bezier_backwards
@@ -311,7 +311,7 @@ tasks:
     - 240
     - 759.68
     - 260
-    - 250
+    - 285
     - 250
     - 1000
     - 1000
