@@ -2,9 +2,15 @@ strategy_name: safe_go_to_front_blue
 pami_number: 5
 sequence:
 - - 3
-  - 293
+  - 291
   - 2948
   - -90
+- - 0
+  - 30000
+- - 1
+  - '275.02'
+  - 2918.97
+  - 400
 - - 5
   - 85000
 - - 0

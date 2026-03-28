@@ -239,24 +239,17 @@ tasks:
     wait: true
 - description: Task 11
   global_goal:
-    x: 1200
-    y: 2655
-    theta: -90
+    x: '1198.12'
+    y: '2404.77'
+    theta: 89.44827774343906
   sequence:
-  - device: STM
-    command: go_to
-    params:
-    - 1200
-    - 2510
-    - 1100
-    wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - 1200
-    - 2655
+    - '1198.12'
+    - '2404.77'
     - 1100
-    wait: false
+    wait: true
   - device: ESP_back
     command: put_down
     params: []
@@ -317,4 +310,4 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 30
+order: 31

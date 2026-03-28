@@ -1,3 +1,7 @@
 strategy_name: safe_go_to_front_blue
 pami_number: 7
-sequence: []
+sequence:
+- - 3
+  - '73.79'
+  - '2305.56'
+  - 0

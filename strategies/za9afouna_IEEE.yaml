@@ -305,15 +305,15 @@ tasks:
     wait: true
 - description: Task 14
   global_goal:
-    x: 250
-    y: 250
-    theta: 1.1240077931043402
+    x: 840
+    y: 793.71
+    theta: 90
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1200
-    - 410
+    - '1200.67'
+    - '441.00'
     - 1000
     wait: true
   - device: STM
@@ -334,6 +334,23 @@ tasks:
     params:
     - 13
     wait: false
+- description: Task 15
+  global_goal:
+    x: 840
+    y: 793.71
+    theta: 90
+  sequence:
+  - device: RASP_PI
+    command: wait_end_game
+    params:
+    - 13
+    wait: false
+- description: Task 16
+  global_goal:
+    x: 250
+    y: 250
+    theta: 1.1240077931043402
+  sequence:
   - device: STM
     command: bezier_backwards
     params:
