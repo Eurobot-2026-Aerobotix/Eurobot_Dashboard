@@ -28,6 +28,7 @@ let clickedIndex = null;
 let busy = false;
 let pamiStrategyGroups = [];
 let clickedPamiName = null;
+let activeList = "robot";
 
 // -------------------------------------------------
 // Helpers
@@ -87,7 +88,10 @@ function renderList() {
 
     // single click (UI selection only)
     div.onclick = () => {
+      activeList = "robot";
       clickedIndex = i;
+      clickedPamiName = null;
+      updatePamiButtons();
       renderList();
       updateButtons();
     };
@@ -162,22 +166,57 @@ function updatePamiButtons() {
   if (pamiBranchBtn) pamiBranchBtn.disabled = !enabled;
 }
 
+function sortPamiStrategyGroups() {
+  pamiStrategyGroups.sort((a, b) => {
+    if (a.color !== b.color) return a.color === "yellow" ? -1 : 1;
+    return a.order - b.order;
+  });
+
+  const lastOrder = {};
+  pamiStrategyGroups.forEach((g) => {
+    if (lastOrder[g.color] === undefined) {
+      lastOrder[g.color] = g.order;
+    } else if (g.order <= lastOrder[g.color]) {
+      g.order = lastOrder[g.color] + 1;
+      lastOrder[g.color] = g.order;
+    } else {
+      lastOrder[g.color] = g.order;
+    }
+  });
+}
+
+async function savePamiGroupMeta(strategyName, updater, allPami = null) {
+  const source = allPami || await loadPAMIStrategies();
+  const linked = source.filter((s) => s.strategy_name === strategyName);
+  if (linked.length === 0) return;
+
+  await Promise.all(
+    linked.map((s) => {
+      const updated = JSON.parse(JSON.stringify(s));
+      updater(updated);
+      return savePamiStrategy(updated);
+    })
+  );
+}
+
+async function persistPamiOrderSwap(nameA, orderA, nameB, orderB) {
+  const allPami = await loadPAMIStrategies();
+  await Promise.all([
+    savePamiGroupMeta(nameA, (s) => { s.order = orderA; }, allPami),
+    savePamiGroupMeta(nameB, (s) => { s.order = orderB; }, allPami)
+  ]);
+}
+
 function renderPamiList() {
   if (!pamiListDivYellow || !pamiListDivBlue) return;
+
+  sortPamiStrategyGroups();
 
   pamiListDivYellow.innerHTML = "";
   pamiListDivBlue.innerHTML = "";
 
-  const yellowNames = [];
-  const blueNames = [];
-
-  pamiStrategyGroups.forEach((group) => {
-    if (group.color === "yellow") {
-      yellowNames.push(group.name);
-    } else {
-      blueNames.push(group.name);
-    }
-  });
+  const yellowGroups = pamiStrategyGroups.filter((g) => g.color === "yellow");
+  const blueGroups = pamiStrategyGroups.filter((g) => g.color !== "yellow");
 
   const renderName = (name, container) => {
     const div = document.createElement("div");
@@ -186,7 +225,10 @@ function renderPamiList() {
     div.textContent = name;
 
     div.onclick = () => {
+      activeList = "pami";
       clickedPamiName = name;
+      clickedIndex = null;
+      updateButtons();
       renderPamiList();
       updatePamiButtons();
     };
@@ -198,8 +240,8 @@ function renderPamiList() {
     container.appendChild(div);
   };
 
-  yellowNames.sort((a, b) => a.localeCompare(b)).forEach((name) => renderName(name, pamiListDivYellow));
-  blueNames.sort((a, b) => a.localeCompare(b)).forEach((name) => renderName(name, pamiListDivBlue));
+  yellowGroups.forEach((g) => renderName(g.name, pamiListDivYellow));
+  blueGroups.forEach((g) => renderName(g.name, pamiListDivBlue));
 }
 
 // -------------------------------------------------
@@ -222,7 +264,15 @@ async function loadPamiStrategyNames() {
     if (!grouped.has(s.strategy_name)) {
       grouped.set(s.strategy_name, {
         name: s.strategy_name,
-        color: s.color || inferPamiColorFromName(s.strategy_name)
+        color: s.color || inferPamiColorFromName(s.strategy_name),
+        order: Number.isFinite(Number(s.order)) ? Number(s.order) : 0
+      });
+    } else {
+      const existing = grouped.get(s.strategy_name);
+      const order = Number.isFinite(Number(s.order)) ? Number(s.order) : existing.order;
+      grouped.set(s.strategy_name, {
+        ...existing,
+        order
       });
     }
   });
@@ -303,6 +353,7 @@ function mirror_pami_strategy(pami_strategy) {
 
 // CREATE
 createBtn.addEventListener("click", async () => {
+  activeList = "robot";
   let name = prompt("Enter new strategy name:");
   if (!name) return;
 
@@ -401,6 +452,7 @@ branchBtn.addEventListener("click", async () => {
 // PAMI CREATE
 if (pamiCreateBtn) {
   pamiCreateBtn.addEventListener("click", async () => {
+    activeList = "pami";
     let name = prompt("Enter new PAMI strategy name:");
     if (!name || !name.trim()) return;
     name = name.trim().replace(/\s+/g, "_");
@@ -416,22 +468,32 @@ if (pamiCreateBtn) {
       return;
     }
 
+    const sameColorOrders = pamiStrategyGroups
+      .filter((g) => g.color === color)
+      .map((g) => g.order);
+    const nextOrder = sameColorOrders.length ? Math.max(...sameColorOrders) + 1 : 1;
+
     for (let i = 1; i <= 7; i++) {
       await savePamiStrategy({
         strategy_name: name,
         pami_number: i,
         sequence: [],
-        color
+        color,
+        order: nextOrder
       });
     }
 
     await loadPamiStrategyNames();
+    clickedPamiName = name;
+    renderPamiList();
+    updatePamiButtons();
   });
 }
 
 // PAMI DELETE
 if (pamiDeleteBtn) {
   pamiDeleteBtn.addEventListener("click", async () => {
+    activeList = "pami";
     if (!clickedPamiName) return;
     if (!confirm(`Delete PAMI strategy "${clickedPamiName}"?`)) return;
 
@@ -443,6 +505,7 @@ if (pamiDeleteBtn) {
 // PAMI BRANCH
 if (pamiBranchBtn) {
   pamiBranchBtn.addEventListener("click", async () => {
+    activeList = "pami";
     if (!clickedPamiName) return;
 
     let name = prompt("Enter name for the branched PAMI strategy:");
@@ -456,6 +519,10 @@ if (pamiBranchBtn) {
 
     const sourceGroup = pamiStrategyGroups.find((g) => g.name === clickedPamiName);
     const targetColor = sourceGroup?.color || inferPamiColorFromName(name);
+    const sameColorOrders = pamiStrategyGroups
+      .filter((g) => g.color === targetColor)
+      .map((g) => g.order);
+    const nextOrder = sameColorOrders.length ? Math.max(...sameColorOrders) + 1 : 1;
 
     const symmetric = confirm("Symmetric?");
     const allPami = await loadPAMIStrategies();
@@ -473,15 +540,20 @@ if (pamiBranchBtn) {
         let copied = JSON.parse(JSON.stringify(pamiStrategy));
         copied.strategy_name = name;
         copied.color = targetColor;
+        copied.order = nextOrder;
         if (symmetric) {
           copied = mirror_pami_strategy(copied);
           copied.color = targetColor;
+          copied.order = nextOrder;
         }
         return savePamiStrategy(copied);
       })
     );
 
     await loadPamiStrategyNames();
+    clickedPamiName = name;
+    renderPamiList();
+    updatePamiButtons();
   });
 }
 
@@ -489,25 +561,88 @@ if (pamiBranchBtn) {
 // Arrow key handling
 // -------------------------------------------------
 window.addEventListener("keydown", async (e) => {
-  if (clickedIndex === null) return;
-  const current = strategies[clickedIndex];
+  if (busy) return;
 
-  if (e.key === "ArrowLeft" && clickedIndex > 0) {
-    const prev = strategies[clickedIndex - 1];
-    clickedIndex--;
-    [current.order, prev.order] = [prev.order, current.order];
-    renderList();
-    await updateStrategy(current);
-    await updateStrategy(prev);
+  if (activeList === "robot" && clickedIndex !== null) {
+    const current = strategies[clickedIndex];
+
+    if (e.key === "ArrowLeft" && clickedIndex > 0) {
+      const prev = strategies[clickedIndex - 1];
+      clickedIndex--;
+      [current.order, prev.order] = [prev.order, current.order];
+      renderList();
+      await updateStrategy(current);
+      await updateStrategy(prev);
+    }
+
+    if (e.key === "ArrowRight" && clickedIndex < strategies.length - 1) {
+      const next = strategies[clickedIndex + 1];
+      clickedIndex++;
+      [current.order, next.order] = [next.order, current.order];
+      renderList();
+      await updateStrategy(current);
+      await updateStrategy(next);
+    }
+    return;
   }
 
-  if (e.key === "ArrowRight" && clickedIndex < strategies.length - 1) {
-    const next = strategies[clickedIndex + 1];
-    clickedIndex++;
-    [current.order, next.order] = [next.order, current.order];
-    renderList();
-    await updateStrategy(current);
-    await updateStrategy(next);
+  if (activeList === "pami" && clickedPamiName) {
+    const current = pamiStrategyGroups.find((g) => g.name === clickedPamiName);
+    if (!current) return;
+
+    const sameColor = pamiStrategyGroups
+      .filter((g) => g.color === current.color)
+      .sort((a, b) => a.order - b.order);
+    const idxInColor = sameColor.findIndex((g) => g.name === current.name);
+    if (idxInColor === -1) return;
+
+    if (e.key === "ArrowLeft" && idxInColor > 0) {
+      const prev = sameColor[idxInColor - 1];
+      const currentOrder = current.order;
+      const prevOrder = prev.order;
+
+      // Optimistic UI update (same feel as robot strategies)
+      current.order = prevOrder;
+      prev.order = currentOrder;
+      renderPamiList();
+      updatePamiButtons();
+
+      busy = true;
+      try {
+        await persistPamiOrderSwap(current.name, prevOrder, prev.name, currentOrder);
+      } catch (error) {
+        console.error("Failed to reorder PAMI strategies:", error);
+        await loadPamiStrategyNames();
+        clickedPamiName = current.name;
+        renderPamiList();
+        updatePamiButtons();
+      }
+      busy = false;
+    }
+
+    if (e.key === "ArrowRight" && idxInColor < sameColor.length - 1) {
+      const next = sameColor[idxInColor + 1];
+      const currentOrder = current.order;
+      const nextOrder = next.order;
+
+      // Optimistic UI update (same feel as robot strategies)
+      current.order = nextOrder;
+      next.order = currentOrder;
+      renderPamiList();
+      updatePamiButtons();
+
+      busy = true;
+      try {
+        await persistPamiOrderSwap(current.name, nextOrder, next.name, currentOrder);
+      } catch (error) {
+        console.error("Failed to reorder PAMI strategies:", error);
+        await loadPamiStrategyNames();
+        clickedPamiName = current.name;
+        renderPamiList();
+        updatePamiButtons();
+      }
+      busy = false;
+    }
   }
 });
 

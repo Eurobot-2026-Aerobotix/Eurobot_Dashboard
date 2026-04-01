@@ -1,8 +1,0 @@
-strategy_name: pami_yellow_complete
-pami_number: 7
-sequence:
-- - 3
-  - 0
-  - 0
-  - 0
-color: yellow

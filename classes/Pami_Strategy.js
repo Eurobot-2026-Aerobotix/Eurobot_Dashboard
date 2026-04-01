@@ -1,9 +1,10 @@
 export class Pami_Strategy {
-  constructor(strategy_name, pami_number, sequence = [], color = null) {
+  constructor(strategy_name, pami_number, sequence = [], color = null, order = 0) {
     this.strategy_name = strategy_name;
     this.pami_number = pami_number;
     this.sequence = sequence;
     this.color = color || Pami_Strategy.inferColorFromName(strategy_name);
+    this.order = Number.isFinite(Number(order)) ? Number(order) : 0;
   }
 
   static inferColorFromName(strategyName) {
@@ -22,7 +23,8 @@ export class Pami_Strategy {
       o.strategy_name,
       o.pami_number,
       o.sequence,
-      o.color
+      o.color,
+      o.order
     );
   }
 }

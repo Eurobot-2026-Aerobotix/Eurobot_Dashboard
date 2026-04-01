@@ -193,6 +193,16 @@ def ensure_pami_color(data):
     return data
 
 
+def ensure_pami_order(data):
+    if not isinstance(data, dict):
+        return data
+    try:
+        data["order"] = int(data.get("order", 0))
+    except Exception:
+        data["order"] = 0
+    return data
+
+
 def migrate_pami_colors_on_disk():
     """Ensure every PAMI YAML has an explicit `color` field."""
     updated = 0
@@ -209,10 +219,14 @@ def migrate_pami_colors_on_disk():
                 if not isinstance(data, dict):
                     continue
 
-                if data.get("color"):
+                had_color = bool(data.get("color"))
+                had_order = isinstance(data.get("order"), int)
+
+                if had_color and had_order:
                     continue
 
                 data = ensure_pami_color(data)
+                data = ensure_pami_order(data)
 
                 with open(path, "w", encoding="utf-8") as f:
                     yaml.safe_dump(data, f, sort_keys=False)
@@ -284,6 +298,7 @@ def read_pami_strategy(filename):
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             data = ensure_pami_color(data)
+            data = ensure_pami_order(data)
         except yaml.YAMLError as e:
             return jsonify({"status": "error", "error": f"Invalid YAML: {str(e)}"}), 400
         except Exception as e:
@@ -334,7 +349,9 @@ def get_pami_strategies():
         pami_map[i] if pami_map[i] is not None else {
             "strategy_name": strategy_name,
             "pami_number": i,
-            "sequence": []
+            "sequence": [],
+            "color": infer_pami_color(strategy_name),
+            "order": 0
         }
         for i in range(1, 8)
     ]
@@ -388,6 +405,7 @@ def save_pami_strategy(strategy_name, pami_number):
     except Exception:
         pass
     data = ensure_pami_color(data)
+    data = ensure_pami_order(data)
 
     with strategy_lock:  # Protect file write operation
         with open(path, "w", encoding="utf-8") as f:
