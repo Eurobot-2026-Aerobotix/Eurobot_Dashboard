@@ -92,6 +92,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ensure directory exists
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
+os.makedirs(PAMI_STRATEGIES_DIR, exist_ok=True)
 
 
 # -------------------------------------------------
@@ -175,6 +176,54 @@ def safe_filename(filename):
     return os.path.basename(filename)
 
 
+def infer_pami_color(strategy_name):
+    low = str(strategy_name or "").lower()
+    if "yellow" in low or "jaune" in low or "asfer" in low:
+        return "yellow"
+    if "blue" in low or "azreg" in low:
+        return "blue"
+    return "blue"
+
+
+def ensure_pami_color(data):
+    if not isinstance(data, dict):
+        return data
+    if not data.get("color"):
+        data["color"] = infer_pami_color(data.get("strategy_name"))
+    return data
+
+
+def migrate_pami_colors_on_disk():
+    """Ensure every PAMI YAML has an explicit `color` field."""
+    updated = 0
+    with strategy_lock:
+        for filename in os.listdir(PAMI_STRATEGIES_DIR):
+            if not filename.endswith(".yaml"):
+                continue
+
+            path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                if not isinstance(data, dict):
+                    continue
+
+                if data.get("color"):
+                    continue
+
+                data = ensure_pami_color(data)
+
+                with open(path, "w", encoding="utf-8") as f:
+                    yaml.safe_dump(data, f, sort_keys=False)
+                updated += 1
+            except Exception as e:
+                print(f"Warning: Could not migrate color for {filename}: {e}")
+
+    if updated:
+        print(f"Migrated color field for {updated} PAMI strategy files", flush=True)
+
+
 # -------------------------------------------------
 # List all strategy files
 # GET /strategies
@@ -234,6 +283,7 @@ def read_pami_strategy(filename):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
+            data = ensure_pami_color(data)
         except yaml.YAMLError as e:
             return jsonify({"status": "error", "error": f"Invalid YAML: {str(e)}"}), 400
         except Exception as e:
@@ -329,11 +379,51 @@ def save_pami_strategy(strategy_name, pami_number):
         abort(400, "Expected JSON body")
 
     data = request.get_json()
+    if not isinstance(data, dict):
+        abort(400, "Invalid JSON body")
+
+    data["strategy_name"] = strategy_name
+    try:
+        data["pami_number"] = int(pami_number)
+    except Exception:
+        pass
+    data = ensure_pami_color(data)
 
     with strategy_lock:  # Protect file write operation
         with open(path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False)
     return jsonify({"status": "saved", "file": filename})
+
+
+# -------------------------------------------------
+# Delete all PAMI strategy files for a strategy name
+# DELETE /pami_strategies/<strategy_name>
+# -------------------------------------------------
+@app.route("/pami_strategies/<strategy_name>", methods=["DELETE"])
+def delete_pami_strategy_group(strategy_name):
+    strategy_name = safe_filename(strategy_name)
+    deleted_files = []
+
+    with strategy_lock:
+        for pami_filename in os.listdir(PAMI_STRATEGIES_DIR):
+            if not pami_filename.endswith(".yaml"):
+                continue
+
+            pami_path = os.path.join(PAMI_STRATEGIES_DIR, pami_filename)
+            try:
+                with open(pami_path, "r", encoding="utf-8") as f:
+                    pami_data = yaml.safe_load(f)
+
+                if pami_data and pami_data.get("strategy_name") == strategy_name:
+                    os.remove(pami_path)
+                    deleted_files.append(pami_filename)
+            except Exception as e:
+                print(f"Warning: Could not process {pami_filename}: {e}")
+
+    if not deleted_files:
+        return jsonify({"status": "not_found", "strategy_name": strategy_name, "deleted": []}), 404
+
+    return jsonify({"status": "deleted", "strategy_name": strategy_name, "deleted": deleted_files})
 
 
 # -------------------------------------------------
@@ -1243,6 +1333,8 @@ if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    migrate_pami_colors_on_disk()
     
     with strategy_lock:  # Protect initial strategy path read
         SELECTED_STRATEGY_PATH = get_selected_strategy_path()

@@ -4,7 +4,8 @@ import {
   saveStrategy,
   updateStrategy,
   loadPAMIStrategies,
-  savePamiStrategy
+  savePamiStrategy,
+  deletePamiStrategyGroup
 } from "./file_handler.js";
 import { Strategy } from "../classes/Strategy.js";
 
@@ -16,9 +17,17 @@ const pamiBtn = document.getElementById("pami-btn");
 const deleteBtn = document.getElementById("delete-btn");
 const branchBtn = document.getElementById("branch-btn");
 
+const pamiListDivYellow = document.getElementById("pami-strategy-list-yellow");
+const pamiListDivBlue = document.getElementById("pami-strategy-list-blue");
+const pamiCreateBtn = document.getElementById("pami-create-btn");
+const pamiDeleteBtn = document.getElementById("pami-delete-btn");
+const pamiBranchBtn = document.getElementById("pami-branch-btn");
+
 let strategies = [];
 let clickedIndex = null;
 let busy = false;
+let pamiStrategyGroups = [];
+let clickedPamiName = null;
 
 // -------------------------------------------------
 // Helpers
@@ -136,6 +145,63 @@ function updateButtons() {
   branchBtn.disabled = !enabled;
 }
 
+function inferPamiColorFromName(name) {
+  const low = String(name || "").toLowerCase();
+  if (low.includes("yellow") || low.includes("jaune") || low.includes("asfer") || low.endsWith("_y")) {
+    return "yellow";
+  }
+  if (low.includes("blue") || low.includes("azreg") || low.endsWith("_b")) {
+    return "blue";
+  }
+  return "blue";
+}
+
+function updatePamiButtons() {
+  const enabled = clickedPamiName !== null;
+  if (pamiDeleteBtn) pamiDeleteBtn.disabled = !enabled;
+  if (pamiBranchBtn) pamiBranchBtn.disabled = !enabled;
+}
+
+function renderPamiList() {
+  if (!pamiListDivYellow || !pamiListDivBlue) return;
+
+  pamiListDivYellow.innerHTML = "";
+  pamiListDivBlue.innerHTML = "";
+
+  const yellowNames = [];
+  const blueNames = [];
+
+  pamiStrategyGroups.forEach((group) => {
+    if (group.color === "yellow") {
+      yellowNames.push(group.name);
+    } else {
+      blueNames.push(group.name);
+    }
+  });
+
+  const renderName = (name, container) => {
+    const div = document.createElement("div");
+    div.className = "strategy-item";
+    if (clickedPamiName === name) div.classList.add("selected");
+    div.textContent = name;
+
+    div.onclick = () => {
+      clickedPamiName = name;
+      renderPamiList();
+      updatePamiButtons();
+    };
+
+    div.ondblclick = () => {
+      window.location.href = `pami_strategy_selector.html?name=${encodeURIComponent(name)}`;
+    };
+
+    container.appendChild(div);
+  };
+
+  yellowNames.sort((a, b) => a.localeCompare(b)).forEach((name) => renderName(name, pamiListDivYellow));
+  blueNames.sort((a, b) => a.localeCompare(b)).forEach((name) => renderName(name, pamiListDivBlue));
+}
+
 // -------------------------------------------------
 // Actions
 // -------------------------------------------------
@@ -145,6 +211,26 @@ async function loadStrategies() {
   clickedIndex = null;
   renderList();
   updateButtons();
+}
+
+async function loadPamiStrategyNames() {
+  const allPami = await loadPAMIStrategies();
+  const grouped = new Map();
+
+  allPami.forEach((s) => {
+    if (!s || !s.strategy_name) return;
+    if (!grouped.has(s.strategy_name)) {
+      grouped.set(s.strategy_name, {
+        name: s.strategy_name,
+        color: s.color || inferPamiColorFromName(s.strategy_name)
+      });
+    }
+  });
+
+  pamiStrategyGroups = Array.from(grouped.values());
+  clickedPamiName = null;
+  renderPamiList();
+  updatePamiButtons();
 }
 
 function mirror_strategy(strategy) {
@@ -312,6 +398,93 @@ branchBtn.addEventListener("click", async () => {
   renderList();
 });
 
+// PAMI CREATE
+if (pamiCreateBtn) {
+  pamiCreateBtn.addEventListener("click", async () => {
+    let name = prompt("Enter new PAMI strategy name:");
+    if (!name || !name.trim()) return;
+    name = name.trim().replace(/\s+/g, "_");
+
+    let color = prompt("azreg walla asfer (b/y)");
+    color = color === "y" ? "yellow" : "blue";
+    if (!name.toLowerCase().includes("blue") && !name.toLowerCase().includes("yellow")) {
+      name = `${name}_${color}`;
+    }
+
+    if (pamiStrategyGroups.some((g) => g.name === name)) {
+      alert("deja mawjouda");
+      return;
+    }
+
+    for (let i = 1; i <= 7; i++) {
+      await savePamiStrategy({
+        strategy_name: name,
+        pami_number: i,
+        sequence: [],
+        color
+      });
+    }
+
+    await loadPamiStrategyNames();
+  });
+}
+
+// PAMI DELETE
+if (pamiDeleteBtn) {
+  pamiDeleteBtn.addEventListener("click", async () => {
+    if (!clickedPamiName) return;
+    if (!confirm(`Delete PAMI strategy "${clickedPamiName}"?`)) return;
+
+    await deletePamiStrategyGroup(clickedPamiName);
+    await loadPamiStrategyNames();
+  });
+}
+
+// PAMI BRANCH
+if (pamiBranchBtn) {
+  pamiBranchBtn.addEventListener("click", async () => {
+    if (!clickedPamiName) return;
+
+    let name = prompt("Enter name for the branched PAMI strategy:");
+    if (!name || !name.trim()) return;
+    name = name.trim().replace(/\s+/g, "_");
+
+    if (pamiStrategyGroups.some((g) => g.name === name)) {
+      alert("deja mawjouda");
+      return;
+    }
+
+    const sourceGroup = pamiStrategyGroups.find((g) => g.name === clickedPamiName);
+    const targetColor = sourceGroup?.color || inferPamiColorFromName(name);
+
+    const symmetric = confirm("Symmetric?");
+    const allPami = await loadPAMIStrategies();
+    const linkedPamiStrategies = allPami.filter(
+      (pamiStrategy) => pamiStrategy.strategy_name === clickedPamiName
+    );
+
+    if (linkedPamiStrategies.length === 0) {
+      alert("No PAMI strategies found for this name");
+      return;
+    }
+
+    await Promise.all(
+      linkedPamiStrategies.map((pamiStrategy) => {
+        let copied = JSON.parse(JSON.stringify(pamiStrategy));
+        copied.strategy_name = name;
+        copied.color = targetColor;
+        if (symmetric) {
+          copied = mirror_pami_strategy(copied);
+          copied.color = targetColor;
+        }
+        return savePamiStrategy(copied);
+      })
+    );
+
+    await loadPamiStrategyNames();
+  });
+}
+
 // -------------------------------------------------
 // Arrow key handling
 // -------------------------------------------------
@@ -342,3 +515,4 @@ window.addEventListener("keydown", async (e) => {
 // Initial load
 // -------------------------------------------------
 loadStrategies();
+loadPamiStrategyNames();
