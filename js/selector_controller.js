@@ -144,7 +144,7 @@ function renderList() {
 
 function updateButtons() {
   const enabled = clickedIndex !== null;
-  pamiBtn.disabled = !enabled;
+  if (pamiBtn) pamiBtn.disabled = !enabled;
   deleteBtn.disabled = !enabled;
   branchBtn.disabled = !enabled;
 }
@@ -392,10 +392,12 @@ deleteBtn.addEventListener("click", async () => {
 });
 
 // PAMI
-pamiBtn.addEventListener("click", () => {
-  if (clickedIndex === null) return;
-  window.location.href = `pami_strategy_selector.html?name=${strategies[clickedIndex].name}`;
-});
+if (pamiBtn) {
+  pamiBtn.addEventListener("click", () => {
+    if (clickedIndex === null) return;
+    window.location.href = `pami_strategy_selector.html?name=${strategies[clickedIndex].name}`;
+  });
+}
 
 // BRANCH
 branchBtn.addEventListener("click", async () => {
@@ -517,14 +519,17 @@ if (pamiBranchBtn) {
       return;
     }
 
+    const symmetric = confirm("Symmetric?");
     const sourceGroup = pamiStrategyGroups.find((g) => g.name === clickedPamiName);
-    const targetColor = sourceGroup?.color || inferPamiColorFromName(name);
+    const baseColor = sourceGroup?.color || inferPamiColorFromName(name);
+    const targetColor = symmetric
+      ? (baseColor === "yellow" ? "blue" : "yellow")
+      : baseColor;
     const sameColorOrders = pamiStrategyGroups
       .filter((g) => g.color === targetColor)
       .map((g) => g.order);
     const nextOrder = sameColorOrders.length ? Math.max(...sameColorOrders) + 1 : 1;
 
-    const symmetric = confirm("Symmetric?");
     const allPami = await loadPAMIStrategies();
     const linkedPamiStrategies = allPami.filter(
       (pamiStrategy) => pamiStrategy.strategy_name === clickedPamiName
