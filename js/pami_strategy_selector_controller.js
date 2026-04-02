@@ -83,10 +83,20 @@ for (let i = 0; i < pamiBtnsLength; i++) {
       // Save the current strategy path for testing
       const strategyName = params.get("name");
       const testPath = `strategies/${strategyName}.yaml`;
+      const previousPamis = localStorage.getItem('pami_test_numbers') || '';
+      const selectedPamis = prompt('PAMIs to test (1-7, comma-separated). Leave empty for all:', previousPamis);
+      if (selectedPamis === null) {
+        return;
+      }
       
       // Save to localStorage
       localStorage.setItem('pami_test_strategy_path', testPath);
       localStorage.setItem('pami_test_strategy_name', strategyName);
+      if (selectedPamis.trim()) {
+        localStorage.setItem('pami_test_numbers', selectedPamis.trim());
+      } else {
+        localStorage.removeItem('pami_test_numbers');
+      }
       
       // Visual feedback
       pamiBtns[i].style.transform = 'scale(0.95)';
@@ -96,7 +106,7 @@ for (let i = 0; i < pamiBtnsLength; i++) {
         pamiBtns[i].style.opacity = '';
       }, 200);
       
-      alert(`Test strategy set to: ${strategyName}`);
+      alert(`Test strategy set to: ${strategyName}${selectedPamis.trim() ? `\nPAMIs: ${selectedPamis.trim()}` : '\nPAMIs: all (1-7)'}`);
     });
     
     // No context menu for TEST square

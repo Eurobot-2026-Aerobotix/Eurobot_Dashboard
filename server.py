@@ -1024,34 +1024,61 @@ def test_pami():
             if not os.path.exists(script_path):
                 return jsonify({"status": "error", "error": "pami.sh not found"}), 404
             
-            # Check if a specific test strategy path was provided
+            # Check if a specific test strategy path/name and selected PAMIs were provided
             selected_strategy_path = None
+            selected_strategy_name = None
+            selected_pami_numbers = None
             if request.is_json:
                 data = request.get_json()
                 selected_strategy_path = data.get('strategy_path')
+                selected_strategy_name = data.get('strategy_name')
+                selected_pami_numbers = data.get('pami_numbers')
+
+            # Prefer explicit strategy_name when provided
+            selected_strategy_input = (selected_strategy_name or '').strip() if selected_strategy_name else None
+            if not selected_strategy_input:
+                selected_strategy_input = selected_strategy_path
             
             # Fall back to the default selected strategy if not provided
-            if not selected_strategy_path:
-                selected_strategy_path = get_selected_strategy_path()
+            if not selected_strategy_input:
+                selected_strategy_input = get_selected_strategy_path()
             
-            if not selected_strategy_path:
+            if not selected_strategy_input:
                 return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
-            
-            # Convert to absolute path
-            strategy_abs_path = os.path.abspath(selected_strategy_path)
+
+            # Keep strategy names untouched, but normalize file paths to absolute
+            is_path_like = os.path.sep in selected_strategy_input or selected_strategy_input.endswith('.yaml')
+            if is_path_like:
+                strategy_input = os.path.abspath(selected_strategy_input)
+            else:
+                strategy_input = selected_strategy_input
+
+            # Normalize PAMI numbers format: "2,3,5"
+            pami_numbers_arg = None
+            if selected_pami_numbers is not None:
+                if isinstance(selected_pami_numbers, list):
+                    pami_numbers_arg = ','.join(str(x).strip() for x in selected_pami_numbers if str(x).strip())
+                else:
+                    pami_numbers_arg = str(selected_pami_numbers).strip()
             
             # Extract strategy name for display
-            strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
+            strategy_name = os.path.splitext(os.path.basename(strategy_input))[0]
             
-            print(f"🚀 Starting PAMI test manager with strategy file: {strategy_abs_path}")
+            print(f"🚀 Starting PAMI test manager with strategy input: {strategy_input}")
+            if pami_numbers_arg:
+                print(f"🎯 Selected PAMIs: {pami_numbers_arg}")
             
             # Run pami.sh with the strategy path as argument
             env = os.environ.copy()
             env['PYTHONUNBUFFERED'] = '1'
             env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+
+            cmd = ["bash", script_path, strategy_input]
+            if pami_numbers_arg:
+                cmd.append(pami_numbers_arg)
             
             pami_process = subprocess.Popen(
-                ["bash", script_path, strategy_abs_path],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

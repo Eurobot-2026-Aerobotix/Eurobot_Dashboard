@@ -1,4 +1,5 @@
 const ROSBRIDGE_URL = window.ipConfig ? window.ipConfig.getWebSocketURL() : 'ws://localhost:9090';
+const API_URL = window.ipConfig ? window.ipConfig.getAPIURL() : `${window.location.protocol}//${window.location.host}`;
 
 const rosStatus = document.getElementById('rosStatus');
 const rosStatusText = document.getElementById('rosStatusText');
@@ -14,6 +15,11 @@ const updateMapBtn = document.getElementById('updateMapBtn');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const commandStatus = document.getElementById('commandStatus');
 const commandLog = document.getElementById('commandLog');
+const testPamiBtn = document.getElementById('testPamiBtn');
+const testPamiStrategyInfo = document.getElementById('testPamiStrategyInfo');
+const testPamiCheckboxes = document.querySelectorAll('.test-pami-checkbox');
+const clearPamiOutputBtn = document.getElementById('clearPamiOutputBtn');
+const outputDiv = document.getElementById('output');
 
 let ros = null;
 let reconnectTimeout = null;
@@ -21,6 +27,70 @@ let webTestCommandTopic = null;
 let webTestResultTopic = null;
 let commandCounter = 0;
 const seenAckRequestIds = new Set();
+let pamiEventSource = null;
+let pamiOutput = [];
+const MAX_OUTPUT_LINES = 1000;
+
+try {
+    pamiOutput = JSON.parse(localStorage.getItem('pamiOutput') || '[]');
+    if (!Array.isArray(pamiOutput)) {
+        pamiOutput = [];
+    }
+} catch {
+    pamiOutput = [];
+}
+
+function isNearBottom(element, threshold = 24) {
+    const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight);
+    return distanceFromBottom <= threshold;
+}
+
+function appendOutputLine(text) {
+    if (!outputDiv) return;
+
+    const shouldStickToBottom = isNearBottom(outputDiv);
+    const line = document.createElement('div');
+    line.className = 'output-line';
+    line.textContent = text;
+    outputDiv.appendChild(line);
+
+    if (shouldStickToBottom) {
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+}
+
+function renderPamiOutput() {
+    if (!outputDiv) return;
+    outputDiv.innerHTML = '';
+    pamiOutput.forEach((line) => appendOutputLine(line));
+    outputDiv.scrollTop = outputDiv.scrollHeight;
+}
+
+function startPamiOutputStreaming() {
+    if (!outputDiv) return;
+
+    if (pamiEventSource) {
+        pamiEventSource.close();
+        pamiEventSource = null;
+    }
+
+    pamiEventSource = new EventSource(`${API_URL}/stream/pami`);
+
+    pamiEventSource.onmessage = (event) => {
+        pamiOutput.push(event.data);
+        if (pamiOutput.length > MAX_OUTPUT_LINES) {
+            pamiOutput = pamiOutput.slice(-MAX_OUTPUT_LINES);
+        }
+
+        try {
+            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+        } catch {
+            // Ignore localStorage quota errors.
+        }
+
+        appendOutputLine(event.data);
+    };
+}
 
 function nextRequestId() {
     commandCounter += 1;
@@ -34,11 +104,17 @@ function updateRosStatus(connected) {
 }
 
 function setCommandStatus(message, type = 'info') {
+    if (!commandStatus) {
+        return;
+    }
     commandStatus.textContent = message;
     commandStatus.className = `command-status ${type}`;
 }
 
 function addLogLine(text) {
+    if (!commandLog) {
+        return;
+    }
     const line = document.createElement('div');
     line.className = 'log-line';
     line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
@@ -48,6 +124,120 @@ function addLogLine(text) {
 function ensureConnection() {
     if (!ros || !webTestCommandTopic) {
         throw new Error('ROS bridge is not connected');
+    }
+}
+
+function getSelectedPamisFromCheckboxes() {
+    const selected = [];
+    testPamiCheckboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+            selected.push(checkbox.value);
+        }
+    });
+    return selected;
+}
+
+function persistPamiSelection() {
+    const selected = getSelectedPamisFromCheckboxes();
+    if (selected.length > 0) {
+        localStorage.setItem('pami_test_numbers', selected.join(','));
+    } else {
+        localStorage.removeItem('pami_test_numbers');
+    }
+}
+
+function applyPamiSelectionFromStorage() {
+    if (!testPamiCheckboxes.length) {
+        return;
+    }
+
+    const raw = localStorage.getItem('pami_test_numbers');
+    if (!raw) {
+        testPamiCheckboxes.forEach((checkbox) => {
+            checkbox.checked = true;
+        });
+        persistPamiSelection();
+        return;
+    }
+
+    const selected = new Set(raw.split(',').map(v => v.trim()).filter(Boolean));
+    testPamiCheckboxes.forEach((checkbox) => {
+        checkbox.checked = selected.has(checkbox.value);
+    });
+}
+
+function refreshTestPamiStrategyInfo() {
+    const strategyName = localStorage.getItem('pami_test_strategy_name');
+    const strategyPath = localStorage.getItem('pami_test_strategy_path');
+    const display = strategyName || strategyPath || 'not selected';
+    if (testPamiStrategyInfo) {
+        testPamiStrategyInfo.textContent = `Strategy: ${display}`;
+    }
+}
+
+async function runPamiTest() {
+    if (!testPamiBtn) return;
+
+    testPamiBtn.disabled = true;
+
+    const testStrategyPath = localStorage.getItem('pami_test_strategy_path');
+    const testStrategyName = localStorage.getItem('pami_test_strategy_name');
+    const selectedPamis = getSelectedPamisFromCheckboxes();
+
+    setCommandStatus(
+        `Starting PAMI test${selectedPamis.length ? ` (PAMIs: ${selectedPamis.join(',')})` : ' (all PAMIs)' }...`,
+        'info'
+    );
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const requestBody = {};
+        if (testStrategyPath) requestBody.strategy_path = testStrategyPath;
+        if (testStrategyName) requestBody.strategy_name = testStrategyName;
+        if (selectedPamis.length) requestBody.pami_numbers = selectedPamis.join(',');
+
+        const response = await fetch(`${API_URL}/test_pami`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(`Server error: ${text}`);
+        }
+
+        const data = await response.json();
+        if (response.ok) {
+            setCommandStatus(data.message || 'PAMI test started.', 'success');
+            addLogLine(`PAMI test started${selectedPamis.length ? ` [${selectedPamis.join(',')}]` : ' [all]'}`);
+
+            // Reset output view for a fresh test session.
+            pamiOutput = [];
+            localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+            renderPamiOutput();
+            startPamiOutputStreaming();
+        } else {
+            throw new Error(data.error || 'Failed to run PAMI test');
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            setCommandStatus('Request timeout while starting PAMI test.', 'error');
+            addLogLine('ERROR: Request timeout while starting PAMI test.');
+        } else {
+            setCommandStatus(error.message, 'error');
+            addLogLine(`ERROR: ${error.message}`);
+        }
+    } finally {
+        testPamiBtn.disabled = false;
     }
 }
 
@@ -234,10 +424,32 @@ if (updateMapBtn) {
     updateMapBtn.addEventListener('click', () => sendHybridAstarCommand('update_map', 'update_map()'));
 }
 
-clearLogBtn.addEventListener('click', () => {
-    commandLog.innerHTML = '';
-    setCommandStatus('Command log cleared.', 'info');
+if (clearLogBtn && commandLog) {
+    clearLogBtn.addEventListener('click', () => {
+        commandLog.innerHTML = '';
+        setCommandStatus('Command log cleared.', 'info');
+    });
+}
+
+if (clearPamiOutputBtn) {
+    clearPamiOutputBtn.addEventListener('click', () => {
+        pamiOutput = [];
+        localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
+        renderPamiOutput();
+    });
+}
+
+if (testPamiBtn) {
+    testPamiBtn.addEventListener('click', runPamiTest);
+}
+
+applyPamiSelectionFromStorage();
+testPamiCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', persistPamiSelection);
 });
+refreshTestPamiStrategyInfo();
+renderPamiOutput();
+startPamiOutputStreaming();
 
 window.addEventListener('beforeunload', () => {
     if (reconnectTimeout) {
@@ -251,6 +463,11 @@ window.addEventListener('beforeunload', () => {
         } catch (error) {
             console.warn('Failed to close ROS bridge on unload:', error);
         }
+    }
+
+    if (pamiEventSource) {
+        pamiEventSource.close();
+        pamiEventSource = null;
     }
 });
 
