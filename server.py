@@ -1308,6 +1308,13 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             return
         return SimpleHTTPRequestHandler.do_GET(self)
+
+    def end_headers(self):
+        # Disable browser caching for dashboard static assets to avoid stale UI/JS/CSS after refresh.
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        super().end_headers()
     
     def log_message(self, format, *args):
         # Suppress normal request logs to reduce clutter

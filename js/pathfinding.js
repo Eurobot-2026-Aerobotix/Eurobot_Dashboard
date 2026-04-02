@@ -183,7 +183,10 @@ function updateAllRobotModels() {
 
 async function loadObstacles() {
     try {
-        const response = await fetch('../resources/obstacles.yaml');
+        const cacheBuster = Date.now();
+        const response = await fetch(`../resources/obstacles.yaml?v=${cacheBuster}`, {
+            cache: 'no-store'
+        });
         const yamlText = await response.text();
         
         // Simple YAML parser for this specific format
