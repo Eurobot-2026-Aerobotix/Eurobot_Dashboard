@@ -749,6 +749,15 @@ def start_strategy():
     global start_process
     with process_lock:  # Protect process start operation
         try:
+            publish_pami = False
+            if request.is_json:
+                payload = request.get_json(silent=True) or {}
+                raw = payload.get("publish_pami", False)
+                if isinstance(raw, bool):
+                    publish_pami = raw
+                else:
+                    publish_pami = str(raw).strip().lower() in ("1", "true", "yes", "y", "on")
+
             # Kill old process if still running to prevent zombies
             if start_process and start_process.poll() is None:
                 try:
@@ -776,7 +785,7 @@ def start_strategy():
             
             # Execute the start script with the strategy path as argument
             start_process = subprocess.Popen(
-                ["bash", script_path, strategy_abs_path],
+                ["bash", script_path, strategy_abs_path, "true" if publish_pami else "false"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.PIPE,  # Enable stdin to send 'q'
@@ -790,7 +799,7 @@ def start_strategy():
             
             return jsonify({
                 "status": "success", 
-                "message": f"Strategy execution started (Strategy: {strategy_abs_path})"
+                "message": f"Strategy execution started (Strategy: {strategy_abs_path}, PAMI: {'enabled' if publish_pami else 'disabled'})"
             })
         except Exception as e:
             return jsonify({"status": "error", "error": str(e)}), 500

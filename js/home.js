@@ -18,6 +18,7 @@ const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const testPamiBtn = document.getElementById('testPamiBtn');
 const restartMicroRosBtn = document.getElementById('restartMicroRosBtn');
+const startWithPamiCheckbox = document.getElementById('startWithPamiCheckbox');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 const outputSelector = document.getElementById('outputSelector');
@@ -531,7 +532,8 @@ async function prepareRobot() {
 
 async function startStrategy() {
     startBtn.disabled = true;
-    showStatus('Starting strategy...', 'info');
+    const publishPami = Boolean(startWithPamiCheckbox && startWithPamiCheckbox.checked);
+    showStatus(`Starting strategy${publishPami ? ' with PAMI' : ''}...`, 'info');
     
     try {
         // Add timeout to prevent hanging forever
@@ -540,6 +542,10 @@ async function startStrategy() {
         
         const response = await fetch(`${API_URL}/start`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ publish_pami: publishPami }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
