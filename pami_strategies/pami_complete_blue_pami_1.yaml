@@ -1,5 +1,17 @@
 strategy_name: pami_complete_blue
 pami_number: 1
-sequence: []
+sequence:
+- - 3
+  - '249.50'
+  - '328.44'
+  - 0
+- - 1
+  - '496.92'
+  - '344.07'
+  - 400
+- - 1
+  - '555.25'
+  - '557.63'
+  - 400
 color: blue
 order: 1
