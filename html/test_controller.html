@@ -113,16 +113,42 @@
                         <code>/reset_map</code>, <code>/clear_map</code>, and <code>/update_map</code>.
                     </small>
                 </div>
+
+                <div class="function-group">
+                    <div class="function-title">PAMI Test Runner</div>
+                    <div class="test-pami-info" id="testPamiStrategyInfo">Strategy: not selected</div>
+
+                    <div class="test-pami-checkboxes" id="testPamiCheckboxes">
+                        <label><input type="checkbox" class="test-pami-checkbox" value="1">PAMI 1</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="2">PAMI 2</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="3">PAMI 3</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="4">PAMI 4</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="5">PAMI 5</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="6">PAMI 6</label>
+                        <label><input type="checkbox" class="test-pami-checkbox" value="7">PAMI 7</label>
+                    </div>
+
+                    <div class="button-row">
+                        <button id="testPamiBtn" class="action-btn">Test PAMI</button>
+                    </div>
+                    <small>
+                        Uses saved strategy from PAMI selector and starts only checked PAMIs.
+                        If none checked, all PAMIs (1..7) will be used.
+                    </small>
+                </div>
             </section>
         </div>
 
         <section class="test-card log-card">
             <div class="card-header">
-                <h2>Command Log</h2>
-                <button id="clearLogBtn" class="ghost-btn">Clear</button>
+                <h2>TEST_PAMI Output</h2>
+                <button id="clearPamiOutputBtn" class="ghost-btn">Clear</button>
             </div>
-            <div id="commandStatus" class="command-status info">Ready.</div>
-            <div id="commandLog" class="command-log"></div>
+            <div class="output-controls">
+                <label>Live stream:</label>
+                <span class="card-badge">/stream/pami</span>
+            </div>
+            <div id="output"></div>
         </section>
     </div>
 

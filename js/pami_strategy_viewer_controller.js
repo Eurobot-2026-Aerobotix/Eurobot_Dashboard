@@ -28,13 +28,105 @@ const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = [];
 const walking_args = [];
 const delay_args = ["duration"];
-const commandCodes = ["delay", "go_to", "orientate", "set_position", "bezier", "wait_for"];
-const commandCodesPami7 = ["delay", "go_to", "orientate", "set_position", "pick_up", "put_down", "walking"];
+const commandCodes = [
+  { label: "delay", args: delay_args },
+  { label: "go_to", args: go_to_args },
+  { label: "orientate", args: orientate_args },
+  { label: "set_position", args: set_position_args },
+  { label: "bezier", args: bezier_args },
+  { label: "wait_for", args: delay_args }
+];
+const commandCodesPami7 = [
+  { label: "delay", args: delay_args },
+  { label: "go_to", args: go_to_args_pami7 },
+  { label: "orientate", args: orientate_args },
+  { label: "set_position", args: set_position_args },
+  { label: "bezier", args: bezier_args },
+  { label: "wait_for", args: delay_args },
+  { label: "backwards", args: [] },
+  { label: "pickup", args: pick_up_args },
+  { label: "putdown", args: put_down_args },
+  { label: "walking_position", args: [] },
+  { label: "prepare", args: [] },
+  { label: "letgo", args: [] }
+];
 let contextActionIndex = null;
 let contextPamiNumber = null;
 let robot_on_map = null;
 let undoStack = [];
 let redoStack = [];
+
+function getCommandCatalog(strategy) {
+  return strategy?.pami_number === 7 ? commandCodesPami7 : commandCodes;
+}
+
+function getCommandConfig(strategy, commandType) {
+  return getCommandCatalog(strategy)[commandType] || null;
+}
+
+function getActionDisplayText(strategy, action) {
+  const commandConfig = getCommandConfig(strategy, action[0]);
+  if (!commandConfig) return "unknown()";
+
+  const command = commandConfig.label.toLowerCase();
+  const args = action.slice(1);
+
+  if (strategy.pami_number === 7) {
+    if (command === "delay" || command === "wait_for") {
+      return `${command}(${args[0]}ms)`;
+    }
+
+    if (command === "go_to") {
+      return args.length > 3
+        ? `go_to(${args[0]}, ${args[1]}, ${args[2]}, ${args[3]})`
+        : `go_to(${args[0]}, ${args[1]}, ${args[2]})`;
+    }
+
+    if (command === "orientate") {
+      return `orientate(${args[0]})`;
+    }
+
+    if (command === "set_position") {
+      return `set_position(${args[0]}, ${args[1]}, ${args[2]})`;
+    }
+
+    if (command === "bezier") {
+      return `bezier(${args[0]}, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]}, ${args[7]})`;
+    }
+
+    if (command === "pickup") {
+      return `pickup(right:${args[0]}, left:${args[1]}, up_down:${args[2]})`;
+    }
+
+    if (command === "putdown") {
+      return `putdown()`;
+    }
+
+    return `${command}()`;
+  }
+
+  if (command === "delay" || command === "wait_for") {
+    return `${command}(${args[0]}ms)`;
+  }
+
+  if (command === "go_to") {
+    return `go_to(${args[0]}, ${args[1]}, ${args[2]})`;
+  }
+
+  if (command === "orientate") {
+    return `orientate(${args[0]})`;
+  }
+
+  if (command === "set_position") {
+    return `set_position(${args[0]}, ${args[1]}, ${args[2]})`;
+  }
+
+  if (command === "bezier") {
+    return `bezier(${args[0]}, ${args[1]}, ${args[2]}, ${args[3]}, ${args[4]}, ${args[5]}, ${args[6]})`;
+  }
+
+  return `${command}()`;
+}
 
 // ------------------------------
 // Load selected strategy
@@ -239,29 +331,7 @@ function renderTasks(isMultiMode = true) {
         const actionDiv = document.createElement("div");
         actionDiv.classList.add("action-item");
         
-        if (action[0] == 1){
-          if (strategy.pami_number === 7 && action.length > 4) {
-            actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
-          } else {
-            actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
-          }
-        }else if (action[0] == 2){
-          actionDiv.textContent = `orientate(${action[1]})`;
-        }else if (action[0] == 3){
-          actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
-        }else if (action[0] == 4 && !(strategy.pami_number === 7) ){
-          actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
-        }else if (action[0] == 4 && strategy.pami_number === 7){
-          actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
-        }else if (action[0] == 5 && !(strategy.pami_number === 7) ){
-          actionDiv.textContent = `wait_for(${action[1]}ms)`;
-        }else if (action[0] == 5 && strategy.pami_number === 7){
-          actionDiv.textContent = `put_down()`;
-        }else if (action[0] == 6 && strategy.pami_number === 7){
-          actionDiv.textContent = `walking()`;
-        }else if (action[0] == 0){
-          actionDiv.textContent = `delay(${action[1]}ms)`;
-        }
+        actionDiv.textContent = getActionDisplayText(strategy, action);
 
         actionDiv.draggable = true;
         actionDiv.dataset.actionIndex = actionIndex;
@@ -309,29 +379,7 @@ function renderTasks(isMultiMode = true) {
           actionDiv.classList.add("action-item");
           actionDiv.style.borderLeft = `4px solid ${pami_colors[pamiNum]}`;
           
-          if (action[0] == 1){
-            if (strategy.pami_number === 7 && action.length > 4) {
-              actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]})`;
-            } else {
-              actionDiv.textContent = `go_to(${action[1]}, ${action[2]}, ${action[3]})`;
-            }
-          }else if (action[0] == 2){
-            actionDiv.textContent = `orientate(${action[1]})`;
-          }else if (action[0] == 3){
-            actionDiv.textContent = `set_position(${action[1]}, ${action[2]}, ${action[3]})`;
-          }else if (action[0] == 4 && !(strategy.pami_number === 7) ){
-            actionDiv.textContent = `bezier(${action[1]}, ${action[2]}, ${action[3]}, ${action[4]}, ${action[5]}, ${action[6]}, ${action[7]})`;
-          }else if (action[0] == 4 && strategy.pami_number === 7){
-            actionDiv.textContent = `pick_up(right:${action[1]}, left:${action[2]}, up_down:${action[3]})`;
-          }else if (action[0] == 5 && !(strategy.pami_number === 7) ){
-            actionDiv.textContent = `wait_for(${action[1]}ms)`;
-          }else if (action[0] == 5 && strategy.pami_number === 7){
-            actionDiv.textContent = `put_down()`;
-          }else if (action[0] == 6 && strategy.pami_number === 7){
-            actionDiv.textContent = `walking()`;
-          }else if (action[0] == 0){
-            actionDiv.textContent = `delay(${action[1]}ms)`;
-          }
+          actionDiv.textContent = getActionDisplayText(strategy, action);
 
           actionDiv.draggable = true;
           actionDiv.dataset.actionIndex = actionIndex;
@@ -474,29 +522,16 @@ function setupContextMenuHandlers() {
     
     const strategy = loaded_strategies[contextPamiNumber];
     const command_type = strategy.sequence[contextActionIndex][0];
-    const commandList = strategy.pami_number === 7 ? commandCodesPami7 : commandCodes;
-    const command = commandList[command_type];
+    const commandList = getCommandCatalog(strategy);
+    const commandConfig = commandList[command_type];
+    const command = commandConfig ? commandConfig.label : "unknown";
 
     let args_table = [];
     document.getElementById("command_label").textContent =
       "Command: " + command;
 
-    if (command_type == 1) {
-      args_table = strategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
-    } else if (command_type == 2) {
-      args_table = orientate_args;
-    } else if (command_type == 3) {
-      args_table = set_position_args;
-    } else if (command_type == 4 && !(strategy.pami_number === 7)) {
-      args_table = bezier_args;
-    } else if (command_type == 4) {
-      args_table = pick_up_args;
-    } else if (command_type == 5 && strategy.pami_number === 7) {
-      args_table = put_down_args;
-    } else if (command_type == 6) {
-      args_table = walking_args;
-    } else if (command_type == 0 || (command_type == 5 && strategy.pami_number !== 7)) {
-      args_table = delay_args;
+    if (commandConfig) {
+      args_table = commandConfig.args;
     }
 
     const argsContainer = document.getElementById("args-container");
@@ -542,32 +577,12 @@ function setupContextMenuHandlers() {
 // Populate Add Action dropdown
 // ------------------------------
 function populateAddList() {
-  let options;
-  if (selected_strategy.pami_number === 7) {
-    options = [
-      "delay",
-      "go_to",
-      "orientate",
-      "set_position",
-      "pick_up",
-      "put_down",
-      "walking"
-    ];
-  } else {
-    options = [
-      "delay",
-      "go_to",
-      "orientate",
-      "set_position",
-      "bezier",
-      "wait_for"
-    ];
-  }
+  const options = getCommandCatalog(selected_strategy);
   actionSelect.innerHTML = '<option value="">select action</option>';
   options.forEach((a, i) => {
     const opt = document.createElement("option");
-    opt.value = i+1;
-    opt.textContent = a;
+    opt.value = i;
+    opt.textContent = a.label;
     actionSelect.appendChild(opt);
   });
 }
@@ -793,15 +808,24 @@ function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, c
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexX] = x.toFixed(2);
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexY] = y.toFixed(2);
 }
-function hightlightAction(actionIndex) {
-    //const actionItems = document.querySelectorAll(".action-item");
-    //actionItems[actionIndex].classList.add("highlighted");
+function hightlightAction(actionIndex, pamiNum) {
+  unHightlightActions();
+
+  const actionItems = document.querySelectorAll(".action-item");
+  actionItems.forEach((item) => {
+    if (
+      Number(item.dataset.actionIndex) === Number(actionIndex) &&
+      Number(item.dataset.pamiNumber) === Number(pamiNum)
+    ) {
+      item.classList.add("highlighted");
+    }
+  });
 }
 function unHightlightActions() {
-  // const actionItems = document.querySelectorAll(".action-item");
-  // actionItems.forEach(item => {
-  //   item.classList.remove("highlighted");
-  // });
+  const actionItems = document.querySelectorAll(".action-item");
+  actionItems.forEach((item) => {
+    item.classList.remove("highlighted");
+  });
 }
 function draw_robot_on_map(svg, x, y, angle, pamiNum) {
   clear_robot_off_map(svg);
@@ -904,7 +928,7 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   if (!cachedOverlayElement) cachedOverlayElement = document.getElementById("map-overlay");
 
   el.addEventListener("mouseover", e => {
-    hightlightAction(actionIndex);
+    hightlightAction(actionIndex, pamiNum);
     let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
     draw_robot_on_map(cachedOverlayElement, x, y, phi, pamiNum);
   });
@@ -973,7 +997,7 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
 
 document.getElementById("add-action-btn").addEventListener("click", () => {
   const index = actionSelect.value;
-  if (index == "" || visible_pamis.size === 0) return;
+  if (index === "" || visible_pamis.size === 0) return;
   
   // Use the first visible PAMI to determine which commands to show
   const firstVisiblePami = Array.from(visible_pamis)[0];
@@ -1003,35 +1027,13 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
     pamiSelectorModal.classList.add("hidden");
   }
   
-  const opt = actionSelect.options[index];
-  const command = opt.textContent;
+  const commandConfig = getCommandConfig(targetStrategy, Number(index));
+  if (!commandConfig) return;
+  const command = commandConfig.label;
   let args_table = [];
   document.getElementById("command_label").textContent = "Command: "+command;
   // Decide which argument table to use
-  if (command.includes("go_to")) {
-    args_table = targetStrategy.pami_number === 7 ? go_to_args_pami7 : go_to_args;
-  }
-  else if (command.includes("orientate")) {
-    args_table = orientate_args;
-  }
-  else if (command.includes("set_position")) {
-    args_table = set_position_args;
-  }
-  else if (command.includes("bezier")) {
-    args_table = bezier_args;
-  }
-  else if (command.includes("pick_up")) {
-    args_table = pick_up_args;
-  }
-  else if (command.includes("put_down")) {
-    args_table = put_down_args;
-  }
-  else if (command.includes("walking")) {
-    args_table = walking_args;
-  }
-  else if (command.includes("delay") || command.includes("wait_for")) {
-    args_table = delay_args;
-  }
+  args_table = commandConfig.args;
   const argsContainer = document.getElementById("args-container");
   argsContainer.innerHTML = "";
 
@@ -1050,6 +1052,7 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
       input.placeholder = "1: up, 0: down";
     }
     if (arg === "direction") {
+      input.value = "1";
       input.placeholder = "enter direction value";
     }
     label.appendChild(input);
@@ -1097,7 +1100,7 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
   const targetStrategy = loaded_strategies[targetPami];
   
   if (contextActionIndex == null){
-    const index = actionSelect.value - 1;
+    const index = Number(actionSelect.value);
 
     action = [index];
     const inputs = document.querySelectorAll("#args-container input");

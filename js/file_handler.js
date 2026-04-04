@@ -174,6 +174,32 @@ export async function deleteStrategy(filename) {
   }
 }
 
+/**
+ * Delete all PAMI strategy files for one strategy name
+ * @param {string} strategyName
+ */
+export async function deletePamiStrategyGroup(strategyName) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${encodeURIComponent(strategyName)}`, {
+      method: "DELETE",
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) throw new Error("Failed to delete PAMI strategy group");
+    return await res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Delete timeout - server may be busy');
+    }
+    throw error;
+  }
+}
+
 async function calculate_global_poses(strategy) {
   if (!strategy || !strategy.tasks) return;
 

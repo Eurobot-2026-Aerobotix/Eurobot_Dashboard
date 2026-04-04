@@ -231,6 +231,28 @@ button:hover::before {
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
 }
 
+.start-options {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.pami-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #e6e9f5;
+    font-weight: 600;
+    font-size: 0.95rem;
+    user-select: none;
+}
+
+.pami-toggle-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #667eea;
+}
+
 #stopBtn {
     background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);
     color: white;

@@ -92,6 +92,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ensure directory exists
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
+os.makedirs(PAMI_STRATEGIES_DIR, exist_ok=True)
 
 
 # -------------------------------------------------
@@ -175,6 +176,68 @@ def safe_filename(filename):
     return os.path.basename(filename)
 
 
+def infer_pami_color(strategy_name):
+    low = str(strategy_name or "").lower()
+    if "yellow" in low or "jaune" in low or "asfer" in low:
+        return "yellow"
+    if "blue" in low or "azreg" in low:
+        return "blue"
+    return "blue"
+
+
+def ensure_pami_color(data):
+    if not isinstance(data, dict):
+        return data
+    if not data.get("color"):
+        data["color"] = infer_pami_color(data.get("strategy_name"))
+    return data
+
+
+def ensure_pami_order(data):
+    if not isinstance(data, dict):
+        return data
+    try:
+        data["order"] = int(data.get("order", 0))
+    except Exception:
+        data["order"] = 0
+    return data
+
+
+def migrate_pami_colors_on_disk():
+    """Ensure every PAMI YAML has an explicit `color` field."""
+    updated = 0
+    with strategy_lock:
+        for filename in os.listdir(PAMI_STRATEGIES_DIR):
+            if not filename.endswith(".yaml"):
+                continue
+
+            path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                if not isinstance(data, dict):
+                    continue
+
+                had_color = bool(data.get("color"))
+                had_order = isinstance(data.get("order"), int)
+
+                if had_color and had_order:
+                    continue
+
+                data = ensure_pami_color(data)
+                data = ensure_pami_order(data)
+
+                with open(path, "w", encoding="utf-8") as f:
+                    yaml.safe_dump(data, f, sort_keys=False)
+                updated += 1
+            except Exception as e:
+                print(f"Warning: Could not migrate color for {filename}: {e}")
+
+    if updated:
+        print(f"Migrated color field for {updated} PAMI strategy files", flush=True)
+
+
 # -------------------------------------------------
 # List all strategy files
 # GET /strategies
@@ -234,6 +297,8 @@ def read_pami_strategy(filename):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
+            data = ensure_pami_color(data)
+            data = ensure_pami_order(data)
         except yaml.YAMLError as e:
             return jsonify({"status": "error", "error": f"Invalid YAML: {str(e)}"}), 400
         except Exception as e:
@@ -284,7 +349,9 @@ def get_pami_strategies():
         pami_map[i] if pami_map[i] is not None else {
             "strategy_name": strategy_name,
             "pami_number": i,
-            "sequence": []
+            "sequence": [],
+            "color": infer_pami_color(strategy_name),
+            "order": 0
         }
         for i in range(1, 8)
     ]
@@ -329,11 +396,52 @@ def save_pami_strategy(strategy_name, pami_number):
         abort(400, "Expected JSON body")
 
     data = request.get_json()
+    if not isinstance(data, dict):
+        abort(400, "Invalid JSON body")
+
+    data["strategy_name"] = strategy_name
+    try:
+        data["pami_number"] = int(pami_number)
+    except Exception:
+        pass
+    data = ensure_pami_color(data)
+    data = ensure_pami_order(data)
 
     with strategy_lock:  # Protect file write operation
         with open(path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False)
     return jsonify({"status": "saved", "file": filename})
+
+
+# -------------------------------------------------
+# Delete all PAMI strategy files for a strategy name
+# DELETE /pami_strategies/<strategy_name>
+# -------------------------------------------------
+@app.route("/pami_strategies/<strategy_name>", methods=["DELETE"])
+def delete_pami_strategy_group(strategy_name):
+    strategy_name = safe_filename(strategy_name)
+    deleted_files = []
+
+    with strategy_lock:
+        for pami_filename in os.listdir(PAMI_STRATEGIES_DIR):
+            if not pami_filename.endswith(".yaml"):
+                continue
+
+            pami_path = os.path.join(PAMI_STRATEGIES_DIR, pami_filename)
+            try:
+                with open(pami_path, "r", encoding="utf-8") as f:
+                    pami_data = yaml.safe_load(f)
+
+                if pami_data and pami_data.get("strategy_name") == strategy_name:
+                    os.remove(pami_path)
+                    deleted_files.append(pami_filename)
+            except Exception as e:
+                print(f"Warning: Could not process {pami_filename}: {e}")
+
+    if not deleted_files:
+        return jsonify({"status": "not_found", "strategy_name": strategy_name, "deleted": []}), 404
+
+    return jsonify({"status": "deleted", "strategy_name": strategy_name, "deleted": deleted_files})
 
 
 # -------------------------------------------------
@@ -641,6 +749,15 @@ def start_strategy():
     global start_process
     with process_lock:  # Protect process start operation
         try:
+            publish_pami = False
+            if request.is_json:
+                payload = request.get_json(silent=True) or {}
+                raw = payload.get("publish_pami", False)
+                if isinstance(raw, bool):
+                    publish_pami = raw
+                else:
+                    publish_pami = str(raw).strip().lower() in ("1", "true", "yes", "y", "on")
+
             # Kill old process if still running to prevent zombies
             if start_process and start_process.poll() is None:
                 try:
@@ -668,7 +785,7 @@ def start_strategy():
             
             # Execute the start script with the strategy path as argument
             start_process = subprocess.Popen(
-                ["bash", script_path, strategy_abs_path],
+                ["bash", script_path, strategy_abs_path, "true" if publish_pami else "false"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.PIPE,  # Enable stdin to send 'q'
@@ -682,7 +799,7 @@ def start_strategy():
             
             return jsonify({
                 "status": "success", 
-                "message": f"Strategy execution started (Strategy: {strategy_abs_path})"
+                "message": f"Strategy execution started (Strategy: {strategy_abs_path}, PAMI: {'enabled' if publish_pami else 'disabled'})"
             })
         except Exception as e:
             return jsonify({"status": "error", "error": str(e)}), 500
@@ -907,34 +1024,61 @@ def test_pami():
             if not os.path.exists(script_path):
                 return jsonify({"status": "error", "error": "pami.sh not found"}), 404
             
-            # Check if a specific test strategy path was provided
+            # Check if a specific test strategy path/name and selected PAMIs were provided
             selected_strategy_path = None
+            selected_strategy_name = None
+            selected_pami_numbers = None
             if request.is_json:
                 data = request.get_json()
                 selected_strategy_path = data.get('strategy_path')
+                selected_strategy_name = data.get('strategy_name')
+                selected_pami_numbers = data.get('pami_numbers')
+
+            # Prefer explicit strategy_name when provided
+            selected_strategy_input = (selected_strategy_name or '').strip() if selected_strategy_name else None
+            if not selected_strategy_input:
+                selected_strategy_input = selected_strategy_path
             
             # Fall back to the default selected strategy if not provided
-            if not selected_strategy_path:
-                selected_strategy_path = get_selected_strategy_path()
+            if not selected_strategy_input:
+                selected_strategy_input = get_selected_strategy_path()
             
-            if not selected_strategy_path:
+            if not selected_strategy_input:
                 return jsonify({"status": "error", "error": "No strategy selected. Please select a strategy first."}), 400
-            
-            # Convert to absolute path
-            strategy_abs_path = os.path.abspath(selected_strategy_path)
+
+            # Keep strategy names untouched, but normalize file paths to absolute
+            is_path_like = os.path.sep in selected_strategy_input or selected_strategy_input.endswith('.yaml')
+            if is_path_like:
+                strategy_input = os.path.abspath(selected_strategy_input)
+            else:
+                strategy_input = selected_strategy_input
+
+            # Normalize PAMI numbers format: "2,3,5"
+            pami_numbers_arg = None
+            if selected_pami_numbers is not None:
+                if isinstance(selected_pami_numbers, list):
+                    pami_numbers_arg = ','.join(str(x).strip() for x in selected_pami_numbers if str(x).strip())
+                else:
+                    pami_numbers_arg = str(selected_pami_numbers).strip()
             
             # Extract strategy name for display
-            strategy_name = os.path.splitext(os.path.basename(strategy_abs_path))[0]
+            strategy_name = os.path.splitext(os.path.basename(strategy_input))[0]
             
-            print(f"🚀 Starting PAMI test manager with strategy file: {strategy_abs_path}")
+            print(f"🚀 Starting PAMI test manager with strategy input: {strategy_input}")
+            if pami_numbers_arg:
+                print(f"🎯 Selected PAMIs: {pami_numbers_arg}")
             
             # Run pami.sh with the strategy path as argument
             env = os.environ.copy()
             env['PYTHONUNBUFFERED'] = '1'
             env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
+
+            cmd = ["bash", script_path, strategy_input]
+            if pami_numbers_arg:
+                cmd.append(pami_numbers_arg)
             
             pami_process = subprocess.Popen(
-                ["bash", script_path, strategy_abs_path],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -1164,6 +1308,13 @@ class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             return
         return SimpleHTTPRequestHandler.do_GET(self)
+
+    def end_headers(self):
+        # Disable browser caching for dashboard static assets to avoid stale UI/JS/CSS after refresh.
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        super().end_headers()
     
     def log_message(self, format, *args):
         # Suppress normal request logs to reduce clutter
@@ -1243,6 +1394,8 @@ if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    migrate_pami_colors_on_disk()
     
     with strategy_lock:  # Protect initial strategy path read
         SELECTED_STRATEGY_PATH = get_selected_strategy_path()

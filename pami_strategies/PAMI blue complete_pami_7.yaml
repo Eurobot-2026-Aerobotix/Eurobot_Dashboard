@@ -1,7 +1,0 @@
-strategy_name: PAMI blue complete
-pami_number: 7
-sequence:
-- - 3
-  - '73.79'
-  - '2305.56'
-  - 0

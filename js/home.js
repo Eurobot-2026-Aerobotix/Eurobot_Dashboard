@@ -16,8 +16,8 @@ const currentIPSpan = document.getElementById('currentIP');
 const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
-const testPamiBtn = document.getElementById('testPamiBtn');
 const restartMicroRosBtn = document.getElementById('restartMicroRosBtn');
+const startWithPamiCheckbox = document.getElementById('startWithPamiCheckbox');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 const outputSelector = document.getElementById('outputSelector');
@@ -531,7 +531,8 @@ async function prepareRobot() {
 
 async function startStrategy() {
     startBtn.disabled = true;
-    showStatus('Starting strategy...', 'info');
+    const publishPami = Boolean(startWithPamiCheckbox && startWithPamiCheckbox.checked);
+    showStatus(`Starting strategy${publishPami ? ' with PAMI' : ''}...`, 'info');
     
     try {
         // Add timeout to prevent hanging forever
@@ -540,6 +541,10 @@ async function startStrategy() {
         
         const response = await fetch(`${API_URL}/start`, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ publish_pami: publishPami }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -615,75 +620,6 @@ async function stopStrategy() {
     }
 }
 
-async function testPami() {
-    testPamiBtn.disabled = true;
-    
-    // Check if a test strategy was saved
-    const testStrategyPath = localStorage.getItem('pami_test_strategy_path');
-    const testStrategyName = localStorage.getItem('pami_test_strategy_name');
-    
-    if (testStrategyPath) {
-        showStatus(`Running PAMI test with: ${testStrategyName}`, 'info');
-    } else {
-        showStatus('Running PAMI test...', 'info');
-    }
-    
-    try {
-        // Add timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const requestBody = testStrategyPath ? { strategy_path: testStrategyPath } : {};
-        
-        const response = await fetch(`${API_URL}/test_pami`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            showStatus(`Server error: ${text}`, 'error');
-            testPamiBtn.disabled = false;
-            return;
-        }
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showStatus(data.message || 'PAMI test started!', 'success');
-            
-            // Clear PAMI output and start streaming
-            pamiOutput = [];
-            try {
-                localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput));
-            } catch (e) {
-                console.error('localStorage error:', e);
-            }
-            outputDiv.innerHTML = '';
-            outputSelector.value = 'pami';
-            currentSource = 'pami';
-            localStorage.setItem('currentSource', currentSource);
-            startStreaming('pami');
-        } else {
-            showStatus(data.error || 'Failed to run PAMI test', 'error');
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            showStatus('Request timeout - too many open connections. Try refreshing the page.', 'error');
-        } else {
-            showStatus(`Error: ${error.message}`, 'error');
-        }
-    } finally {
-        testPamiBtn.disabled = false;
-    }
-}
-
 async function restartMicroRos() {
     restartMicroRosBtn.disabled = true;
     
@@ -732,7 +668,6 @@ async function restartMicroRos() {
 prepareBtn.addEventListener('click', prepareRobot);
 startBtn.addEventListener('click', startStrategy);
 stopBtn.addEventListener('click', stopStrategy);
-testPamiBtn.addEventListener('click', testPami);
 restartMicroRosBtn.addEventListener('click', restartMicroRos);
 
 // ========== Settings Modal Functions ==========

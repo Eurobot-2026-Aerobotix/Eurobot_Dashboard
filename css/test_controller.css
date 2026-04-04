@@ -159,6 +159,39 @@
     line-height: 1.4;
 }
 
+.test-pami-info {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #dbe0f7;
+    font-weight: 600;
+}
+
+.test-pami-checkboxes {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
+}
+
+.test-pami-checkboxes label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #e6e9f5;
+    font-size: 0.92rem;
+    font-weight: 600;
+    user-select: none;
+}
+
+.test-pami-checkboxes input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #4caf50;
+}
+
 .button-row {
     display: flex;
     gap: 12px;
@@ -251,6 +284,27 @@
 
 .log-line {
     margin-bottom: 8px;
+}
+
+.test-card .output-controls {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    justify-content: space-between;
+}
+
+.test-card #output {
+    margin: 0;
+    min-height: 180px;
+    max-height: 360px;
+}
+
+.test-card #output:empty {
+    display: block;
+}
+
+.test-card #output:empty::before {
+    content: 'No TEST_PAMI output yet.';
+    color: #7f8aad;
 }
 
 @media (max-width: 900px) {

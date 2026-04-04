@@ -183,7 +183,10 @@ function updateAllRobotModels() {
 
 async function loadObstacles() {
     try {
-        const response = await fetch('../resources/obstacles.yaml');
+        const cacheBuster = Date.now();
+        const response = await fetch(`../resources/obstacles.yaml?v=${cacheBuster}`, {
+            cache: 'no-store'
+        });
         const yamlText = await response.text();
         
         // Simple YAML parser for this specific format
@@ -1732,6 +1735,26 @@ document.getElementById('batchDirection').addEventListener('change', (e) => {
     }
 });
 
+function sortMembersByDirection(direction, members) {
+    const safeMembers = Array.isArray(members) ? [...members] : [];
+
+    if (direction === 'vertical') {
+        // Required order for saving: min y -> max y
+        return safeMembers.sort((a, b) => {
+            const ay = Number(a?.map_pos?.y ?? a?.y ?? 0);
+            const by = Number(b?.map_pos?.y ?? b?.y ?? 0);
+            return ay - by;
+        });
+    }
+
+    // Horizontal (and default) required order: min x -> max x
+    return safeMembers.sort((a, b) => {
+        const ax = Number(a?.map_pos?.x ?? a?.x ?? 0);
+        const bx = Number(b?.map_pos?.x ?? b?.x ?? 0);
+        return ax - bx;
+    });
+}
+
 async function saveBatch() {
     // Check if we're editing or creating
     if (isEditingBatch) {
@@ -1790,6 +1813,10 @@ async function saveBatch() {
         });
     }
     
+    // Enforce member order before saving:
+    // horizontal => min x -> max x, vertical => min y -> max y
+    const orderedMembers = sortMembersByDirection(direction, members);
+
     // Create batch object
     const newBatch = {
         known_id: knownId,
@@ -1798,7 +1825,7 @@ async function saveBatch() {
         phi_deg: direction === 'vertical' ? 0.0 : 90.0,
         avg_adjacent_dist_m: 0.05,
         center: pendingBatch.center,
-        members: members
+        members: orderedMembers
     };
     
     // Save to server
@@ -1828,7 +1855,7 @@ async function saveBatch() {
         });
         
         // Add obstacles
-        members.forEach(member => {
+        orderedMembers.forEach(member => {
             obstacles.push({
                 aruco_id: member.aruco_id,
                 x: member.map_pos.x,
@@ -2041,19 +2068,12 @@ function editBatch(batchId) {
     document.getElementById('batchDirection').disabled = true; // Don't allow changing direction
     
     // Set color dropdowns based on current member colors
-    batchMembers.sort((a, b) => {
-        // Sort by position to ensure correct order
-        if (batch.direction === 'vertical') {
-            return b.y - a.y; // Top to bottom
-        } else {
-            return a.x - b.x; // Left to right
-        }
-    });
+    const sortedBatchMembers = sortMembersByDirection(batch.direction, batchMembers);
     
-    document.getElementById('color1').value = batchMembers[0].color;
-    document.getElementById('color2').value = batchMembers[1].color;
-    document.getElementById('color3').value = batchMembers[2].color;
-    document.getElementById('color4').value = batchMembers[3].color;
+    document.getElementById('color1').value = sortedBatchMembers[0].color;
+    document.getElementById('color2').value = sortedBatchMembers[1].color;
+    document.getElementById('color3').value = sortedBatchMembers[2].color;
+    document.getElementById('color4').value = sortedBatchMembers[3].color;
     
     // Update modal UI
     const modalTitle = document.querySelector('.modal-header h3');
@@ -2098,16 +2118,10 @@ async function updateBatchColors() {
     const batchMembers = obstacles.filter(obs => obs.batch_id === editingBatchId);
     
     // Sort members by position
-    batchMembers.sort((a, b) => {
-        if (batch.direction === 'vertical') {
-            return b.y - a.y; // Top to bottom
-        } else {
-            return a.x - b.x; // Left to right
-        }
-    });
+    const sortedBatchMembers = sortMembersByDirection(batch.direction, batchMembers);
     
     // Update member colors and ArUco IDs
-    const updatedMembers = batchMembers.map((member, index) => ({
+    const updatedMembers = sortedBatchMembers.map((member, index) => ({
         aruco_id: colors[index] === 'yellow' ? 47 : 36,
         map_pos: {
             x: member.x,

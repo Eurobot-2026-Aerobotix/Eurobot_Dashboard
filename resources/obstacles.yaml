@@ -23,20 +23,24 @@ batches:
       x: 725
       y: 175
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 36
     map_pos:
       x: 775
       y: 175
       z: 0
     color: blue
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 825
       y: 175
       z: 0
     color: yellow
+<<<<<<< HEAD
   - aruco_id: 47
+=======
+  - aruco_id: 36
+>>>>>>> ae3379affd9be685be311681a7851678d9e45f6d
     map_pos:
       x: 875
       y: 175
