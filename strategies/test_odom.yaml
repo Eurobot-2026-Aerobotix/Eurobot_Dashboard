@@ -1,0 +1,32 @@
+name: test_odom
+selected: true
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: 800
+    y: 2600
+    theta: 90
+  sequence:
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 345
+    - 0
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 425
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2600
+    - 1100
+    wait: false
+order: 54
