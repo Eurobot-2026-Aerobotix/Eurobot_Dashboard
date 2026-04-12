@@ -38,6 +38,7 @@ const map = document.getElementById('map');
 const findPathBtn = document.getElementById('findPathBtn');
 const timerControlBtn = document.getElementById('timerControlBtn');
 const roundTimerSecondsInput = document.getElementById('roundTimerSecondsInput');
+const robotColorSelect = document.getElementById('robotColorSelect');
 const frontEmptyCheckbox = document.getElementById('frontEmptyCheckbox');
 const backEmptyCheckbox = document.getElementById('backEmptyCheckbox');
 const stealBatchBtn = document.getElementById('stealBatchBtn');
@@ -70,6 +71,11 @@ loadSavedState();
 findPathBtn.addEventListener('click', findPath);
 if (timerControlBtn) {
     timerControlBtn.addEventListener('click', setRoundTimerSeconds);
+}
+if (robotColorSelect) {
+    robotColorSelect.addEventListener('change', () => {
+        localStorage.setItem('pathfinding_robot_color', getSelectedRobotColor());
+    });
 }
 stealBatchBtn.addEventListener('click', stealBatch);
 if (startTaskSchedulerBtn) {
@@ -1041,6 +1047,7 @@ function setRoundTimerSeconds() {
         }
         seconds = Math.floor(raw);
     }
+    const robotColor = getSelectedRobotColor();
 
     const requestId = `pathfinding-round-timer-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     const commandTopic = new ROSLIB.Topic({
@@ -1077,8 +1084,9 @@ function setRoundTimerSeconds() {
             resultTopic.unsubscribe();
 
             if (result.success) {
-                alert(`Round timer set to ${seconds}s successfully.`);
-                console.log(`✅ Round timer set to ${seconds}s`);
+                const appliedColor = result.robot_color || robotColor;
+                alert(`Round timer set to ${seconds}s successfully. Robot color: ${appliedColor}.`);
+                console.log(`✅ Round timer set to ${seconds}s (robot_color=${appliedColor})`);
             } else {
                 alert(`Set round timer command failed: ${result.message || 'Unknown error'}`);
                 console.warn('⚠️ Set round timer command failed:', result);
@@ -1097,12 +1105,18 @@ function setRoundTimerSeconds() {
             controller: 'hybrid_astar',
             action: 'set_round_timer',
             seconds: seconds,
+            robot_color: robotColor,
             request_id: requestId
         })
     });
 
     commandTopic.publish(message);
-    console.log(`⏱️ Set round timer requested: ${seconds}s`);
+    console.log(`⏱️ Set round timer requested: ${seconds}s (robot_color=${robotColor})`);
+}
+
+function getSelectedRobotColor() {
+    const color = robotColorSelect ? String(robotColorSelect.value || '').trim().toLowerCase() : 'blue';
+    return color === 'yellow' ? 'yellow' : 'blue';
 }
 
 function subscribeToPathResult() {
@@ -1358,6 +1372,7 @@ function startTaskScheduler() {
     }
 
     const requestId = `start-task-scheduler-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const robotColor = getSelectedRobotColor();
     const commandTopic = new ROSLIB.Topic({
         ros: ros,
         name: '/web/start_task_scheduler',
@@ -1397,12 +1412,14 @@ function startTaskScheduler() {
                 const tracked = result.tracked_task_target || 'none';
                 const frontEmpty = result.front_empty;
                 const backEmpty = result.back_empty;
+                const robotColorApplied = result.robot_color || robotColor;
 
                 alert(
                     `Task Scheduler started.\n` +
                     `Batches: ${batchCount}\n` +
                     `Queue size: ${queueSize}\n` +
                     `Tracked: ${tracked}\n` +
+                    `Robot color: ${robotColorApplied}\n` +
                     `Front empty: ${frontEmpty}\n` +
                     `Back empty: ${backEmpty}`
                 );
@@ -1427,6 +1444,7 @@ function startTaskScheduler() {
             run_loop_once: true,
             generate_task: false,
             manual_holder_override: true,
+            robot_color: robotColor,
             front_empty: frontEmptyCheckbox ? !!frontEmptyCheckbox.checked : true,
             back_empty: backEmptyCheckbox ? !!backEmptyCheckbox.checked : true
         })
@@ -2196,6 +2214,11 @@ function saveBatchVisibilityToStorage() {
 function loadSavedState() {
     // Wait for obstacles to load first
     setTimeout(() => {
+        const savedRobotColor = localStorage.getItem('pathfinding_robot_color');
+        if (robotColorSelect && (savedRobotColor === 'blue' || savedRobotColor === 'yellow')) {
+            robotColorSelect.value = savedRobotColor;
+        }
+
         // Load poses
         ['start', 'enemy', 'goal'].forEach(type => {
             const savedPose = localStorage.getItem(`pathfinding_${type}_pose`);
