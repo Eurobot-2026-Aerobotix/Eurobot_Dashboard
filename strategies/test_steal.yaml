@@ -8,16 +8,16 @@ tasks:
     y: null
     theta: null
   sequence:
-  - device: RASP_PI
-    command: Wait for manual start
-    params: []
-    wait: false
   - device: STM
     command: set_position
     params:
     - 300
     - 345
     - 0
+    wait: false
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
     wait: false
 - description: Task 2
   global_goal:
