@@ -265,7 +265,7 @@ async function loadPamiStrategyNames() {
       grouped.set(s.strategy_name, {
         name: s.strategy_name,
         color: s.color || inferPamiColorFromName(s.strategy_name),
-        order: Number.isFinite(Number(s.order)) ? Number(s.order) : 0
+        order: Number.isFinite(Number(s.order)) ? Number(s.order) : 1
       });
     } else {
       const existing = grouped.get(s.strategy_name);
