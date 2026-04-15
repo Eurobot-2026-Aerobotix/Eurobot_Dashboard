@@ -453,6 +453,10 @@ input[type="checkbox"]:hover {
   user-select: none;
 }
 
+#map-wrapper.zoom-mode {
+  cursor: crosshair;
+}
+
 #map {
   width: 100%;
   height: 100%;
@@ -469,6 +473,19 @@ input[type="checkbox"]:hover {
   height: 100%;
 }
 
+#zoom-selection-rect {
+  position: absolute;
+  border: 2px dashed #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 50;
+}
+
+#zoom-btn.zoom-active {
+  background: linear-gradient(135deg, #3ba55d 0%, #2f855a 100%);
+}
+
 .map-point {
   fill: red;
   cursor: pointer;
@@ -478,6 +495,13 @@ input[type="checkbox"]:hover {
   fill: red;
   stroke: rgb(25, 9, 9);
   stroke-width: 1.5;
+}
+
+.map-point.map-point-highlighted {
+  r: 9;
+  stroke: #ffffff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.95));
 }
 
 .backward {

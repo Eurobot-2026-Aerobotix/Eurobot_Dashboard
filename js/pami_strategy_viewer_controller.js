@@ -55,6 +55,11 @@ let contextPamiNumber = null;
 let robot_on_map = null;
 let undoStack = [];
 let redoStack = [];
+let zoomMode = false;
+let zoomApplied = false;
+let zoomRegion = null;
+let isSelectingZoomRect = false;
+let zoomStartPoint = null;
 
 function getCommandCatalog(strategy) {
   return strategy?.pami_number === 7 ? commandCodesPami7 : commandCodes;
@@ -400,6 +405,14 @@ function renderTasks(isMultiMode = true) {
 }
 
 function setupActionEventListeners(actionDiv, actionIndex, pamiNum, actionList) {
+        actionDiv.addEventListener("mouseenter", () => {
+          highlightMapPoints(actionIndex, pamiNum);
+        });
+
+        actionDiv.addEventListener("mouseleave", () => {
+          unhighlightMapPoints();
+        });
+
         actionDiv.addEventListener("dragstart", e => {
           actionDiv.classList.add("dragging");
           e.dataTransfer.effectAllowed = "move";
@@ -602,22 +615,241 @@ function addDefs(svg) {
 }
 
 function mapToScreen(x, y) {
-  const img = document.getElementById("map");
-  const rect = img.getBoundingClientRect();
+  const projection = getMapProjectionState();
+
+  const baseCx = projection.baseX + (y / 3000) * projection.baseWidth;
+  const baseCy = projection.baseY + (x / 2000) * projection.baseHeight;
 
   return {
-    cx: (y / 3000) * rect.width,   // y → right
-    cy: (x / 2000) * rect.height   // x → down
+    cx: baseCx * projection.scale + projection.translateX,
+    cy: baseCy * projection.scale + projection.translateY
   };
 }
+
 function screenToMap(cx, cy) {
-  const img = document.getElementById("map");
-  const rect = img.getBoundingClientRect();
+  const projection = getMapProjectionState();
+
+  const baseCx = (cx - projection.translateX) / projection.scale;
+  const baseCy = (cy - projection.translateY) / projection.scale;
+
+  const normY = (baseCx - projection.baseX) / projection.baseWidth;
+  const normX = (baseCy - projection.baseY) / projection.baseHeight;
 
   return {
-    x: (cy / rect.height) * 2000, // down = +x
-    y: (cx / rect.width) * 3000   // right = +y
+    x: Math.max(0, Math.min(2000, normX * 2000)),
+    y: Math.max(0, Math.min(3000, normY * 3000))
   };
+}
+
+function getBaseMapViewport() {
+  const img = document.getElementById("map");
+  const mapAspect = (img.naturalWidth && img.naturalHeight)
+    ? img.naturalWidth / img.naturalHeight
+    : 3000 / 2000;
+
+  const boxW = img.clientWidth;
+  const boxH = img.clientHeight;
+  const boxAspect = boxW / boxH;
+
+  let displayedWidth;
+  let displayedHeight;
+  let offsetX;
+  let offsetY;
+
+  if (boxAspect > mapAspect) {
+    displayedHeight = boxH;
+    displayedWidth = displayedHeight * mapAspect;
+    offsetX = (boxW - displayedWidth) / 2;
+    offsetY = 0;
+  } else {
+    displayedWidth = boxW;
+    displayedHeight = displayedWidth / mapAspect;
+    offsetX = 0;
+    offsetY = (boxH - displayedHeight) / 2;
+  }
+
+  return {
+    x: offsetX,
+    y: offsetY,
+    width: displayedWidth,
+    height: displayedHeight
+  };
+}
+
+function getMapProjectionState() {
+  const mapWrapper = document.getElementById("map-wrapper");
+  const baseViewport = getBaseMapViewport();
+
+  if (!zoomApplied || !zoomRegion) {
+    return {
+      baseX: baseViewport.x,
+      baseY: baseViewport.y,
+      baseWidth: baseViewport.width,
+      baseHeight: baseViewport.height,
+      scale: 1,
+      translateX: 0,
+      translateY: 0
+    };
+  }
+
+  const selX = baseViewport.x + zoomRegion.x * baseViewport.width;
+  const selY = baseViewport.y + zoomRegion.y * baseViewport.height;
+  const selW = Math.max(1, zoomRegion.w * baseViewport.width);
+  const selH = Math.max(1, zoomRegion.h * baseViewport.height);
+
+  const scale = Math.min(
+    mapWrapper.clientWidth / selW,
+    mapWrapper.clientHeight / selH
+  );
+
+  const selectedDisplayedWidth = selW * scale;
+  const selectedDisplayedHeight = selH * scale;
+  const extraX = (mapWrapper.clientWidth - selectedDisplayedWidth) / 2;
+  const extraY = (mapWrapper.clientHeight - selectedDisplayedHeight) / 2;
+
+  return {
+    baseX: baseViewport.x,
+    baseY: baseViewport.y,
+    baseWidth: baseViewport.width,
+    baseHeight: baseViewport.height,
+    scale,
+    translateX: extraX - selX * scale,
+    translateY: extraY - selY * scale
+  };
+}
+
+function toBaseCoordinates(viewportX, viewportY) {
+  return { x: viewportX, y: viewportY };
+}
+
+function applyZoomTransform() {
+  const map = document.getElementById("map");
+  const overlay = document.getElementById("map-overlay");
+
+  if (!zoomApplied || !zoomRegion) {
+    map.style.transform = "";
+    overlay.style.transform = "";
+    map.style.transformOrigin = "";
+    overlay.style.transformOrigin = "";
+    return;
+  }
+
+  const projection = getMapProjectionState();
+  const transformValue = `translate(${projection.translateX}px, ${projection.translateY}px) scale(${projection.scale})`;
+
+  map.style.transformOrigin = "top left";
+  map.style.transform = transformValue;
+  overlay.style.transformOrigin = "top left";
+  overlay.style.transform = "";
+}
+
+function setZoomMode(isEnabled) {
+  zoomMode = isEnabled;
+  const mapWrapper = document.getElementById("map-wrapper");
+  const zoomBtn = document.getElementById("zoom-btn");
+
+  mapWrapper.classList.toggle("zoom-mode", isEnabled);
+  zoomBtn.classList.toggle("zoom-active", isEnabled);
+}
+
+function removeZoomSelectionRect() {
+  const existingRect = document.getElementById("zoom-selection-rect");
+  if (existingRect) {
+    existingRect.remove();
+  }
+}
+
+function getRelativePointInWrapper(e) {
+  const mapWrapper = document.getElementById("map-wrapper");
+  const rect = mapWrapper.getBoundingClientRect();
+  const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+  const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+  return { x, y };
+}
+
+function startZoomSelection(e) {
+  if (!zoomMode || zoomApplied || e.button !== 0) return;
+
+  const mapWrapper = document.getElementById("map-wrapper");
+  isSelectingZoomRect = true;
+  zoomStartPoint = getRelativePointInWrapper(e);
+
+  removeZoomSelectionRect();
+  const selectionRect = document.createElement("div");
+  selectionRect.id = "zoom-selection-rect";
+  selectionRect.style.left = `${zoomStartPoint.x}px`;
+  selectionRect.style.top = `${zoomStartPoint.y}px`;
+  selectionRect.style.width = "0px";
+  selectionRect.style.height = "0px";
+  mapWrapper.appendChild(selectionRect);
+
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function updateZoomSelection(e) {
+  if (!zoomMode || !isSelectingZoomRect || !zoomStartPoint) return;
+
+  const current = getRelativePointInWrapper(e);
+  const left = Math.min(zoomStartPoint.x, current.x);
+  const top = Math.min(zoomStartPoint.y, current.y);
+  const width = Math.abs(current.x - zoomStartPoint.x);
+  const height = Math.abs(current.y - zoomStartPoint.y);
+
+  const selectionRect = document.getElementById("zoom-selection-rect");
+  if (!selectionRect) return;
+
+  selectionRect.style.left = `${left}px`;
+  selectionRect.style.top = `${top}px`;
+  selectionRect.style.width = `${width}px`;
+  selectionRect.style.height = `${height}px`;
+
+  e.preventDefault();
+}
+
+function finishZoomSelection(e) {
+  if (!zoomMode || !isSelectingZoomRect || !zoomStartPoint) return;
+
+  const endPoint = getRelativePointInWrapper(e);
+  const baseViewport = getBaseMapViewport();
+
+  const left = Math.min(zoomStartPoint.x, endPoint.x);
+  const top = Math.min(zoomStartPoint.y, endPoint.y);
+  const width = Math.abs(endPoint.x - zoomStartPoint.x);
+  const height = Math.abs(endPoint.y - zoomStartPoint.y);
+
+  const selectionRight = left + width;
+  const selectionBottom = top + height;
+  const mapRight = baseViewport.x + baseViewport.width;
+  const mapBottom = baseViewport.y + baseViewport.height;
+
+  const clampedLeft = Math.max(left, baseViewport.x);
+  const clampedTop = Math.max(top, baseViewport.y);
+  const clampedRight = Math.min(selectionRight, mapRight);
+  const clampedBottom = Math.min(selectionBottom, mapBottom);
+  const clampedWidth = Math.max(0, clampedRight - clampedLeft);
+  const clampedHeight = Math.max(0, clampedBottom - clampedTop);
+
+  isSelectingZoomRect = false;
+  zoomStartPoint = null;
+  removeZoomSelectionRect();
+
+  if (clampedWidth < 20 || clampedHeight < 20) {
+    setZoomMode(false);
+    return;
+  }
+
+  zoomRegion = {
+    x: (clampedLeft - baseViewport.x) / baseViewport.width,
+    y: (clampedTop - baseViewport.y) / baseViewport.height,
+    w: clampedWidth / baseViewport.width,
+    h: clampedHeight / baseViewport.height
+  };
+
+  zoomApplied = true;
+  setZoomMode(false);
+  applyZoomTransform();
+  renderMap();
 }
 
 function renderMap() {
@@ -751,6 +983,8 @@ function drawPoint(svg, x, y, cls = "", actionIndex, paramIndexX, paramIndexY, s
     c.classList.add("secondary");
   }
   if (cls) c.classList.add(cls);
+  c.dataset.actionIndex = actionIndex;
+  c.dataset.pamiNumber = pamiNum;
 
   enableDrag(c, actionIndex , paramIndexX, paramIndexY, pamiNum);
   svg.appendChild(c);
@@ -827,18 +1061,41 @@ function unHightlightActions() {
     item.classList.remove("highlighted");
   });
 }
+
+function highlightMapPoints(actionIndex, pamiNum) {
+  unhighlightMapPoints();
+
+  const mapPoints = document.querySelectorAll(".map-point");
+  mapPoints.forEach((point) => {
+    if (
+      Number(point.dataset.actionIndex) === Number(actionIndex) &&
+      Number(point.dataset.pamiNumber) === Number(pamiNum)
+    ) {
+      point.classList.add("map-point-highlighted");
+    }
+  });
+}
+
+function unhighlightMapPoints() {
+  const mapPoints = document.querySelectorAll(".map-point");
+  mapPoints.forEach((point) => {
+    point.classList.remove("map-point-highlighted");
+  });
+}
 function draw_robot_on_map(svg, x, y, angle, pamiNum) {
   clear_robot_off_map(svg);
 
   const { cx, cy } = mapToScreen(x, y);
+  const projection = getMapProjectionState();
+  const robotScale = projection.scale;
 
   const color = pami_colors[pamiNum] || "rgba(243, 20, 255, 1)";
 
   const robot = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  robot.setAttribute(
-    "transform",
-    `translate(${cx}, ${cy}) rotate(${90 - angle})`
-  );
+  robot.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${90 - angle})`);
+
+  const scaledRobot = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  scaledRobot.setAttribute("transform", `scale(${robotScale})`);
 
   /* Robot body - different size for pami 7 */
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -867,8 +1124,9 @@ function draw_robot_on_map(svg, x, y, angle, pamiNum) {
   arrow.setAttribute("fill", color);
   arrow.setAttribute("fill-opacity", "1");
 
-  robot.appendChild(rect);
-  robot.appendChild(arrow);
+  scaledRobot.appendChild(rect);
+  scaledRobot.appendChild(arrow);
+  robot.appendChild(scaledRobot);
   svg.appendChild(robot);
   robot_on_map = robot;
 }
@@ -917,6 +1175,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
 // Cache DOM elements and mousemove handler to prevent memory leaks
 let cachedMapElement = null;
 let cachedOverlayElement = null;
+let cachedMapWrapperElement = null;
 let activeDragHandler = null;
 let activeMouseUpHandler = null;
 
@@ -926,6 +1185,7 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   // Cache DOM elements
   if (!cachedMapElement) cachedMapElement = document.getElementById("map");
   if (!cachedOverlayElement) cachedOverlayElement = document.getElementById("map-overlay");
+  if (!cachedMapWrapperElement) cachedMapWrapperElement = document.getElementById("map-wrapper");
 
   el.addEventListener("mouseover", e => {
     hightlightAction(actionIndex, pamiNum);
@@ -939,6 +1199,8 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   });
 
   el.addEventListener("mousedown", e => {
+    if (zoomMode) return;
+
     dragging = true;
     e.stopPropagation();
     let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
@@ -949,7 +1211,7 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
     if (activeMouseUpHandler) window.removeEventListener("mouseup", activeMouseUpHandler);
     
     // Create new handlers
-    const rect = cachedMapElement.getBoundingClientRect();
+    const rect = cachedMapWrapperElement.getBoundingClientRect();
     let lastUpdate = 0;
     const throttleMs = 16; // ~60fps
     
@@ -964,10 +1226,12 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
       const x = e.clientY - rect.top;
       const y = e.clientX - rect.left;
 
-      el.setAttribute("cx", y);
-      el.setAttribute("cy", x);
+      const basePoint = toBaseCoordinates(y, x);
 
-      updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, y, x, pamiNum);
+      el.setAttribute("cx", basePoint.x);
+      el.setAttribute("cy", basePoint.y);
+
+      updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, basePoint.x, basePoint.y, pamiNum);
       let [x1, y1, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
       draw_robot_on_map(cachedOverlayElement, x1, y1, phi, pamiNum);
     };
@@ -1079,6 +1343,22 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
 document.getElementById("back-btn").addEventListener("click", () => {
   sessionStorage.setItem("refreshOnce", "1");
   window.history.back();
+});
+
+document.getElementById("zoom-btn").addEventListener("click", () => {
+  if (zoomApplied) return;
+  setZoomMode(!zoomMode);
+});
+
+const mapWrapper = document.getElementById("map-wrapper");
+mapWrapper.addEventListener("mousedown", startZoomSelection, true);
+window.addEventListener("mousemove", updateZoomSelection, true);
+window.addEventListener("mouseup", finishZoomSelection, true);
+window.addEventListener("resize", () => {
+  if (zoomApplied) {
+    applyZoomTransform();
+    renderMap();
+  }
 });
 
 document.getElementById("modal-cancel").addEventListener("click", () => {

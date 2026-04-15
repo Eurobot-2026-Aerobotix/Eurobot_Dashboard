@@ -2,8 +2,8 @@ strategy_name: pami_complete_yellow
 pami_number: 7
 sequence:
 - - 3
-  - 80
-  - 685
+  - '75.36'
+  - '676.84'
   - 90
 - - 1
   - 80
