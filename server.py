@@ -197,9 +197,9 @@ def ensure_pami_order(data):
     if not isinstance(data, dict):
         return data
     try:
-        data["order"] = int(data.get("order", 0))
+        data["order"] = int(data.get("order", 1))
     except Exception:
-        data["order"] = 0
+        data["order"] = 1
     return data
 
 
@@ -351,7 +351,7 @@ def get_pami_strategies():
             "pami_number": i,
             "sequence": [],
             "color": infer_pami_color(strategy_name),
-            "order": 0
+            "order": 1
         }
         for i in range(1, 8)
     ]
