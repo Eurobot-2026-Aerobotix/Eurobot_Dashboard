@@ -1,5 +1,5 @@
 name: PAMI blue complete
-selected: false
+selected: true
 color: blue
 tasks:
 - description: Task 1
