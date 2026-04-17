@@ -304,11 +304,11 @@ function mirror_strategy(strategy) {
         if (action.params.length >= 2) action.params[1] = mirrorValue(action.params[1]);
       }
       if (action.command.includes("set_position")) {
-        action.params[2] = -mirrorValue(action.params[2]);
+        action.params[2] = -action.params[2];
       }
 
       if (action.command.includes("orientate")) {
-        action.params[0] = -mirrorValue(action.params[0]);
+        action.params[0] = -action.params[0];
       }
 
       if (action.command.includes("bezier")) {

@@ -36,6 +36,8 @@ let contextAction = null;
 let contextTask = null;
 let hovered_point_index = null;
 let robot_on_map = null;
+let hoveredAction = null;
+const actionPointMap = new WeakMap();
 
 let undoStack = [];
 let redoStack = [];
@@ -274,6 +276,9 @@ function renderTasks() {
     task.sequence.forEach((action, actionIndex) => {
       const actionDiv = document.createElement("div");
       actionDiv.classList.add("action-item");
+      if (hoveredAction === action) {
+        actionDiv.classList.add("highlighted");
+      }
       actionDiv.textContent =
         `${action.device} - ${action.command}(${action.params.join(", ")}) ` +
         `with${action.wait ? "" : "out"} waiting`;
@@ -297,6 +302,16 @@ function renderTasks() {
 
       actionDiv.addEventListener("dragend", () => {
         actionDiv.classList.remove("dragging");
+      });
+
+      actionDiv.addEventListener("mouseenter", () => {
+        actionDiv.classList.add("highlighted");
+        setHoveredAction(action);
+      });
+
+      actionDiv.addEventListener("mouseleave", () => {
+        actionDiv.classList.remove("highlighted");
+        clearHoveredAction(action);
       });
 
       /* ---------- DRAG OVER ---------- */
@@ -632,7 +647,51 @@ function drawPoint(svg, x, y, cls = "", action, paramIndexX, paramIndexY, second
   if (cls) c.classList.add(cls);
 
   enableDrag(c, action , paramIndexX, paramIndexY);
+  registerActionPoint(action, c);
   svg.appendChild(c);
+}
+
+function registerActionPoint(action, pointElement) {
+  if (!action) return;
+
+  let points = actionPointMap.get(action);
+  if (!points) {
+    points = new Set();
+    actionPointMap.set(action, points);
+  }
+
+  points.add(pointElement);
+
+  if (hoveredAction === action) {
+    pointElement.classList.add("map-point-hovered");
+  }
+}
+
+function setActionPointHover(action, isHovered) {
+  const points = actionPointMap.get(action);
+  if (!points) return;
+
+  points.forEach(point => {
+    point.classList.toggle("map-point-hovered", isHovered);
+  });
+}
+
+function setHoveredAction(action) {
+  if (hoveredAction === action) return;
+
+  clearHoveredAction();
+  hoveredAction = action;
+  setActionPointHover(action, true);
+}
+
+function clearHoveredAction(action = hoveredAction) {
+  if (!action) return;
+
+  setActionPointHover(action, false);
+
+  if (hoveredAction === action) {
+    hoveredAction = null;
+  }
 }
 
 function drawArrow(svg, from, to, backwards) {
