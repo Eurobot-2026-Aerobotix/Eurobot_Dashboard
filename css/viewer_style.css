@@ -490,6 +490,8 @@ input[type="checkbox"]:hover {
   fill: red;
   cursor: pointer;
   pointer-events: all;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .map-point.secondary {
   fill: red;
@@ -497,11 +499,26 @@ input[type="checkbox"]:hover {
   stroke-width: 1.5;
 }
 
-.map-point.map-point-highlighted {
-  r: 9;
+.map-point.map-point-highlighted,
+.map-point.map-point-hovered {
   stroke: #ffffff;
   stroke-width: 3;
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.95));
+}
+
+.map-point.map-point-hovered {
+  animation: map-point-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes map-point-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.75));
+  }
+  50% {
+    transform: scale(1.55);
+    filter: drop-shadow(0 0 14px rgba(255, 255, 255, 1));
+  }
 }
 
 .backward {
