@@ -1,0 +1,9 @@
+strategy_name: pami_yellow_complete
+pami_number: 7
+sequence:
+- - 3
+  - '73.79'
+  - 694.44
+  - 0
+color: yellow
+order: 1

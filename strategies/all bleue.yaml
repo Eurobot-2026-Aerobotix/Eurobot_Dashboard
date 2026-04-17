@@ -1,4 +1,4 @@
-name: za9afouna_blue
+name: all bleue
 selected: false
 color: blue
 tasks:
@@ -17,33 +17,26 @@ tasks:
     params:
     - 300
     - 2655
-    - 0
+    - -3000
     wait: false
 - description: Task 2
   global_goal:
-    x: 1620
-    y: 1090
-    theta: 0
+    x: 800
+    y: 370
+    theta: -90
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1470
-    - 2350
+    - 800
+    - 2540
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1470
-    - 1090
-    - 1100
-    wait: false
-  - device: STM
-    command: go_to
-    params:
-    - 1620
-    - 1090
+    - 800
+    - 370
     - 1100
     - 1
     wait: false
@@ -55,15 +48,14 @@ tasks:
   global_goal:
     x: 1200
     y: 1850
-    theta: 0
+    theta: 180
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - 1500
+    - 800
     - 1850
     - 1100
-    - 0
     wait: true
   - device: STM
     command: go_to_backwards
@@ -80,13 +72,15 @@ tasks:
 - description: Task 4
   global_goal:
     x: 1200
-    y: 1850
+    y: 1750
     theta: -90
   sequence:
   - device: STM
-    command: orientate
+    command: go_to
     params:
-    - -90
+    - 1200
+    - 1750
+    - 1100
     wait: true
   - device: ESP_front
     command: put_down
@@ -95,30 +89,23 @@ tasks:
 - description: Task 5
   global_goal:
     x: 1200
-    y: 1900
+    y: 1930
     theta: -90
   sequence:
-  - device: STM
-    command: go_to
-    params:
-    - 1200
-    - 1770
-    - 1100
-    wait: true
   - device: STM
     command: go_to_backwards
     params:
     - 1200
-    - 1900
+    - 1930
     - 1100
-    wait: false
+    wait: true
   - device: ESP_back
     command: put_down
     params: []
     wait: true
 - description: Task 6
   global_goal:
-    x: 1620
+    x: 1600
     y: 1900
     theta: 0
   sequence:
@@ -126,20 +113,13 @@ tasks:
     command: go_to
     params:
     - 1200
-    - 1850
-    - 1000
+    - 1900
+    - 1100
     wait: true
   - device: STM
     command: go_to
     params:
-    - 1386.36
-    - 1900
-    - 1000
-    wait: false
-  - device: STM
-    command: go_to
-    params:
-    - 1620
+    - 1600
     - 1900
     - 1100
     - 1
@@ -150,104 +130,106 @@ tasks:
     wait: true
 - description: Task 7
   global_goal:
-    x: 1600
-    y: 2620
-    theta: -88.4088597288054
-  sequence:
-  - device: STM
-    command: go_to_backwards
-    params:
-    - 1600
-    - 2620
-    - 1100
-    - 1
-    wait: true
-  - device: ESP_back
-    command: pick_up
-    params: []
-    wait: true
-- description: Task 8
-  global_goal:
-    x: '1714.50'
-    y: '2475.06'
-    theta: -51.691897279582726
+    x: '1723.49'
+    y: '1715.18'
+    theta: -56.250594931603906
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1714.50'
-    - '2475.06'
+    - '1723.49'
+    - '1715.18'
     - 1100
     wait: true
   - device: ESP_front
     command: put_down
     params: []
     wait: true
-- description: Task 9
+- description: Task 8
   global_goal:
-    x: 800
-    y: 2620
-    theta: 90
+    x: 1600
+    y: 2600
+    theta: -90
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '1625.47'
-    - '2571.7200000000003'
-    - 1000
+    - 1600
+    - 1900
+    - 1100
     wait: true
   - device: STM
-    command: go_to
+    command: go_to_backwards
     params:
-    - 800
-    - 2460
-    - 1100
-    wait: false
-  - device: STM
-    command: go_to
-    params:
-    - 800
-    - 2620
+    - 1600
+    - 2600
     - 1100
     - 1
     wait: false
-  - device: ESP_front
+  - device: ESP_back
     command: pick_up
+    params: []
+    wait: true
+- description: Task 9
+  global_goal:
+    x: '1676.72'
+    y: '2364.86'
+    theta: 168.30610614393504
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1601.35'
+    - '2380.46'
+    - 1100
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '1676.72'
+    - '2364.86'
+    - 1100
+    wait: false
+  - device: ESP_back
+    command: put_down
     params: []
     wait: true
 - description: Task 10
   global_goal:
-    x: 1200
+    x: 800
     y: 2600
     theta: -90
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1200
-    - 2600
+    - 800
+    - 2520
     - 1100
     wait: true
   - device: STM
-    command: orientate
+    command: go_to_backwards
     params:
-    - -90
+    - 800
+    - 2600
+    - 1100
+    - 1
     wait: false
-  - device: ESP_front
-    command: put_down
+  - device: ESP_back
+    command: pick_up
     params: []
     wait: true
 - description: Task 11
   global_goal:
-    x: '1198.12'
-    y: '2404.77'
-    theta: 89.44827774343906
+    x: '988.05'
+    y: '2731.29'
+    theta: -145.07858820329943
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '1198.12'
-    - '2404.77'
+    - '988.05'
+    - '2731.29'
     - 1100
     wait: true
   - device: ESP_back
@@ -256,58 +238,52 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: 840
-    y: 2206.29
+    x: 800
+    y: 2200
     theta: -90
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1200
-    - 2590
-    - 1000
+    - 800
+    - 2600
+    - 1100
     wait: true
   - device: STM
-    command: bezier
+    command: go_to
     params:
-    - 757.13
-    - 2582.57
-    - 840
-    - 2437.65
-    - 840
-    - 2206.29
-    - 700
     - 800
+    - 2200
     - 1100
     wait: false
 - description: Task 13
   global_goal:
-    x: 840
-    y: 2206.29
+    x: 800
+    y: 2200
     theta: -90
   sequence:
   - device: RASP_PI
     command: wait_end_game
     params:
-    - 13
+    - 12
     wait: false
 - description: Task 14
   global_goal:
-    x: '278.15'
-    y: '2755.71'
-    theta: -0.31777021549123674
+    x: 250
+    y: 2750
+    theta: 0
   sequence:
   - device: STM
     command: bezier_backwards
     params:
-    - 840
-    - 2760
-    - '746.94'
-    - '2753.11'
-    - '278.15'
-    - '2755.71'
+    - 800
+    - 2832.64
+    - 707.38
+    - 2750
+    - 250
+    - 2750
     - 1000
     - 1000
     - 1100
     wait: false
-order: 31
+order: 54
