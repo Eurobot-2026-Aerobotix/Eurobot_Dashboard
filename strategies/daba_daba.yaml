@@ -242,4 +242,4 @@ tasks:
     command: pick_up
     params: []
     wait: true
-order: 32
+order: 33

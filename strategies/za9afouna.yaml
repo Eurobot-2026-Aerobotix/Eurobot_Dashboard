@@ -1,5 +1,5 @@
 name: za9afouna
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -28,14 +28,14 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1470
+    - 1520
     - 650
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1470
+    - 1520
     - 1910
     - 1100
     wait: false
