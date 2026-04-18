@@ -40,6 +40,7 @@ let rosReconnectTimeout = null;
 const STATUS_TIMEOUT_MS = 2000;
 const STATUS_CHECK_INTERVAL_MS = 500;
 const ROS_RECONNECT_DELAY_MS = 3000;
+const START_WITH_PAMI_STORAGE_KEY = 'startWithPamiEnabled';
 
 const espStatusState = {
     front: {
@@ -100,6 +101,17 @@ const savedSource = localStorage.getItem('currentSource');
 if (savedSource) {
     currentSource = savedSource;
     outputSelector.value = savedSource;
+}
+
+const savedStartWithPami = localStorage.getItem(START_WITH_PAMI_STORAGE_KEY);
+if (startWithPamiCheckbox && savedStartWithPami !== null) {
+    startWithPamiCheckbox.checked = savedStartWithPami === 'true';
+}
+
+if (startWithPamiCheckbox) {
+    startWithPamiCheckbox.addEventListener('change', function() {
+        localStorage.setItem(START_WITH_PAMI_STORAGE_KEY, String(startWithPamiCheckbox.checked));
+    });
 }
 
 // Display existing output on page load
