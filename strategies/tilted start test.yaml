@@ -1,5 +1,5 @@
 name: tilted start test
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -28,14 +28,14 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1470
-    - 646
+    - 1505
+    - 654.914
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1470
+    - 1505
     - 1910
     - 1100
     wait: false
@@ -286,6 +286,18 @@ tasks:
     - 700
     - 800
     - 1100
+    wait: false
+- description: Task 16
+  global_goal:
+    x: 840
+    y: 793.71
+    theta: 90
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 3000
+    - 0
     wait: false
 - description: Task 13
   global_goal:

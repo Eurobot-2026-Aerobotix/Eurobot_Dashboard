@@ -8,16 +8,16 @@ tasks:
     y: null
     theta: null
   sequence:
-  - device: STM
-    command: set_position
-    params:
-    - 300
-    - 345
-    - 0
-    wait: false
   - device: RASP_PI
     command: Wait for manual start
     params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 262
+    - 345
+    - 14
     wait: false
 - description: Task 2
   global_goal:
@@ -28,14 +28,14 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1500
-    - 914.1399999999999
+    - 1505
+    - 654.914
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1500
+    - 1505
     - 1105
     - 1100
     wait: false
@@ -213,6 +213,18 @@ tasks:
     command: put_down
     params: []
     wait: true
+- description: Task 13
+  global_goal:
+    x: '1111.04'
+    y: '303.02'
+    theta: 120.53517858818455
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 300
+    - 300
+    wait: false
 - description: Task 10
   global_goal:
     x: 804
