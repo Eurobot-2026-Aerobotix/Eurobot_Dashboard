@@ -90,7 +90,9 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params:
+      use_computed_insert_distance: true
+      insert_distance_mm: 80
     wait: true
 - description: Task 5
   global_goal:
@@ -114,7 +116,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 6
   global_goal:
@@ -181,7 +183,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 9
   global_goal:
@@ -235,7 +237,7 @@ tasks:
     wait: false
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 11
   global_goal:
@@ -259,7 +261,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 12
   global_goal:
