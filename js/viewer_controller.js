@@ -16,6 +16,264 @@ const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "backup x", "backup y",
 const set_position_args = ["x", "y", "angle"];
 const wait_enf_game_args = ["duration"];
 const steal_args = ["sx count","fx count"];
+
+function getArgsTableForCommand(command) {
+  if (command.includes("go_to")) return go_to_args;
+  if (command.includes("bezier")) return bezier_args;
+  if (command.includes("orientate")) return orientate_args;
+  if (command.includes("set_position")) return set_position_args;
+  if (command.includes("wait_end_game")) return wait_enf_game_args;
+  if (command.includes("steal")) return steal_args;
+  return [];
+}
+
+function formatActionParams(params) {
+  if (Array.isArray(params)) {
+    return params.join(", ");
+  }
+  if (params && typeof params === "object") {
+    return Object.entries(params)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(", ");
+  }
+  return "";
+}
+
+function getOrderedActions(strategy) {
+  if (!strategy || !Array.isArray(strategy.tasks)) return [];
+
+  const ordered = [];
+  strategy.tasks.forEach((task, taskIndex) => {
+    if (!task || !Array.isArray(task.sequence)) return;
+    task.sequence.forEach((action, actionIndex) => {
+      ordered.push({ task, action, taskIndex, actionIndex });
+    });
+  });
+  return ordered;
+}
+
+function getOrderedActionIndex(strategy, task, action) {
+  const ordered = getOrderedActions(strategy);
+  return ordered.findIndex(item => item.task === task && item.action === action);
+}
+
+function getPoseBeforeOrderedAction(strategy, orderedIndex) {
+  const ordered = getOrderedActions(strategy);
+  if (orderedIndex < 0 || orderedIndex > ordered.length) return null;
+
+  let pose = null;
+  for (let i = 0; i < orderedIndex; i++) {
+    const step = ordered[i].action;
+    if (!step || !step.command) continue;
+    const params = Array.isArray(step.params) ? step.params : [];
+
+    if (step.command.includes("set_position") && params.length >= 3) {
+      pose = { x: parseFloat(params[0]), y: parseFloat(params[1]), theta: parseFloat(params[2]) };
+    } else if (step.command.includes("go_to") && params.length >= 2) {
+      pose = { x: parseFloat(params[0]), y: parseFloat(params[1]), theta: pose ? pose.theta : 0 };
+    } else if (step.command.includes("bezier") && params.length >= 6) {
+      pose = { x: parseFloat(params[4]), y: parseFloat(params[5]), theta: pose ? pose.theta : 0 };
+    }
+  }
+
+  return pose;
+}
+
+function getNextGoToTargetAfterOrderedAction(strategy, orderedIndex) {
+  const ordered = getOrderedActions(strategy);
+  if (orderedIndex < 0 || orderedIndex >= ordered.length) return null;
+
+  for (let i = orderedIndex + 1; i < ordered.length; i++) {
+    const step = ordered[i].action;
+    if (!step || !step.command) continue;
+    if (step.command.includes("go_to") && Array.isArray(step.params) && step.params.length >= 2) {
+      return { x: parseFloat(step.params[0]), y: parseFloat(step.params[1]) };
+    }
+  }
+
+  return null;
+}
+
+function computePutDownInsertDistanceMm(strategy, task, action) {
+  const actionIndex = getOrderedActionIndex(strategy, task, action);
+  if (actionIndex < 0) return null;
+
+  const pose = getPoseBeforeOrderedAction(strategy, actionIndex);
+  const target = getNextGoToTargetAfterOrderedAction(strategy, actionIndex);
+  if (!pose || !target) return null;
+
+  const dx = target.x - pose.x;
+  const dy = target.y - pose.y;
+  const distance = Math.hypot(dx, dy);
+  return Number.isFinite(distance) ? distance : null;
+}
+
+function recomputeAllPutDownInsertDistances(strategy) {
+  if (!strategy || !Array.isArray(strategy.tasks)) return;
+
+  strategy.tasks.forEach(task => {
+    if (!task || !Array.isArray(task.sequence)) return;
+    task.sequence.forEach(action => {
+      if (!action || !action.command || !action.command.includes("put_down")) return;
+
+      const existingParams = (action.params && typeof action.params === "object" && !Array.isArray(action.params))
+        ? action.params
+        : {};
+      const hasLegacyDistance = Number.isFinite(parseFloat(existingParams.insert_distance_mm));
+      const enabled = existingParams.use_computed_insert_distance === true || hasLegacyDistance;
+
+      if (!enabled) {
+        action.params = {};
+        return;
+      }
+
+      const computed = computePutDownInsertDistanceMm(strategy, task, action);
+      if (Number.isFinite(computed) && computed > 0.0) {
+        const paramsObj = existingParams;
+        paramsObj.use_computed_insert_distance = true;
+        paramsObj.insert_distance_mm = parseFloat(computed.toFixed(1));
+        action.params = paramsObj;
+      } else {
+        action.params = { use_computed_insert_distance: true };
+      }
+    });
+  });
+}
+
+function refreshPutDownInsertDistanceDisplay() {
+  if (modal.classList.contains("hidden")) return;
+  if (!contextAction || !contextAction.command || !contextAction.command.includes("put_down")) return;
+
+  const distanceValue = document.getElementById("modal-putdown-insert-distance");
+  const retreatCheck = document.getElementById("modal-putdown-insert-enabled");
+  if (!distanceValue || !retreatCheck) return;
+
+  const paramsObj = (contextAction.params && typeof contextAction.params === "object" && !Array.isArray(contextAction.params))
+    ? contextAction.params
+    : {};
+  const enabled = paramsObj.use_computed_insert_distance === true || Number.isFinite(parseFloat(paramsObj.insert_distance_mm));
+
+  const computedDistance = computePutDownInsertDistanceMm(selected_strategy, contextTask, contextAction);
+  const distance = (enabled && Number.isFinite(computedDistance) && computedDistance > 0.0) ? computedDistance : 0.0;
+
+  retreatCheck.checked = enabled;
+  distanceValue.textContent = distance.toFixed(1);
+}
+
+function renderPutDownRetreatControls(existingParams = null) {
+  const argsContainer = document.getElementById("args-container");
+  argsContainer.innerHTML = "";
+
+  const computedDistance = computePutDownInsertDistanceMm(selected_strategy, contextTask, contextAction);
+
+  const checkLabel = document.createElement("label");
+  checkLabel.classList.add("checkbox");
+  const retreatCheck = document.createElement("input");
+  retreatCheck.type = "checkbox";
+  retreatCheck.id = "modal-putdown-insert-enabled";
+  checkLabel.appendChild(retreatCheck);
+  checkLabel.appendChild(document.createTextNode(" Use computed insert distance from next go_to target"));
+  argsContainer.appendChild(checkLabel);
+
+  const distanceLabel = document.createElement("label");
+  distanceLabel.textContent = "insert distance (mm): ";
+  const distanceValue = document.createElement("span");
+  distanceValue.id = "modal-putdown-insert-distance";
+  distanceValue.classList.add("modal-putdown-distance-value");
+  distanceLabel.appendChild(distanceValue);
+  argsContainer.appendChild(distanceLabel);
+
+  const paramsObj = (existingParams && typeof existingParams === "object" && !Array.isArray(existingParams))
+    ? existingParams
+    : {};
+  const enabled = paramsObj.use_computed_insert_distance === true || Number.isFinite(parseFloat(paramsObj.insert_distance_mm));
+  const distance = (enabled && Number.isFinite(computedDistance) && computedDistance > 0.0) ? computedDistance : 0.0;
+
+  retreatCheck.checked = enabled;
+  distanceValue.textContent = distance.toFixed(1);
+
+  retreatCheck.addEventListener("change", () => {
+    if (!retreatCheck.checked) {
+      distanceValue.textContent = "0.0";
+      return;
+    }
+    const updatedDistance = computePutDownInsertDistanceMm(selected_strategy, contextTask, contextAction);
+    distanceValue.textContent = (Number.isFinite(updatedDistance) && updatedDistance > 0.0)
+      ? updatedDistance.toFixed(1)
+      : "0.0";
+  });
+}
+
+function buildArgsUI(command, existingParams = null) {
+  if (command.includes("put_down")) {
+    renderPutDownRetreatControls(existingParams);
+    return;
+  }
+
+  const args_table = getArgsTableForCommand(command);
+  const argsContainer = document.getElementById("args-container");
+  argsContainer.innerHTML = "";
+
+  args_table.forEach(arg => {
+    const label = document.createElement("label");
+    label.textContent = arg;
+
+    const input = document.createElement("input");
+    input.type = "decimal";
+    input.dataset.argName = arg;
+    if (!existingParams && arg === "speed") {
+      input.value = "1100";
+    }
+
+    label.appendChild(input);
+    argsContainer.appendChild(label);
+  });
+
+  const inputs = document.querySelectorAll("#args-container input");
+  inputs.forEach(input => input.addEventListener("keydown",(e) => {
+    if (e.key === "Enter") {
+      const nextInput = input.parentElement.nextElementSibling;
+      if (nextInput && nextInput.querySelector("input")) {
+        nextInput.querySelector("input").focus();
+      } else {
+        document.getElementById("modal-confirm").click();
+      }
+    }
+  }));
+
+  if (Array.isArray(existingParams)) {
+    inputs.forEach((input, i) => {
+      input.value = existingParams[i] ?? "";
+    });
+  }
+}
+
+function getModalParamsForCommand(command) {
+  if (command.includes("put_down")) {
+    const enabled = !!document.getElementById("modal-putdown-insert-enabled")?.checked;
+    if (!enabled) return {};
+    const parsed = parseFloat(document.getElementById("modal-putdown-insert-distance")?.textContent ?? "0");
+    return {
+      use_computed_insert_distance: true,
+      insert_distance_mm: Number.isNaN(parsed) ? 250.0 : parsed,
+    };
+  }
+
+  const params = [];
+  if (command.includes("go_to") || command.includes("bezier")){
+    document.querySelectorAll("#args-container input").forEach(input => {
+      const value = parseFloat(input.value) || 1000;
+      params.push(value != 0 ? value : 1200);
+    });
+  } else{
+    document.querySelectorAll("#args-container input").forEach(input => {
+      const value = parseFloat(input.value) || 0;
+      params.push(value != 0 ? value : 0);
+    });
+  }
+  return params;
+}
+
 const options = [
     new Action("STM", "set_position"),
     new Action("STM", "go_to"),
@@ -65,9 +323,11 @@ async function get_selected_strategy() {
 }
 
 function update(){
+  recomputeAllPutDownInsertDistances(selected_strategy);
   update_smooth_or_not(selected_strategy).then(() => {
     renderTasks();
     renderMap();
+    refreshPutDownInsertDistanceDisplay();
     updateStrategy(selected_strategy);
   });
   if (undoStack.length > 100) undoStack.shift();
@@ -84,8 +344,10 @@ function undo() {
     undoStack[undoStack.length - 1]
   );
 
+  recomputeAllPutDownInsertDistances(selected_strategy);
   renderTasks();
   renderMap();
+  refreshPutDownInsertDistanceDisplay();
   updateStrategy(selected_strategy);
 }
 
@@ -97,8 +359,10 @@ function redo() {
 
   selected_strategy = JSON.parse(state);
 
+  recomputeAllPutDownInsertDistances(selected_strategy);
   renderTasks();
   renderMap();
+  refreshPutDownInsertDistanceDisplay();
   updateStrategy(selected_strategy);
 }
 
@@ -284,8 +548,9 @@ function renderTasks() {
       if (hoveredAction === action) {
         actionDiv.classList.add("highlighted");
       }
+      const renderedParams = formatActionParams(action.params);
       actionDiv.textContent =
-        `${action.device} - ${action.command}(${action.params.join(", ")}) ` +
+        `${action.device} - ${action.command}(${renderedParams}) ` +
         `with${action.wait ? "" : "out"} waiting`;
 
       actionDiv.draggable = true;
@@ -433,49 +698,13 @@ function renderTasks() {
     const command = contextAction.command;
     document.getElementById("modal-wait").checked = contextAction.wait;
 
-    let args_table = [];
     document.getElementById("command_label").textContent =
       "Command: " + command;
-
-    if (command.includes("go_to")) args_table = go_to_args;
-    else if (command.includes("bezier")) args_table = bezier_args;
-    else if (command.includes("orientate")) args_table = orientate_args;
-    else if (command.includes("set_position")) args_table = set_position_args;
-    else if (command.includes("wait_end_game")) args_table = wait_enf_game_args;
-    else if (command.includes("steal")) args_table = steal_args;
-
-    const argsContainer = document.getElementById("args-container");
-    argsContainer.innerHTML = "";
-
-    args_table.forEach(arg => {
-      const label = document.createElement("label");
-      label.textContent = arg;
-
-      const input = document.createElement("input");
-      input.type = "decimal";
-      input.dataset.argName = arg;
-
-      label.appendChild(input);
-      argsContainer.appendChild(label);
-    });
-
-    const inputs = document.querySelectorAll("#args-container input");
-    inputs.forEach(input => input.addEventListener("keydown",(e) => {
-      if (e.key === "Enter") {
-        const nextInput = input.parentElement.nextElementSibling;
-        if (nextInput && nextInput.querySelector("input")) {
-          nextInput.querySelector("input").focus();
-        } else {
-          document.getElementById("modal-confirm").click();
-        }
-      }
-    }));
-    inputs.forEach((input, i) => {
-      input.value = contextAction.params[i] ?? "";
-    });
+    buildArgsUI(command, contextAction.params);
 
     modal.classList.remove("hidden");
     document.getElementById("action-context-menu").classList.add("hidden");
+    const inputs = document.querySelectorAll("#args-container input:not([type='checkbox'])");
     if (inputs.length > 0){
       inputs[0].focus();
     }
@@ -1000,6 +1229,9 @@ function updateActionParamsFromDrag(action, paramIndexX, paramIndexY, cx, cy) {
   action.params[paramIndexX] = x.toFixed(2);
   action.params[paramIndexY] = y.toFixed(2);
 
+  recomputeAllPutDownInsertDistances(selected_strategy);
+  refreshPutDownInsertDistanceDisplay();
+
   renderMap();
 }
 function hightlightAction(action) {
@@ -1197,56 +1429,10 @@ document.getElementById("add-action-btn").addEventListener("click", () => {
   if (index == "" || !selected_strategy) return;
   const opt = actionSelect.options[index];
   const [device, command] = opt.textContent.split(" - ");
-  let args_table = [];
   document.getElementById("command_label").textContent = "Command: "+command;
-  // Decide which argument table to use
-  if (command.includes("go_to")) {
-    args_table = go_to_args;
-  } 
-  else if (command.includes("bezier")) {
-    args_table = bezier_args;
-  } 
-  else if (command.includes("orientate")) {
-    args_table = orientate_args;
-  }
-  else if (command.includes("set_position")) {
-    args_table = set_position_args;
-  }
-  else if (command.includes("wait_end_game")) {
-    args_table = wait_enf_game_args;
-  }
-  else if (command.includes("steal")) {
-    args_table = steal_args;
-  }
-  const argsContainer = document.getElementById("args-container");
-  argsContainer.innerHTML = "";
-
-  // Create inputs dynamically
-  args_table.forEach(arg => {
-    const label = document.createElement("label");
-    label.textContent = arg;
-
-    const input = document.createElement("input");
-    input.type = "decimal";
-    input.dataset.argName = arg;
-    if (arg === "speed") {
-      input.value = "1100"; // default speed
-    }
-    label.appendChild(input);
-    argsContainer.appendChild(label);
-  });
-  let inputs = document.querySelectorAll("#args-container input");
-  inputs.forEach(input => input.addEventListener("keydown",(e) => {
-    if (e.key === "Enter") {
-      const nextInput = input.parentElement.nextElementSibling;
-      if (nextInput && nextInput.querySelector("input")) {
-        nextInput.querySelector("input").focus();
-      } else {
-        document.getElementById("modal-confirm").click();
-      }
-    }
-  }));
+  buildArgsUI(command, null);
   modal.classList.remove("hidden");
+  let inputs = document.querySelectorAll("#args-container input:not([type='checkbox'])");
   if (inputs.length > 0){
     inputs[0].focus();
   }
@@ -1301,18 +1487,7 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
     newTaskCheckBox.checked = false;
     const opt = actionSelect.options[index];
     const [device, command] = opt.textContent.split(" - ");
-    const params = [];
-    if (command.includes("go_to") || command.includes("bezier")){
-      document.querySelectorAll("#args-container input").forEach(input => {
-        const value = parseFloat(input.value) || 1000;
-        params.push(value != 0 ? value : 1200);
-      });
-    } else{
-      document.querySelectorAll("#args-container input").forEach(input => {
-        const value = parseFloat(input.value) || 0;
-        params.push(value != 0 ? value : 0);
-      });
-    }
+    const params = getModalParamsForCommand(command);
     const wait = document.getElementById("modal-wait").checked;
 
     if (!device || !command) return;
@@ -1328,19 +1503,8 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
   }else{
     const wait = document.getElementById("modal-wait").checked;
 
-    const params = [];
     const command = contextAction.command;
-    if (command.includes("go_to") || command.includes("bezier")){
-      document.querySelectorAll("#args-container input").forEach(input => {
-        const value = parseFloat(input.value) || 1000;
-        params.push(value != 0 ? value : 1200);
-      });
-    } else{
-      document.querySelectorAll("#args-container input").forEach(input => {
-        const value = parseFloat(input.value) || 0;
-        params.push(value != 0 ? value : 0);
-      });
-    }
+    const params = getModalParamsForCommand(command);
 
     if (contextAction) {
       // MODIFY
