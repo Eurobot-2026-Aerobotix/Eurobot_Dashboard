@@ -54,6 +54,29 @@ body {
     transform: translateX(5px);
 }
 
+.action-item.simulation-active {
+  transform: scale(1.06);
+  box-shadow: 0 0 18px rgba(79, 195, 247, 0.9);
+  border-color: rgba(79, 195, 247, 0.95);
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.28) 0%, rgba(59, 130, 246, 0.28) 100%);
+}
+
+.action-item.simulation-hit {
+  animation: simulation-hit-pop 380ms ease-out;
+}
+
+@keyframes simulation-hit-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1.06);
+  }
+}
+
 .action-item.dragging {
     opacity: 0.5;
 }
@@ -488,6 +511,10 @@ input[type="checkbox"]:hover {
   background: linear-gradient(135deg, #3ba55d 0%, #2f855a 100%);
 }
 
+#simulate-btn.simulating {
+  background: linear-gradient(135deg, #d94841 0%, #b91c1c 100%);
+}
+
 .map-point {
   fill: red;
   cursor: pointer;
@@ -548,6 +575,31 @@ input[type="checkbox"]:hover {
   font-size: 16px;
   user-select: none;
   pointer-events: none;
+}
+
+.air-blow-effect {
+  pointer-events: none;
+  opacity: 0;
+  animation: air-blow-fade 650ms ease-out forwards;
+}
+
+.air-blow-streak {
+  stroke: #c8f2ff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px rgba(200, 242, 255, 0.95));
+}
+
+@keyframes air-blow-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 .action-item.drag-over {
   border-top: 2px solid #4fc3f7;

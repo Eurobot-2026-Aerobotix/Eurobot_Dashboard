@@ -52,7 +52,7 @@ const commandCodesPami7 = [
 ];
 let contextActionIndex = null;
 let contextPamiNumber = null;
-let robot_on_map = null;
+const robots_on_map = new Map();
 let undoStack = [];
 let redoStack = [];
 let zoomMode = false;
@@ -60,6 +60,14 @@ let zoomApplied = false;
 let zoomRegion = null;
 let isSelectingZoomRect = false;
 let zoomStartPoint = null;
+const simulationState = {
+  running: false,
+  targetPamis: []
+};
+const simulationHighlightKeyByPami = new Map();
+const simulationHighlightTimeoutByPami = new Map();
+const SIM_SPEED_MULTIPLIER = 0.8;
+const ACCEL_DECEL_TIME_FACTOR = 1.5;
 
 function getCommandCatalog(strategy) {
   return strategy?.pami_number === 7 ? commandCodesPami7 : commandCodes;
@@ -1042,8 +1050,10 @@ function updateActionParamsFromDrag(actionIndex, paramIndexX, paramIndexY, cx, c
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexX] = x.toFixed(2);
   loaded_strategies[pamiNum].sequence[actionIndex][paramIndexY] = y.toFixed(2);
 }
-function hightlightAction(actionIndex, pamiNum) {
-  unHightlightActions();
+function hightlightAction(actionIndex, pamiNum, preserveExisting = false) {
+  if (!preserveExisting) {
+    unHightlightActions();
+  }
 
   const actionItems = document.querySelectorAll(".action-item");
   actionItems.forEach((item) => {
@@ -1062,8 +1072,10 @@ function unHightlightActions() {
   });
 }
 
-function highlightMapPoints(actionIndex, pamiNum) {
-  unhighlightMapPoints();
+function highlightMapPoints(actionIndex, pamiNum, preserveExisting = false) {
+  if (!preserveExisting) {
+    unhighlightMapPoints();
+  }
 
   const mapPoints = document.querySelectorAll(".map-point");
   mapPoints.forEach((point) => {
@@ -1083,7 +1095,7 @@ function unhighlightMapPoints() {
   });
 }
 function draw_robot_on_map(svg, x, y, angle, pamiNum) {
-  clear_robot_off_map(svg);
+  clear_robot_off_map(svg, pamiNum);
 
   const { cx, cy } = mapToScreen(x, y);
   const projection = getMapProjectionState();
@@ -1128,19 +1140,480 @@ function draw_robot_on_map(svg, x, y, angle, pamiNum) {
   scaledRobot.appendChild(arrow);
   robot.appendChild(scaledRobot);
   svg.appendChild(robot);
-  robot_on_map = robot;
+  robots_on_map.set(pamiNum, robot);
 }
-function clear_robot_off_map(svg) {
-  if (robot_on_map) {
-    try {
-      svg.removeChild(robot_on_map);
-    } catch (e) {}
-    robot_on_map = null;
+function clear_robot_off_map(svg, pamiNum = null) {
+  if (pamiNum != null) {
+    const robot = robots_on_map.get(pamiNum);
+    if (robot) {
+      try {
+        svg.removeChild(robot);
+      } catch (e) {}
+      robots_on_map.delete(pamiNum);
+    }
+    return;
   }
+
+  robots_on_map.forEach((robot) => {
+    try {
+      svg.removeChild(robot);
+    } catch (e) {}
+  });
+  robots_on_map.clear();
 }
 function rad_to_deg(rad) {
   return rad * (180 / Math.PI);
 }
+
+function normalizeAngle(deg) {
+  let value = deg % 360;
+  if (value < 0) value += 360;
+  return value;
+}
+
+function shortestAngleDelta(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function cubicBezierPoint(t, p0, p1, p2, p3) {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return {
+    x: mt2 * mt * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t2 * t * p3.x,
+    y: mt2 * mt * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t2 * t * p3.y
+  };
+}
+
+function cubicBezierTangent(t, p0, p1, p2, p3) {
+  const mt = 1 - t;
+  return {
+    x: 3 * mt * mt * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x),
+    y: 3 * mt * mt * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y)
+  };
+}
+
+function approximateBezierLength(p0, p1, p2, p3, samples = 24) {
+  let total = 0;
+  let prev = p0;
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const current = cubicBezierPoint(t, p0, p1, p2, p3);
+    total += Math.hypot(current.x - prev.x, current.y - prev.y);
+    prev = current;
+  }
+  return total;
+}
+
+function easeInOutCubic(t) {
+  // Stretch accel/decel phases (x1.5) by increasing curve exponent.
+  const exponent = Math.max(1, ACCEL_DECEL_TIME_FACTOR * 3);
+  return t < 0.5
+    ? 0.5 * Math.pow(2 * t, exponent)
+    : 1 - 0.5 * Math.pow(2 * (1 - t), exponent);
+}
+
+function animateProgress(durationMs, onFrame) {
+  const clampedDuration = Math.max(1, durationMs);
+  return new Promise(resolve => {
+    const start = performance.now();
+
+    const step = (now) => {
+      if (!simulationState.running) {
+        resolve(false);
+        return;
+      }
+
+      const linearT = Math.min(1, (now - start) / clampedDuration);
+      const t = easeInOutCubic(linearT);
+      onFrame(t);
+
+      if (linearT >= 1) {
+        resolve(true);
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  });
+}
+
+function pauseSimulation(durationMs) {
+  return animateProgress(durationMs, () => {});
+}
+
+function getSimulationTargetPamis() {
+  if (visible_pamis.size === 0) return [];
+
+  if (isViewAllMode) {
+    return Array.from(visible_pamis)
+      .filter(pamiNum => loaded_strategies[pamiNum] && Array.isArray(loaded_strategies[pamiNum].sequence) && loaded_strategies[pamiNum].sequence.length > 0);
+  }
+
+  const firstVisible = Array.from(visible_pamis)[0];
+  if (!firstVisible || !loaded_strategies[firstVisible]) return [];
+  if (!Array.isArray(loaded_strategies[firstVisible].sequence) || loaded_strategies[firstVisible].sequence.length === 0) return [];
+  return [firstVisible];
+}
+
+function getActionElement(actionIndex, pamiNum) {
+  return document.querySelector(`.action-item[data-action-index="${actionIndex}"][data-pami-number="${pamiNum}"]`);
+}
+
+function clearSimulationActionHighlight(pamiNum = null) {
+  const clearOne = (targetPami) => {
+    const timeoutId = simulationHighlightTimeoutByPami.get(targetPami);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      simulationHighlightTimeoutByPami.delete(targetPami);
+    }
+
+    const key = simulationHighlightKeyByPami.get(targetPami);
+    if (!key) return;
+
+    const [, actionIndex] = key.split(":").map(v => Number(v));
+    const item = getActionElement(actionIndex, targetPami);
+    if (item) {
+      item.classList.remove("simulation-active");
+      item.classList.remove("simulation-hit");
+    }
+    simulationHighlightKeyByPami.delete(targetPami);
+  };
+
+  if (pamiNum != null) {
+    clearOne(pamiNum);
+    return;
+  }
+
+  Array.from(simulationHighlightKeyByPami.keys()).forEach(clearOne);
+}
+
+function markSimulationActionReached(actionIndex, pamiNum) {
+  const key = `${pamiNum}:${actionIndex}`;
+  const previousKey = simulationHighlightKeyByPami.get(pamiNum);
+  if (previousKey && previousKey !== key) {
+    const [, prevIndex] = previousKey.split(":").map(v => Number(v));
+    const prevItem = getActionElement(prevIndex, pamiNum);
+    if (prevItem) {
+      prevItem.classList.remove("simulation-active");
+      prevItem.classList.remove("simulation-hit");
+    }
+  }
+
+  simulationHighlightKeyByPami.set(pamiNum, key);
+  const item = getActionElement(actionIndex, pamiNum);
+  if (item) {
+    item.classList.add("simulation-active");
+    item.classList.remove("simulation-hit");
+    void item.offsetWidth;
+    item.classList.add("simulation-hit");
+    item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  hightlightAction(actionIndex, pamiNum, true);
+  highlightMapPoints(actionIndex, pamiNum, true);
+
+  const previousTimeout = simulationHighlightTimeoutByPami.get(pamiNum);
+  if (previousTimeout) {
+    clearTimeout(previousTimeout);
+  }
+  const timeoutId = window.setTimeout(() => {
+    const current = getActionElement(actionIndex, pamiNum);
+    if (current && simulationHighlightKeyByPami.get(pamiNum) === key) {
+      current.classList.remove("simulation-hit");
+    }
+    simulationHighlightTimeoutByPami.delete(pamiNum);
+  }, 650);
+  simulationHighlightTimeoutByPami.set(pamiNum, timeoutId);
+}
+
+function isBackwardMotion(action, strategy) {
+  if (!action || !strategy) return false;
+  if (strategy.pami_number !== 7) return false;
+  if (action[0] !== 1 && action[0] !== 4) return false;
+
+  const direction = parseFloat(action[action.length - 1]);
+  return Number.isFinite(direction) && direction < 0;
+}
+
+function getDesiredHeadingForAction(action, pose, strategy) {
+  if (!action) return null;
+
+  if (action[0] === 2 && action.length >= 2) {
+    const target = parseFloat(action[1]);
+    return Number.isFinite(target) ? normalizeAngle(target) : null;
+  }
+
+  if (action[0] === 1 && action.length >= 3) {
+    const tx = parseFloat(action[1]);
+    const ty = parseFloat(action[2]);
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+
+    const dx = tx - pose.x;
+    const dy = ty - pose.y;
+    if (Math.hypot(dx, dy) < 1e-3) return null;
+
+    return normalizeAngle(rad_to_deg(Math.atan2(dy, dx)) + (isBackwardMotion(action, strategy) ? 180 : 0));
+  }
+
+  if (action[0] === 4 && action.length >= 3) {
+    const x1 = parseFloat(action[1]);
+    const y1 = parseFloat(action[2]);
+    if (!Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+
+    const dx = x1 - pose.x;
+    const dy = y1 - pose.y;
+    if (Math.hypot(dx, dy) < 1e-3) return null;
+
+    return normalizeAngle(rad_to_deg(Math.atan2(dy, dx)) + (isBackwardMotion(action, strategy) ? 180 : 0));
+  }
+
+  return null;
+}
+
+function drawAirBlowEffect(svg, x, y, angle, pamiNum) {
+  const { cx, cy } = mapToScreen(x, y);
+  const burst = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  burst.classList.add("air-blow-effect");
+  burst.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${90 - normalizeAngle(angle)})`);
+
+  const streaks = [
+    { x1: 14, y1: 16, x2: 36, y2: 16, opacity: 1.0 },
+    { x1: 12, y1: 10, x2: 32, y2: 8, opacity: 0.85 },
+    { x1: 12, y1: 22, x2: 32, y2: 24, opacity: 0.85 }
+  ];
+
+  streaks.forEach(data => {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.classList.add("air-blow-streak");
+    line.setAttribute("x1", data.x1);
+    line.setAttribute("y1", data.y1);
+    line.setAttribute("x2", data.x2);
+    line.setAttribute("y2", data.y2);
+    line.setAttribute("opacity", data.opacity);
+    line.style.stroke = pami_colors[pamiNum] || "#c8f2ff";
+    burst.appendChild(line);
+  });
+
+  svg.appendChild(burst);
+  window.setTimeout(() => {
+    if (burst.parentNode) burst.parentNode.removeChild(burst);
+  }, 700);
+}
+
+function sanitizeSpeedMmPerSec(speedValue, fallback = 400) {
+  const parsed = parseFloat(speedValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed * SIM_SPEED_MULTIPLIER;
+}
+
+function getActionSpeedMmPerSec(action) {
+  if (!Array.isArray(action)) return 400;
+
+  // go_to(x, y, speed[, direction]) -> speed at index 3
+  if (action[0] === 1) {
+    return sanitizeSpeedMmPerSec(action[3]);
+  }
+
+  // bezier(x1, y1, x2, y2, x3, y3, speed[, direction]) -> speed at index 7
+  if (action[0] === 4) {
+    return sanitizeSpeedMmPerSec(action[7]);
+  }
+
+  return 400;
+}
+
+async function animateLinearMotion(pose, targetX, targetY, backwards, pamiNum, speedMmPerSec) {
+  const startX = pose.x;
+  const startY = pose.y;
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+  const distance = Math.hypot(dx, dy);
+  const speed = sanitizeSpeedMmPerSec(speedMmPerSec);
+  const duration = Math.max(120, (distance / speed) * 1000);
+
+  await animateProgress(duration, (t) => {
+    pose.x = lerp(startX, targetX, t);
+    pose.y = lerp(startY, targetY, t);
+
+    if (distance > 1e-3) {
+      pose.angle = normalizeAngle(rad_to_deg(Math.atan2(dy, dx)) + (backwards ? 180 : 0));
+    }
+
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle, pamiNum);
+  });
+
+  pose.x = targetX;
+  pose.y = targetY;
+}
+
+async function animateBezierMotion(pose, action, backwards, pamiNum, speedMmPerSec) {
+  const p0 = { x: pose.x, y: pose.y };
+  const p1 = { x: parseFloat(action[1]), y: parseFloat(action[2]) };
+  const p2 = { x: parseFloat(action[3]), y: parseFloat(action[4]) };
+  const p3 = { x: parseFloat(action[5]), y: parseFloat(action[6]) };
+
+  const distance = approximateBezierLength(p0, p1, p2, p3);
+  const speed = sanitizeSpeedMmPerSec(speedMmPerSec);
+  const duration = Math.max(120, (distance / speed) * 1000);
+
+  await animateProgress(duration, (t) => {
+    const pt = cubicBezierPoint(t, p0, p1, p2, p3);
+    const tangent = cubicBezierTangent(t, p0, p1, p2, p3);
+    pose.x = pt.x;
+    pose.y = pt.y;
+
+    const tangentSize = Math.hypot(tangent.x, tangent.y);
+    if (tangentSize > 1e-4) {
+      pose.angle = normalizeAngle(rad_to_deg(Math.atan2(tangent.y, tangent.x)) + (backwards ? 180 : 0));
+    }
+
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle, pamiNum);
+  });
+
+  pose.x = p3.x;
+  pose.y = p3.y;
+}
+
+async function animateRotation(pose, targetAngle, pamiNum) {
+  const startAngle = normalizeAngle(pose.angle);
+  const destination = normalizeAngle(targetAngle);
+  const delta = shortestAngleDelta(startAngle, destination);
+  const duration = Math.max(320, Math.min(1800, Math.abs(delta) * 9));
+
+  await animateProgress(duration, (t) => {
+    pose.angle = normalizeAngle(startAngle + delta * t);
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle, pamiNum);
+  });
+
+  pose.angle = destination;
+}
+
+function stopSimulation(clearRobot = true) {
+  simulationState.running = false;
+  simulationState.targetPamis = [];
+
+  const btn = document.getElementById("simulate-btn");
+  if (btn) {
+    btn.classList.remove("simulating");
+    btn.textContent = "Simulate";
+  }
+
+  clearSimulationActionHighlight();
+  unHightlightActions();
+  unhighlightMapPoints();
+
+  if (clearRobot) {
+    clear_robot_off_map(document.getElementById("map-overlay"));
+  }
+}
+
+async function simulateStrategy() {
+  if (simulationState.running) {
+    stopSimulation(true);
+    return;
+  }
+
+  const pamiNums = getSimulationTargetPamis();
+  if (pamiNums.length === 0) return;
+
+  simulationState.running = true;
+  simulationState.targetPamis = pamiNums;
+  const btn = document.getElementById("simulate-btn");
+  btn.classList.add("simulating");
+  btn.textContent = pamiNums.length === 1
+    ? `Stop PAMI ${pamiNums[0]}`
+    : "Stop All";
+
+  const svg = document.getElementById("map-overlay");
+  const runPamiSimulation = async (pamiNum) => {
+    const strategy = loaded_strategies[pamiNum];
+    if (!strategy || !Array.isArray(strategy.sequence) || strategy.sequence.length === 0) return;
+
+    const pose = { x: 0, y: 0, angle: 0 };
+    draw_robot_on_map(svg, pose.x, pose.y, pose.angle, pamiNum);
+
+    for (let i = 0; i < strategy.sequence.length; i++) {
+      if (!simulationState.running) break;
+
+      const action = strategy.sequence[i];
+      if (!Array.isArray(action) || action.length === 0) continue;
+
+      const desiredHeading = getDesiredHeadingForAction(action, pose, strategy);
+      if (Number.isFinite(desiredHeading)) {
+        const delta = Math.abs(shortestAngleDelta(pose.angle, desiredHeading));
+        if (delta > 0.8) {
+          await animateRotation(pose, desiredHeading, pamiNum);
+          if (!simulationState.running) break;
+        }
+      }
+
+      if (action[0] === 3 && action.length >= 4) {
+        pose.x = parseFloat(action[1]);
+        pose.y = parseFloat(action[2]);
+        pose.angle = normalizeAngle(parseFloat(action[3]) || 0);
+        draw_robot_on_map(svg, pose.x, pose.y, pose.angle, pamiNum);
+        markSimulationActionReached(i, pamiNum);
+        await pauseSimulation(180);
+        continue;
+      }
+
+      if (action[0] === 1 && action.length >= 3) {
+        const backwards = isBackwardMotion(action, strategy);
+        const speedMmPerSec = getActionSpeedMmPerSec(action);
+        await animateLinearMotion(pose, parseFloat(action[1]), parseFloat(action[2]), backwards, pamiNum, speedMmPerSec);
+        markSimulationActionReached(i, pamiNum);
+        continue;
+      }
+
+      if (action[0] === 4 && action.length >= 7) {
+        const backwards = isBackwardMotion(action, strategy);
+        const speedMmPerSec = getActionSpeedMmPerSec(action);
+        await animateBezierMotion(pose, action, backwards, pamiNum, speedMmPerSec);
+        markSimulationActionReached(i, pamiNum);
+        continue;
+      }
+
+      if (action[0] === 2 && action.length >= 2) {
+        await animateRotation(pose, parseFloat(action[1]) || 0, pamiNum);
+        markSimulationActionReached(i, pamiNum);
+        await pauseSimulation(120);
+        continue;
+      }
+
+      if (action[0] === 8) {
+        drawAirBlowEffect(svg, pose.x, pose.y, pose.angle, pamiNum);
+        await pauseSimulation(420);
+        continue;
+      }
+
+      if (action[0] === 0 || action[0] === 5) {
+        const durationMs = parseFloat(action[1]);
+        const clamped = Number.isFinite(durationMs)
+          ? Math.max(250, Math.min(3000, durationMs))
+          : 500;
+        await pauseSimulation(clamped);
+        continue;
+      }
+
+      await pauseSimulation(180);
+    }
+
+    clearSimulationActionHighlight(pamiNum);
+  };
+
+  try {
+    await Promise.all(pamiNums.map(runPamiSimulation));
+  } finally {
+    stopSimulation(false);
+  }
+}
+
 function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     const svg = document.getElementById("map-overlay");
     const points = svg.querySelectorAll(".map-point");
@@ -1159,7 +1632,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
         const prevX = prevPoint ? parseFloat(prevPoint.getAttribute("cx")) : point.getAttribute("cx");
         const prevY = prevPoint ? parseFloat(prevPoint.getAttribute("cy")) : point.getAttribute("cy");
 
-        phi = rad_to_deg(Math.atan2(x - prevX, y - prevY)) ;
+        phi = rad_to_deg(Math.atan2(y - prevY, x - prevX));
     }
     if (actionIndex < loaded_strategies[pamiNum].sequence.length - 1){
         const next = loaded_strategies[pamiNum].sequence[actionIndex + 1];
@@ -1188,17 +1661,20 @@ function enableDrag(el, actionIndex, paramIndexX, paramIndexY, pamiNum) {
   if (!cachedMapWrapperElement) cachedMapWrapperElement = document.getElementById("map-wrapper");
 
   el.addEventListener("mouseover", e => {
+    if (simulationState.running) return;
     hightlightAction(actionIndex, pamiNum);
     let [x, y, phi] = calculate_x_y_phi_after_action(el, actionIndex, pamiNum);
     draw_robot_on_map(cachedOverlayElement, x, y, phi, pamiNum);
   });
   
   el.addEventListener("mouseout", e => {
+    if (simulationState.running) return;
     unHightlightActions();
     clear_robot_off_map(cachedOverlayElement);
   });
 
   el.addEventListener("mousedown", e => {
+    if (simulationState.running) return;
     if (zoomMode) return;
 
     dragging = true;
@@ -1350,6 +1826,14 @@ document.getElementById("zoom-btn").addEventListener("click", () => {
   setZoomMode(!zoomMode);
 });
 
+document.getElementById("simulate-btn").addEventListener("click", () => {
+  if (simulationState.running) {
+    stopSimulation(true);
+    return;
+  }
+  simulateStrategy();
+});
+
 const mapWrapper = document.getElementById("map-wrapper");
 mapWrapper.addEventListener("mousedown", startZoomSelection, true);
 window.addEventListener("mousemove", updateZoomSelection, true);
@@ -1438,6 +1922,12 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
 document.addEventListener("keydown", (e) => {
   const isCtrl = e.ctrlKey || e.metaKey;
+
+  if (e.key === "Escape" && simulationState.running) {
+    e.preventDefault();
+    stopSimulation(true);
+    return;
+  }
 
   if (isCtrl && e.key === "z") {
     e.preventDefault();
