@@ -296,6 +296,9 @@ let hovered_point_index = null;
 let robot_on_map = null;
 let hoveredAction = null;
 const actionPointMap = new WeakMap();
+const actionItemMap = new WeakMap();
+let simulationHighlightedAction = null;
+let simulationHighlightTimeoutId = null;
 
 let undoStack = [];
 let redoStack = [];
@@ -304,6 +307,9 @@ let zoomApplied = false;
 let zoomRegion = null;
 let isSelectingZoomRect = false;
 let zoomStartPoint = null;
+const simulationState = {
+  running: false
+};
 
 
 // ------------------------------
@@ -548,6 +554,7 @@ function renderTasks() {
       if (hoveredAction === action) {
         actionDiv.classList.add("highlighted");
       }
+      registerActionItem(action, actionDiv);
       const renderedParams = formatActionParams(action.params);
       actionDiv.textContent =
         `${action.device} - ${action.command}(${renderedParams}) ` +
@@ -1119,6 +1126,62 @@ function registerActionPoint(action, pointElement) {
   }
 }
 
+function registerActionItem(action, itemElement) {
+  if (!action || !itemElement) return;
+  actionItemMap.set(action, itemElement);
+}
+
+function clearSimulationActionHighlight() {
+  if (simulationHighlightTimeoutId) {
+    clearTimeout(simulationHighlightTimeoutId);
+    simulationHighlightTimeoutId = null;
+  }
+
+  if (!simulationHighlightedAction) return;
+
+  const previousItem = actionItemMap.get(simulationHighlightedAction);
+  if (previousItem) {
+    previousItem.classList.remove("simulation-active");
+    previousItem.classList.remove("simulation-hit");
+  }
+  simulationHighlightedAction = null;
+}
+
+function markSimulationActionReached(action) {
+  if (!action) return;
+
+  if (simulationHighlightedAction && simulationHighlightedAction !== action) {
+    const previousItem = actionItemMap.get(simulationHighlightedAction);
+    if (previousItem) {
+      previousItem.classList.remove("simulation-active");
+      previousItem.classList.remove("simulation-hit");
+    }
+  }
+
+  simulationHighlightedAction = action;
+  const item = actionItemMap.get(action);
+  if (item) {
+    item.classList.add("simulation-active");
+    item.classList.remove("simulation-hit");
+    void item.offsetWidth;
+    item.classList.add("simulation-hit");
+    item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  setHoveredAction(action);
+
+  if (simulationHighlightTimeoutId) {
+    clearTimeout(simulationHighlightTimeoutId);
+  }
+  simulationHighlightTimeoutId = window.setTimeout(() => {
+    const currentItem = actionItemMap.get(action);
+    if (currentItem && simulationHighlightedAction === action) {
+      currentItem.classList.remove("simulation-hit");
+    }
+    simulationHighlightTimeoutId = null;
+  }, 650);
+}
+
 function setActionPointHover(action, isHovered) {
   const points = actionPointMap.get(action);
   if (!points) return;
@@ -1304,6 +1367,352 @@ function clear_robot_off_map(svg) {
 function rad_to_deg(rad) {
   return rad * (180 / Math.PI);
 }
+
+function normalizeAngle(deg) {
+  let value = deg % 360;
+  if (value < 0) value += 360;
+  return value;
+}
+
+function shortestAngleDelta(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function cubicBezierPoint(t, p0, p1, p2, p3) {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return {
+    x: mt2 * mt * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t2 * t * p3.x,
+    y: mt2 * mt * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t2 * t * p3.y
+  };
+}
+
+function cubicBezierTangent(t, p0, p1, p2, p3) {
+  const mt = 1 - t;
+  return {
+    x: 3 * mt * mt * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x),
+    y: 3 * mt * mt * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y)
+  };
+}
+
+function approximateBezierLength(p0, p1, p2, p3, samples = 24) {
+  let total = 0;
+  let prev = p0;
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const current = cubicBezierPoint(t, p0, p1, p2, p3);
+    total += Math.hypot(current.x - prev.x, current.y - prev.y);
+    prev = current;
+  }
+  return total;
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function animateProgress(durationMs, onFrame) {
+  const clampedDuration = Math.max(1, durationMs);
+  return new Promise(resolve => {
+    const start = performance.now();
+
+    const step = (now) => {
+      if (!simulationState.running) {
+        resolve(false);
+        return;
+      }
+
+      const linearT = Math.min(1, (now - start) / clampedDuration);
+      const t = easeInOutCubic(linearT);
+      onFrame(t);
+
+      if (linearT >= 1) {
+        resolve(true);
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  });
+}
+
+function pauseSimulation(durationMs) {
+  return animateProgress(durationMs, () => {});
+}
+
+function getPutDownAirAngle(action, robotAngle) {
+  if (!action || !action.device) return normalizeAngle(robotAngle);
+
+  const deviceName = action.device.toLowerCase();
+  if (deviceName.includes("back")) return normalizeAngle(robotAngle + 180);
+  if (deviceName.includes("front")) return normalizeAngle(robotAngle);
+
+  return normalizeAngle(robotAngle);
+}
+
+function drawAirBlowEffect(svg, x, y, angle, action) {
+  const { cx, cy } = mapToScreen(x, y);
+  const blowAngle = getPutDownAirAngle(action, angle);
+
+  const burst = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  burst.classList.add("air-blow-effect");
+  burst.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${90 - blowAngle})`);
+
+  const streaks = [
+    { x1: 18, y1: 20, x2: 44, y2: 20, opacity: 1.0 },
+    { x1: 16, y1: 12, x2: 38, y2: 9, opacity: 0.85 },
+    { x1: 16, y1: 28, x2: 38, y2: 31, opacity: 0.85 },
+    { x1: 22, y1: 5, x2: 33, y2: 2, opacity: 0.65 },
+    { x1: 22, y1: 35, x2: 33, y2: 38, opacity: 0.65 }
+  ];
+
+  streaks.forEach(data => {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.classList.add("air-blow-streak");
+    line.setAttribute("x1", data.x1);
+    line.setAttribute("y1", data.y1);
+    line.setAttribute("x2", data.x2);
+    line.setAttribute("y2", data.y2);
+    line.setAttribute("opacity", data.opacity);
+    burst.appendChild(line);
+  });
+
+  svg.appendChild(burst);
+  window.setTimeout(() => {
+    if (burst.parentNode) {
+      burst.parentNode.removeChild(burst);
+    }
+  }, 700);
+}
+
+async function animateLinearMotion(pose, targetX, targetY, backwards) {
+  const startX = pose.x;
+  const startY = pose.y;
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+  const distance = Math.hypot(dx, dy);
+  const duration = Math.max(420, Math.min(3600, distance * 2.0));
+
+  await animateProgress(duration, (t) => {
+    const x = lerp(startX, targetX, t);
+    const y = lerp(startY, targetY, t);
+    pose.x = x;
+    pose.y = y;
+
+    if (distance > 1e-3) {
+      const heading = rad_to_deg(Math.atan2(dy, dx)) + (backwards ? 180 : 0);
+      pose.angle = normalizeAngle(heading);
+    }
+
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle);
+  });
+
+  pose.x = targetX;
+  pose.y = targetY;
+}
+
+async function animateBezierMotion(pose, params, backwards) {
+  const p0 = { x: pose.x, y: pose.y };
+  const p1 = { x: parseFloat(params[0]), y: parseFloat(params[1]) };
+  const p2 = { x: parseFloat(params[2]), y: parseFloat(params[3]) };
+  const p3 = { x: parseFloat(params[4]), y: parseFloat(params[5]) };
+
+  const distance = approximateBezierLength(p0, p1, p2, p3);
+  const duration = Math.max(520, Math.min(4200, distance * 2.2));
+
+  await animateProgress(duration, (t) => {
+    const pt = cubicBezierPoint(t, p0, p1, p2, p3);
+    const tangent = cubicBezierTangent(t, p0, p1, p2, p3);
+    const tangentSize = Math.hypot(tangent.x, tangent.y);
+
+    pose.x = pt.x;
+    pose.y = pt.y;
+
+    if (tangentSize > 1e-4) {
+      const heading = rad_to_deg(Math.atan2(tangent.y, tangent.x)) + (backwards ? 180 : 0);
+      pose.angle = normalizeAngle(heading);
+    }
+
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle);
+  });
+
+  pose.x = p3.x;
+  pose.y = p3.y;
+}
+
+async function animateRotation(pose, targetAngle) {
+  const startAngle = normalizeAngle(pose.angle);
+  const destination = normalizeAngle(targetAngle);
+  const delta = shortestAngleDelta(startAngle, destination);
+  const duration = Math.max(320, Math.min(1800, Math.abs(delta) * 9));
+
+  await animateProgress(duration, (t) => {
+    pose.angle = normalizeAngle(startAngle + delta * t);
+    draw_robot_on_map(document.getElementById("map-overlay"), pose.x, pose.y, pose.angle);
+  });
+
+  pose.angle = destination;
+}
+
+function getDesiredHeadingForAction(action, pose) {
+  if (!action || !action.command) return null;
+
+  const cmd = action.command;
+  const params = Array.isArray(action.params) ? action.params : [];
+
+  if (cmd.includes("orientate") && params.length >= 1) {
+    const target = parseFloat(params[0]);
+    return Number.isFinite(target) ? normalizeAngle(target) : null;
+  }
+
+  if (cmd.includes("go_to") && params.length >= 2) {
+    const tx = parseFloat(params[0]);
+    const ty = parseFloat(params[1]);
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+
+    const dx = tx - pose.x;
+    const dy = ty - pose.y;
+    if (Math.hypot(dx, dy) < 1e-3) return null;
+
+    const backwards = cmd.includes("backwards");
+    return normalizeAngle(rad_to_deg(Math.atan2(dy, dx)) + (backwards ? 180 : 0));
+  }
+
+  if (cmd.includes("bezier") && params.length >= 2) {
+    const x1 = parseFloat(params[0]);
+    const y1 = parseFloat(params[1]);
+    if (!Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+
+    const dx = x1 - pose.x;
+    const dy = y1 - pose.y;
+    if (Math.hypot(dx, dy) < 1e-3) return null;
+
+    const backwards = cmd.includes("backwards");
+    return normalizeAngle(rad_to_deg(Math.atan2(dy, dx)) + (backwards ? 180 : 0));
+  }
+
+  return null;
+}
+
+function stopSimulation(clearRobot = true) {
+  simulationState.running = false;
+
+  const btn = document.getElementById("simulate-btn");
+  if (btn) {
+    btn.classList.remove("simulating");
+    btn.textContent = "Simulate";
+  }
+
+  if (clearRobot) {
+    clear_robot_off_map(document.getElementById("map-overlay"));
+  }
+
+  clearSimulationActionHighlight();
+  clearHoveredAction();
+}
+
+async function simulateStrategy() {
+  if (!selected_strategy || !Array.isArray(selected_strategy.tasks)) return;
+
+  if (simulationState.running) {
+    stopSimulation(true);
+    return;
+  }
+
+  simulationState.running = true;
+  const btn = document.getElementById("simulate-btn");
+  btn.classList.add("simulating");
+  btn.textContent = "Stop";
+
+  const svg = document.getElementById("map-overlay");
+  const pose = { x: 0, y: 0, angle: 0 };
+
+  try {
+    draw_robot_on_map(svg, pose.x, pose.y, pose.angle);
+
+    for (const task of selected_strategy.tasks) {
+      if (!simulationState.running) break;
+      if (!task || !Array.isArray(task.sequence)) continue;
+
+      for (const action of task.sequence) {
+        if (!simulationState.running) break;
+        if (!action || !action.command) continue;
+
+        const cmd = action.command;
+        const params = Array.isArray(action.params) ? action.params : [];
+
+        const desiredHeading = getDesiredHeadingForAction(action, pose);
+        if (Number.isFinite(desiredHeading)) {
+          const delta = Math.abs(shortestAngleDelta(pose.angle, desiredHeading));
+          if (delta > 0.8) {
+            await animateRotation(pose, desiredHeading);
+            if (!simulationState.running) break;
+          }
+        }
+
+        if (cmd.includes("set_position") && params.length >= 3) {
+          pose.x = parseFloat(params[0]);
+          pose.y = parseFloat(params[1]);
+          pose.angle = normalizeAngle(parseFloat(params[2]) || 0);
+          draw_robot_on_map(svg, pose.x, pose.y, pose.angle);
+          markSimulationActionReached(action);
+          await pauseSimulation(180);
+          continue;
+        }
+
+        if (cmd.includes("go_to") && params.length >= 2) {
+          const backwards = cmd.includes("backwards");
+          await animateLinearMotion(pose, parseFloat(params[0]), parseFloat(params[1]), backwards);
+          markSimulationActionReached(action);
+          continue;
+        }
+
+        if (cmd.includes("bezier") && params.length >= 6) {
+          const backwards = cmd.includes("backwards");
+          await animateBezierMotion(pose, params, backwards);
+          markSimulationActionReached(action);
+          continue;
+        }
+
+        if (cmd.includes("orientate") && params.length >= 1) {
+          await animateRotation(pose, parseFloat(params[0]) || 0);
+          continue;
+        }
+
+        if (cmd.includes("put_down")) {
+          drawAirBlowEffect(svg, pose.x, pose.y, pose.angle, action);
+          await pauseSimulation(420);
+          continue;
+        }
+
+        if (cmd.includes("pick_up")) {
+          await pauseSimulation(240);
+          continue;
+        }
+
+        if (cmd.includes("wait_end_game")) {
+          const durationSec = parseFloat(params[0]);
+          const ms = Number.isFinite(durationSec) ? Math.max(250, Math.min(3000, durationSec * 1000)) : 500;
+          await pauseSimulation(ms);
+          continue;
+        }
+
+        await pauseSimulation(150);
+      }
+    }
+  } finally {
+    stopSimulation(false);
+  }
+}
+
 function calculate_x_y_phi_after_action(point, action) {
   const svg = document.getElementById("map-overlay");
   const points = svg.querySelectorAll(".map-point");
@@ -1317,7 +1726,7 @@ function calculate_x_y_phi_after_action(point, action) {
     const prevX = prevPoint ? parseFloat(prevPoint.getAttribute("cx")) : point.getAttribute("cx");
     const prevY = prevPoint ? parseFloat(prevPoint.getAttribute("cy")) : point.getAttribute("cy");
 
-    phi = rad_to_deg(Math.atan2(x - prevX, y - prevY)) + (action.command.includes("backwards") ? 180 : 0);
+    phi = rad_to_deg(Math.atan2(y - prevY, x - prevX)) + (action.command.includes("backwards") ? 180 : 0);
   }
 
   selected_strategy.tasks.forEach(task => {
@@ -1352,6 +1761,7 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
   if (!cachedOverlayElement_viewer) cachedOverlayElement_viewer = document.getElementById("map-overlay");
 
   el.addEventListener("mouseover", e => {
+    if (simulationState.running) return;
     hightlightAction(action);
     if (isSecondary) return;
     let [x, y, phi] = calculate_x_y_phi_after_action(el, action);
@@ -1359,6 +1769,7 @@ function enableDrag(el, action, paramIndexX, paramIndexY) {
   });
   
   el.addEventListener("mouseout", e => {
+    if (simulationState.running) return;
     unHightlightActions();
     if (isSecondary) return;
     clear_robot_off_map(cachedOverlayElement_viewer);
@@ -1448,6 +1859,14 @@ document.getElementById("zoom-btn").addEventListener("click", () => {
   setZoomMode(!zoomMode);
 });
 
+document.getElementById("simulate-btn").addEventListener("click", () => {
+  if (simulationState.running) {
+    stopSimulation(true);
+    return;
+  }
+  simulateStrategy();
+});
+
 const mapWrapper = document.getElementById("map-wrapper");
 mapWrapper.addEventListener("mousedown", startZoomSelection, true);
 window.addEventListener("mousemove", updateZoomSelection, true);
@@ -1525,6 +1944,12 @@ document.getElementById("modal-confirm").addEventListener("click", () => {
 
 document.addEventListener("keydown", (e) => {
   const isCtrl = e.ctrlKey || e.metaKey;
+
+  if (e.key === "Escape" && simulationState.running) {
+    e.preventDefault();
+    stopSimulation(true);
+    return;
+  }
 
   if (isCtrl && e.key === "z") {
     e.preventDefault();
