@@ -287,3 +287,73 @@ batches:
       y: 2850.3
       z: 0
     color: blue
+- batch_id: 11
+  known_id: f1
+  count: 4
+  direction: horizontal
+  phi_deg: 90
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1189.2
+    y: 65.6
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1114.2
+      y: 65.6
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1164.2
+      y: 65.6
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1214.2
+      y: 65.6
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1264.2
+      y: 65.6
+      z: 0
+    color: blue
+- batch_id: 12
+  known_id: f9
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1873.9
+    y: 2301.3
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1873.9
+      y: 2226.3
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1873.9
+      y: 2276.3
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1873.9
+      y: 2326.3
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1873.9
+      y: 2376.3
+      z: 0
+    color: blue

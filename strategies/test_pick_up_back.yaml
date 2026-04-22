@@ -17,26 +17,13 @@ tasks:
     params:
     - 800
     - 700
-    - 90
+    - 0
     wait: false
 - description: Task 4
   global_goal:
-    x: 800
-    y: 400
-    theta: -153.43494882292202
-  sequence:
-  - device: STM
-    command: go_to_backwards
-    params:
-    - 800
-    - 400
-    - 1000
-    wait: false
-- description: Task 3
-  global_goal:
-    x: 800
-    y: 400
-    theta: -153.43494882292202
+    x: null
+    y: null
+    theta: null
   sequence:
   - device: ESP_back
     command: pick_up
@@ -44,12 +31,25 @@ tasks:
     wait: true
 - description: Task 4
   global_goal:
-    x: 800
-    y: 400
-    theta: -153.43494882292202
+    x: 995.68
+    y: 700
+    theta: -144.89135832307872
+  sequence:
+  - device: STM
+    command: go_to_backwards
+    params:
+    - 995.68
+    - 700
+    - 1000
+    wait: true
+- description: Task 4
+  global_goal:
+    x: 995.68
+    y: 700
+    theta: -144.89135832307872
   sequence:
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 order: 32
