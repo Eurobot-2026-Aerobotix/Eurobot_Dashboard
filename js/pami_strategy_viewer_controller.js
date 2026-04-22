@@ -22,6 +22,7 @@ const modal = document.getElementById("action-modal");
 const go_to_args = ["x", "y", "speed"];
 const go_to_args_pami7 = ["x", "y", "speed", "direction"];
 const orientate_args = ["angle"];
+const rotate_args = ["angle"];
 const set_position_args = ["x", "y", "angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed", "direction"]
 const pick_up_args = ["right", "left", "up_down"];
@@ -50,7 +51,8 @@ const commandCodesPami7 = [
   { label: "walking_position", args: [] },
   { label: "prepare", args: [] },
   { label: "letgo", args: [] },
-  { label: "move_forward", args: move_forward_args }
+  { label: "move_forward", args: move_forward_args },
+  { label: "rotate", args: rotate_args }
 ];
 let contextActionIndex = null;
 let contextPamiNumber = null;
@@ -99,6 +101,10 @@ function getActionDisplayText(strategy, action) {
 
     if (command === "orientate") {
       return `orientate(${args[0]})`;
+    }
+
+    if (command === "rotate") {
+      return `rotate(${args[0]})`;
     }
 
     if (command === "set_position") {
@@ -897,6 +903,9 @@ function renderMap() {
         else if (action[0] == 2) {
           drawRotateIcon(svg, currentPos, color);
         }
+        else if (action[0] == 13) {
+          drawRotateIcon(svg, currentPos, color);
+        }
         else if (action[0] == 4){
           drawBezier(svg, currentPos, action.slice(1), 0, actionIndex, color, pamiNum);
           const [ , , , , x3, y3 ] = action.slice(1);
@@ -1350,7 +1359,7 @@ function isBackwardMotion(action, strategy) {
 function getDesiredHeadingForAction(action, pose, strategy) {
   if (!action) return null;
 
-  if (action[0] === 2 && action.length >= 2) {
+  if ((action[0] === 2 || action[0] === 13) && action.length >= 2) {
     const target = parseFloat(action[1]);
     return Number.isFinite(target) ? normalizeAngle(target) : null;
   }
@@ -1585,7 +1594,7 @@ async function simulateStrategy() {
         continue;
       }
 
-      if (action[0] === 2 && action.length >= 2) {
+      if ((action[0] === 2 || action[0] === 13) && action.length >= 2) {
         await animateRotation(pose, parseFloat(action[1]) || 0, pamiNum);
         markSimulationActionReached(i, pamiNum);
         await pauseSimulation(120);
@@ -1630,7 +1639,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     if (action[0] == 3) { 
         // set_position command - use the angle parameter
         phi = action[3];
-    } else if (action[0] == 2) {
+    } else if (action[0] == 2 || action[0] == 13) {
         // orientate command - use the angle parameter
         phi = action[1];
     } else{
@@ -1643,7 +1652,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     if (actionIndex < loaded_strategies[pamiNum].sequence.length - 1){
         const next = loaded_strategies[pamiNum].sequence[actionIndex + 1];
 
-        if (next[0] == 2) {
+        if (next[0] == 2 || next[0] == 13) {
             // Next action is orientate - use that angle
             phi = next[1];
         }
