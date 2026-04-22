@@ -26,6 +26,7 @@ const set_position_args = ["x", "y", "angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "speed", "direction"]
 const pick_up_args = ["right", "left", "up_down"];
 const put_down_args = ["in_nest", "bechwayya"];
+const move_forward_args = ["distance", "speed", "direction"];
 const walking_args = [];
 const delay_args = ["duration"];
 const commandCodes = [
@@ -48,7 +49,8 @@ const commandCodesPami7 = [
   { label: "putdown", args: put_down_args },
   { label: "walking_position", args: [] },
   { label: "prepare", args: [] },
-  { label: "letgo", args: [] }
+  { label: "letgo", args: [] },
+  { label: "move_forward", args: move_forward_args }
 ];
 let contextActionIndex = null;
 let contextPamiNumber = null;
@@ -113,6 +115,10 @@ function getActionDisplayText(strategy, action) {
 
     if (command === "putdown") {
       return `putdown(in_nest:${args[0] ?? 0}, bechwayya:${args[1] ?? 0})`;
+    }
+
+    if (command === "move_forward") {
+      return `move_forward(distance:${args[0] ?? 0}, speed:${args[1] ?? 0}, direction:${args[2] ?? 0})`;
     }
 
     return `${command}()`;
