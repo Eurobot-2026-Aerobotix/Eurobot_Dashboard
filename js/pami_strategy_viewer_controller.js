@@ -885,11 +885,13 @@ function renderMap() {
       const color = pami_colors[pamiNum];
 
       let currentPos = { x: 0, y: 0 };
+      let currentAngle = 0;
       strategy.sequence.forEach((action, actionIndex) => {
 
         if (action[0] == 3) {
           const [x, y] = [action[1], action[2]];
           currentPos = { x, y };
+          currentAngle = normalizeAngle(parseFloat(action[3]) || 0);
           drawPoint(svg, x, y, "robot", actionIndex, 1, 2, false, color, pamiNum);
         }
 
@@ -897,19 +899,48 @@ function renderMap() {
           const [x, y] = [action[1], action[2]];
           drawArrow(svg, currentPos, { x, y }, 0, color, pamiNum);
           drawPoint(svg, x, y,"", actionIndex, 1, 2, false, color, pamiNum);
+          const dx = parseFloat(x) - parseFloat(currentPos.x);
+          const dy = parseFloat(y) - parseFloat(currentPos.y);
+          if (Math.hypot(dx, dy) > 1e-3) {
+            currentAngle = normalizeAngle(rad_to_deg(Math.atan2(dy, dx)));
+          }
           currentPos = { x, y };
         }
 
         else if (action[0] == 2) {
           drawRotateIcon(svg, currentPos, color);
+          currentAngle = normalizeAngle(parseFloat(action[1]) || currentAngle);
         }
         else if (action[0] == 13) {
           drawRotateIcon(svg, currentPos, color);
+          currentAngle = normalizeAngle(currentAngle + (parseFloat(action[1]) || 0));
         }
         else if (action[0] == 4){
           drawBezier(svg, currentPos, action.slice(1), 0, actionIndex, color, pamiNum);
-          const [ , , , , x3, y3 ] = action.slice(1);
+          const [ x1, y1, x2, y2, x3, y3 ] = action.slice(1);
+          const endDx = parseFloat(x3) - parseFloat(x2);
+          const endDy = parseFloat(y3) - parseFloat(y2);
+          if (Math.hypot(endDx, endDy) > 1e-3) {
+            currentAngle = normalizeAngle(rad_to_deg(Math.atan2(endDy, endDx)));
+          } else {
+            const startDx = parseFloat(x1) - parseFloat(currentPos.x);
+            const startDy = parseFloat(y1) - parseFloat(currentPos.y);
+            if (Math.hypot(startDx, startDy) > 1e-3) {
+              currentAngle = normalizeAngle(rad_to_deg(Math.atan2(startDy, startDx)));
+            }
+          }
           currentPos = { x: x3, y: y3 };
+        }
+        else if (action[0] == 12) {
+          const distance = parseFloat(action[1]);
+          const direction = parseFloat(action[3]);
+          const sign = Number.isFinite(direction) && direction < 0 ? -1 : 1;
+          const delta = (Number.isFinite(distance) ? distance : 0) * sign;
+          const rad = deg_to_rad(currentAngle);
+          const x = parseFloat(currentPos.x) + delta * Math.cos(rad);
+          const y = parseFloat(currentPos.y) + delta * Math.sin(rad);
+          drawArrow(svg, currentPos, { x, y }, sign < 0 ? 1 : 0, color, pamiNum);
+          currentPos = { x, y };
         }
       });
     });
@@ -1180,6 +1211,10 @@ function rad_to_deg(rad) {
   return rad * (180 / Math.PI);
 }
 
+function deg_to_rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
 function normalizeAngle(deg) {
   let value = deg % 360;
   if (value < 0) value += 360;
@@ -1359,7 +1394,8 @@ function isBackwardMotion(action, strategy) {
 function getDesiredHeadingForAction(action, pose, strategy) {
   if (!action) return null;
 
-  if ((action[0] === 2 || action[0] === 13) && action.length >= 2) {
+  // orientate is absolute target heading
+  if (action[0] === 2 && action.length >= 2) {
     const target = parseFloat(action[1]);
     return Number.isFinite(target) ? normalizeAngle(target) : null;
   }
@@ -1438,6 +1474,11 @@ function getActionSpeedMmPerSec(action) {
   // bezier(x1, y1, x2, y2, x3, y3, speed[, direction]) -> speed at index 7
   if (action[0] === 4) {
     return sanitizeSpeedMmPerSec(action[7]);
+  }
+
+  // move_forward(distance, speed, direction) -> speed at index 2
+  if (action[0] === 12) {
+    return sanitizeSpeedMmPerSec(action[2]);
   }
 
   return 400;
@@ -1594,10 +1635,32 @@ async function simulateStrategy() {
         continue;
       }
 
-      if ((action[0] === 2 || action[0] === 13) && action.length >= 2) {
+      if (action[0] === 2 && action.length >= 2) {
         await animateRotation(pose, parseFloat(action[1]) || 0, pamiNum);
         markSimulationActionReached(i, pamiNum);
         await pauseSimulation(120);
+        continue;
+      }
+
+      if (action[0] === 13 && action.length >= 2) {
+        const relativeDelta = parseFloat(action[1]) || 0;
+        await animateRotation(pose, normalizeAngle(pose.angle + relativeDelta), pamiNum);
+        markSimulationActionReached(i, pamiNum);
+        await pauseSimulation(120);
+        continue;
+      }
+
+      if (action[0] === 12 && action.length >= 2) {
+        const distance = parseFloat(action[1]);
+        const direction = parseFloat(action[3]);
+        const sign = Number.isFinite(direction) && direction < 0 ? -1 : 1;
+        const signedDistance = (Number.isFinite(distance) ? distance : 0) * sign;
+        const rad = deg_to_rad(pose.angle);
+        const targetX = pose.x + signedDistance * Math.cos(rad);
+        const targetY = pose.y + signedDistance * Math.sin(rad);
+        const speedMmPerSec = getActionSpeedMmPerSec(action);
+        await animateLinearMotion(pose, targetX, targetY, sign < 0, pamiNum, speedMmPerSec);
+        markSimulationActionReached(i, pamiNum);
         continue;
       }
 
@@ -1639,7 +1702,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     if (action[0] == 3) { 
         // set_position command - use the angle parameter
         phi = action[3];
-    } else if (action[0] == 2 || action[0] == 13) {
+    } else if (action[0] == 2) {
         // orientate command - use the angle parameter
         phi = action[1];
     } else{
@@ -1652,7 +1715,7 @@ function calculate_x_y_phi_after_action(point, actionIndex, pamiNum) {
     if (actionIndex < loaded_strategies[pamiNum].sequence.length - 1){
         const next = loaded_strategies[pamiNum].sequence[actionIndex + 1];
 
-        if (next[0] == 2 || next[0] == 13) {
+        if (next[0] == 2) {
             // Next action is orientate - use that angle
             phi = next[1];
         }
