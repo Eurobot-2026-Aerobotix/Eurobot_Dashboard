@@ -207,6 +207,42 @@ async function persistPamiOrderSwap(nameA, orderA, nameB, orderB) {
   ]);
 }
 
+async function compactAndPersistPamiOrders(groups, allPami = null) {
+  if (!Array.isArray(groups) || groups.length === 0) return groups || [];
+
+  const normalized = groups.map((g) => ({ ...g }));
+
+  // Keep deterministic ranking inside each color and compress to 1..N.
+  const colors = ["yellow", "blue"];
+  const updates = [];
+
+  colors.forEach((color) => {
+    const sameColor = normalized
+      .filter((g) => g.color === color)
+      .sort((a, b) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return String(a.name).localeCompare(String(b.name));
+      });
+
+    sameColor.forEach((g, idx) => {
+      const expectedOrder = idx + 1;
+      if (g.order !== expectedOrder) {
+        g.order = expectedOrder;
+        updates.push({ name: g.name, order: expectedOrder });
+      }
+    });
+  });
+
+  if (updates.length > 0) {
+    const source = allPami || await loadPAMIStrategies();
+    await Promise.all(
+      updates.map((u) => savePamiGroupMeta(u.name, (s) => { s.order = u.order; }, source))
+    );
+  }
+
+  return normalized;
+}
+
 function renderPamiList() {
   if (!pamiListDivYellow || !pamiListDivBlue) return;
 
@@ -259,25 +295,67 @@ async function loadPamiStrategyNames() {
   const allPami = await loadPAMIStrategies();
   const grouped = new Map();
 
+  const normalizeOrder = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  // Pick a stable order from multiple files of same strategy:
+  // 1) most frequent order value across its PAMI files
+  // 2) if tie, choose the smallest value
+  const pickStableOrder = (orders) => {
+    if (!Array.isArray(orders) || orders.length === 0) return 1;
+    const freq = new Map();
+    orders.forEach((o) => freq.set(o, (freq.get(o) || 0) + 1));
+
+    let bestOrder = orders[0];
+    let bestCount = freq.get(bestOrder) || 0;
+
+    freq.forEach((count, orderVal) => {
+      if (count > bestCount || (count === bestCount && orderVal < bestOrder)) {
+        bestCount = count;
+        bestOrder = orderVal;
+      }
+    });
+
+    return bestOrder;
+  };
+
   allPami.forEach((s) => {
     if (!s || !s.strategy_name) return;
+    const order = normalizeOrder(s.order);
+
     if (!grouped.has(s.strategy_name)) {
       grouped.set(s.strategy_name, {
         name: s.strategy_name,
         color: s.color || inferPamiColorFromName(s.strategy_name),
-        order: Number.isFinite(Number(s.order)) ? Number(s.order) : 1
+        orders: order !== null ? [order] : []
       });
     } else {
       const existing = grouped.get(s.strategy_name);
-      const order = Number.isFinite(Number(s.order)) ? Number(s.order) : existing.order;
+      const nextOrders = existing.orders || [];
+      if (order !== null) nextOrders.push(order);
       grouped.set(s.strategy_name, {
         ...existing,
-        order
+        orders: nextOrders
       });
     }
   });
 
-  pamiStrategyGroups = Array.from(grouped.values());
+  let nextGroups = Array.from(grouped.values()).map((g) => ({
+    name: g.name,
+    color: g.color,
+    order: pickStableOrder(g.orders)
+  }));
+
+  // Ensure persisted order stays contiguous and deterministic per color.
+  try {
+    nextGroups = await compactAndPersistPamiOrders(nextGroups, allPami);
+  } catch (error) {
+    console.error("Failed to compact PAMI orders:", error);
+  }
+
+  pamiStrategyGroups = nextGroups;
   clickedPamiName = null;
   renderPamiList();
   updatePamiButtons();
