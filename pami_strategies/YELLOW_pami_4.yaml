@@ -1,5 +1,11 @@
 strategy_name: YELLOW
 pami_number: 4
-sequence: []
+sequence:
+- - 3
+  - '403.31'
+  - '2525.05'
+  - 0
+- - 2
+  - 90
 color: yellow
 order: 4

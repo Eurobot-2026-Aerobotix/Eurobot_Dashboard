@@ -2,12 +2,10 @@ strategy_name: YELLOW
 pami_number: 3
 sequence:
 - - 3
-  - '55.00'
-  - '2807.26'
+  - '67.71'
+  - '2530.14'
   - 0
-- - 1
-  - '494.83'
-  - '2807.26'
-  - 380
+- - 2
+  - 90
 color: yellow
 order: 4
