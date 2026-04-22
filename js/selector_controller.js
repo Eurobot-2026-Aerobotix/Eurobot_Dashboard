@@ -405,31 +405,41 @@ function mirror_strategy(strategy) {
 function mirror_pami_strategy(pami_strategy) {
   const mirrored = JSON.parse(JSON.stringify(pami_strategy)); // deep copy
 
-  mirrored.sequence.forEach(action => {
+  const mirrorY = (value) => {
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    const mirroredValue = 3000 - num;
+    return typeof value === "string" ? String(mirroredValue) : mirroredValue;
+  };
+
+  const mirrorAngle = (value) => {
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    const mirroredValue = -num;
+    return typeof value === "string" ? String(mirroredValue) : mirroredValue;
+  };
+
+  mirrored.sequence.forEach((action) => {
     const type = action[0];
 
     if (type === 1) {
-      // [1, x, y]
-      action[2] = 3000 - action[2];
-    }
-
-    else if (type === 2) {
-      // [2, angle, ?, y1, ?, y2]  (based on your description)
-      action[1] = -action[1]; // angle
-    }
-
-    else if (type === 3) {
-      // [3, y, angle]
-      action[2] = 3000 - action[2]; // y
-      action[3] = -action[3];       // angle
-    }
-
-    else if (type === 4) {
-      // Bezier: [4, x1, y1, x2, y2, x3, y3]
-      // y's are indices 2,4,6
-      if (action.length > 2) action[2] = 3000 - action[2];
-      if (action.length > 4) action[4] = 3000 - action[4];
-      if (action.length > 6) action[6] = 3000 - action[6];
+      // go_to: [1, x, y, ...]
+      if (action.length > 2) action[2] = mirrorY(action[2]);
+    } else if (type === 2) {
+      // orientate: [2, angle]
+      if (action.length > 1) action[1] = mirrorAngle(action[1]);
+    } else if (type === 3) {
+      // set_position: [3, x, y, angle]
+      if (action.length > 2) action[2] = mirrorY(action[2]);
+      if (action.length > 3) action[3] = mirrorAngle(action[3]);
+    } else if (type === 4) {
+      // bezier: [4, x1, y1, x2, y2, x3, y3, ...]
+      if (action.length > 2) action[2] = mirrorY(action[2]);
+      if (action.length > 4) action[4] = mirrorY(action[4]);
+      if (action.length > 6) action[6] = mirrorY(action[6]);
+    } else if (type === 13) {
+      // rotate: [13, angle]
+      if (action.length > 1) action[1] = mirrorAngle(action[1]);
     }
   });
 
@@ -517,16 +527,35 @@ branchBtn.addEventListener("click", async () => {
       (pamiStrategy) => pamiStrategy.strategy_name === original.name
     );
 
+    const basePamiColor = linkedPamiStrategies[0]?.color || inferPamiColorFromName(original.name);
+    const targetPamiColor = symmetric
+      ? (basePamiColor === "yellow" ? "blue" : "yellow")
+      : basePamiColor;
+    const sameColorOrders = pamiStrategies
+      .filter((pamiStrategy) => {
+        const color = pamiStrategy.color || inferPamiColorFromName(pamiStrategy.strategy_name);
+        return color === targetPamiColor;
+      })
+      .map((pamiStrategy) => Number(pamiStrategy.order))
+      .filter((order) => Number.isFinite(order));
+    const nextOrder = sameColorOrders.length ? Math.max(...sameColorOrders) + 1 : 1;
+
     await Promise.all(
       linkedPamiStrategies.map((pamiStrategy) => {
         let copiedPamiStrategy = JSON.parse(JSON.stringify(pamiStrategy));
         copiedPamiStrategy.strategy_name = name;
+        copiedPamiStrategy.color = targetPamiColor;
+        copiedPamiStrategy.order = nextOrder;
         if (symmetric) {
           copiedPamiStrategy = mirror_pami_strategy(copiedPamiStrategy);
+          copiedPamiStrategy.color = targetPamiColor;
+          copiedPamiStrategy.order = nextOrder;
         }
         return savePamiStrategy(copiedPamiStrategy);
       })
     );
+
+    await loadPamiStrategyNames();
   } catch (error) {
     console.error("Strategy was branched, but cloning PAMI strategies failed:", error);
     alert("Strategy branched, but cloning PAMI strategies failed.");
