@@ -1,5 +1,5 @@
 name: safe_go_to_bleu
-selected: false
+selected: true
 color: blue
 tasks:
 - description: Task 1

@@ -1,0 +1,13 @@
+strategy_name: BLUE
+pami_number: 2
+sequence:
+- - 3
+  - '70.25'
+  - '2654.71'
+  - 0
+- - 1
+  - '390.59'
+  - '2652.17'
+  - 380
+color: blue
+order: 6

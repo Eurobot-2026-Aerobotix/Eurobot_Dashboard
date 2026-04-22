@@ -1,0 +1,11 @@
+strategy_name: YELLOW
+pami_number: 1
+sequence:
+- - 3
+  - '55.00'
+  - '2807.26'
+  - 0
+- - 2
+  - 90
+color: yellow
+order: 4

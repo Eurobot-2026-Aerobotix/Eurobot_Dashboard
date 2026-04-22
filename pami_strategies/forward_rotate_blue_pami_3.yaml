@@ -1,5 +1,13 @@
 strategy_name: forward_rotate_blue
 pami_number: 3
-sequence: []
+sequence:
+- - 3
+  - 300
+  - 2700
+  - 0
+- - 1
+  - '899.07'
+  - '2403.02'
+  - 380
 color: blue
 order: 1
