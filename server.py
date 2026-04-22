@@ -1063,19 +1063,53 @@ def test_pami():
             
             # Extract strategy name for display
             strategy_name = os.path.splitext(os.path.basename(strategy_input))[0]
+            strategy_name_key = str(strategy_name).strip().lower()
+
+            # Resolve target order from pami_strategies by strategy_name
+            target_order = 1
+            matching_orders = []
+            try:
+                for filename in os.listdir(PAMI_STRATEGIES_DIR):
+                    if not filename.endswith('.yaml'):
+                        continue
+
+                    file_path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        pami_data = yaml.safe_load(f) or {}
+
+                    if str(pami_data.get('strategy_name', '')).strip().lower() != strategy_name_key:
+                        continue
+
+                    try:
+                        matching_orders.append(int(pami_data.get('order', 1)))
+                    except (TypeError, ValueError):
+                        continue
+
+                if matching_orders:
+                    counts = defaultdict(int)
+                    for value in matching_orders:
+                        counts[value] += 1
+                    # Use most frequent order for robustness
+                    target_order = max(counts.items(), key=lambda kv: (kv[1], -kv[0]))[0]
+                else:
+                    return jsonify({
+                        "status": "error",
+                        "error": f"No PAMI strategies found for strategy_name='{strategy_name}' in {PAMI_STRATEGIES_DIR}"
+                    }), 400
+            except Exception as e:
+                print(f"Warning: failed to resolve target order from pami_strategies: {e}")
             
             print(f"🚀 Starting PAMI test manager with strategy input: {strategy_input}")
             if pami_numbers_arg:
                 print(f"🎯 Selected PAMIs: {pami_numbers_arg}")
+            print(f"🔢 Resolved target order for strategy '{strategy_name}': {target_order}")
             
             # Run pami.sh with the strategy path as argument
             env = os.environ.copy()
             env['PYTHONUNBUFFERED'] = '1'
             env['RCUTILS_CONSOLE_OUTPUT_FORMAT'] = '[{name}] {message}'
 
-            cmd = ["bash", script_path, strategy_input]
-            if pami_numbers_arg:
-                cmd.append(pami_numbers_arg)
+            cmd = ["bash", script_path, strategy_input, pami_numbers_arg or "", str(target_order)]
             
             pami_process = subprocess.Popen(
                 cmd,
@@ -1091,7 +1125,7 @@ def test_pami():
             
             return jsonify({
                 "status": "success",
-                "message": f"PAMI test started for strategy: {strategy_name}"
+                "message": f"PAMI test started for strategy: {strategy_name} (order={target_order})"
             })
             
         except Exception as e:
