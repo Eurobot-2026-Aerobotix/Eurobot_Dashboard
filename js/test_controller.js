@@ -12,6 +12,7 @@ const disablePumpBtn = document.getElementById('disablePumpBtn');
 const resetBeaconBtn = document.getElementById('resetBeaconBtn');
 const clearMapBtn = document.getElementById('clearMapBtn');
 const updateMapBtn = document.getElementById('updateMapBtn');
+const testMapBtn = document.getElementById('testMapBtn');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const commandStatus = document.getElementById('commandStatus');
 const commandLog = document.getElementById('commandLog');
@@ -422,6 +423,10 @@ if (clearMapBtn) {
 
 if (updateMapBtn) {
     updateMapBtn.addEventListener('click', () => sendHybridAstarCommand('update_map', 'update_map()'));
+}
+
+if (testMapBtn) {
+    testMapBtn.addEventListener('click', () => sendHybridAstarCommand('test_map', 'test_map()'));
 }
 
 if (clearLogBtn && commandLog) {
