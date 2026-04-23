@@ -91,7 +91,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 5
   global_goal:
@@ -120,7 +120,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 6
   global_goal:
@@ -187,7 +187,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 9
   global_goal:
@@ -211,7 +211,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 10
   global_goal:
@@ -238,6 +238,18 @@ tasks:
     - 1000
     - 1000
     - 1100
+    wait: false
+- description: Task 13
+  global_goal:
+    x: '803.73'
+    y: '2120.40'
+    theta: -89.07560111978877
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 3000
+    - 0
     wait: false
 - description: Task 11
   global_goal:
