@@ -1,4 +1,4 @@
-strategy_name: cursor_bleue
+strategy_name: cursor_blue
 pami_number: 1
 sequence:
 - - 3
@@ -23,9 +23,9 @@ sequence:
   - 380
 - - 1
   - 1920
-  - 2450
+  - 2470
   - 400
 - - 5
-  - 100000
+  - 150000
 color: blue
 order: 1

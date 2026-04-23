@@ -15,9 +15,9 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - 300
+    - 262
     - 2655
-    - 0
+    - -14
     wait: false
 - description: Task 2
   global_goal:
@@ -28,14 +28,14 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1470
-    - 2350
+    - 1505
+    - 2345.086
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1470
+    - 1505
     - 1090
     - 1100
     wait: false
@@ -90,7 +90,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 5
   global_goal:
@@ -114,7 +114,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 6
   global_goal:
@@ -181,7 +181,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 9
   global_goal:
@@ -235,7 +235,7 @@ tasks:
     wait: false
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 11
   global_goal:
@@ -259,7 +259,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 12
   global_goal:
