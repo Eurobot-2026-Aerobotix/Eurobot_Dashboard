@@ -8,16 +8,16 @@ tasks:
     y: null
     theta: null
   sequence:
-  - device: STM
-    command: set_position
-    params:
-    - 300
-    - 2655
-    - 0
-    wait: false
   - device: RASP_PI
     command: Wait for manual start
     params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 262
+    - 2655
+    - -14
     wait: false
 - description: Task 2
   global_goal:
@@ -28,14 +28,14 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1500
-    - 2085.86
+    - 1505
+    - 2345.086
     - 1100
     wait: false
   - device: STM
     command: go_to
     params:
-    - 1500
+    - 1505
     - 1895
     - 1100
     wait: false
@@ -215,35 +215,22 @@ tasks:
     wait: true
 - description: Task 10
   global_goal:
-    x: '803.73'
-    y: '2120.40'
-    theta: -89.07560111978877
+    x: '782.12'
+    y: '2138.61'
+    theta: -120.39629381397943
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1040.41'
-    - '2586.98'
+    - '782.12'
+    - '2138.61'
     - 1000
     wait: true
-  - device: STM
-    command: bezier
-    params:
-    - '973.18'
-    - '2570.57'
-    - '796.14'
-    - '2590.80'
-    - '803.73'
-    - '2120.40'
-    - 1000
-    - 1000
-    - 1100
-    wait: false
 - description: Task 13
   global_goal:
-    x: '803.73'
-    y: '2120.40'
-    theta: -89.07560111978877
+    x: '782.12'
+    y: '2138.61'
+    theta: -120.39629381397943
   sequence:
   - device: RASP_PI
     command: steal
@@ -253,9 +240,9 @@ tasks:
     wait: false
 - description: Task 11
   global_goal:
-    x: '803.73'
-    y: '2120.40'
-    theta: -89.07560111978877
+    x: '782.12'
+    y: '2138.61'
+    theta: -120.39629381397943
   sequence:
   - device: RASP_PI
     command: wait_end_game
@@ -266,15 +253,15 @@ tasks:
   global_goal:
     x: '282.84'
     y: '2781.75'
-    theta: -0.5896752714182298
+    theta: -0.8201022787484362
   sequence:
   - device: STM
     command: bezier_backwards
     params:
     - '791.09'
     - '2732.43'
-    - '535.46'
-    - '2779.15'
+    - '809.58'
+    - '2774.21'
     - '282.84'
     - '2781.75'
     - 1000

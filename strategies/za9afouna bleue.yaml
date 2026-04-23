@@ -264,7 +264,7 @@ tasks:
 - description: Task 12
   global_goal:
     x: 840
-    y: 2206.29
+    y: 2200
     theta: -90
   sequence:
   - device: STM
@@ -275,22 +275,35 @@ tasks:
     - 1000
     wait: true
   - device: STM
-    command: bezier
+    command: go_to
     params:
-    - 757.13
-    - 2582.57
     - 840
-    - 2437.65
+    - 2520
+    - 1000
+    wait: false
+  - device: STM
+    command: go_to
+    params:
     - 840
-    - 2206.29
-    - 700
-    - 800
-    - 1100
+    - 2200
+    - 1000
+    wait: false
+- description: Task 15
+  global_goal:
+    x: 840
+    y: 2200
+    theta: -90
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 3000
+    - 30000
     wait: false
 - description: Task 13
   global_goal:
     x: 840
-    y: 2206.29
+    y: 2200
     theta: -90
   sequence:
   - device: RASP_PI
@@ -302,14 +315,14 @@ tasks:
   global_goal:
     x: 285
     y: 2750
-    theta: -1.2068615825892266
+    theta: -1.1811889133266504
   sequence:
   - device: STM
     command: bezier_backwards
     params:
     - 840
     - 2760
-    - 759.68
+    - 770
     - 2740
     - 285
     - 2750

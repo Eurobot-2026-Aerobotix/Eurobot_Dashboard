@@ -14,8 +14,10 @@ let isConnected = false;
 let robotPose = { x: 0, y: 0, theta: 0 };
 let obstacles = [];
 let enemyRobot = null;  // Track enemy robot position
+let enemyRobotSpeed = { vx: 0, vy: 0, updatedAt: 0 };  // Enemy velocity in map frame (m/s)
 let robotMarker = null;
 let enemyRobotMarker = null;  // Marker for enemy robot
+let enemySpeedArrow = null;
 let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
@@ -24,6 +26,8 @@ let currentPath = [];  // Store current planned path from hybrid A*
 // Throttling for enemy robot updates (prevent browser lag from high-frequency lidar data)
 let lastEnemyUpdateTime = 0;
 const ENEMY_UPDATE_THROTTLE_MS = 100;  // Update enemy display max once every 100ms (10Hz)
+const ENEMY_SPEED_STALE_MS = 750;
+const ENEMY_SPEED_MIN_MPS = 0.05;
 
 // DOM Elements
 const mapWrapper = document.getElementById('mapWrapper');
@@ -85,6 +89,7 @@ function initROS() {
         
         // Subscribe to enemy robot
         subscribeToEnemyRobot();
+        subscribeToEnemyRobotSpeed();
         
         // Subscribe to path visualization
         subscribeToPathVisualization();
@@ -192,6 +197,24 @@ function subscribeToEnemyRobot() {
         
         // Update enemy robot marker
         updateEnemyRobotMarker();
+    });
+}
+
+function subscribeToEnemyRobotSpeed() {
+    const speedListener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/obstacle_relative_speed',
+        messageType: 'geometry_msgs/Twist'
+    });
+
+    speedListener.subscribe(function(message) {
+        enemyRobotSpeed.vx = Number(message?.linear?.x) || 0;
+        enemyRobotSpeed.vy = Number(message?.linear?.y) || 0;
+        enemyRobotSpeed.updatedAt = Date.now();
+
+        if (enemyRobot) {
+            updateEnemyRobotMarker();
+        }
     });
 }
 
@@ -547,6 +570,11 @@ function initializeRobotMarker() {
     enemyRobotMarker = document.createElement('div');
     enemyRobotMarker.className = 'enemy-robot-marker';
     enemyRobotMarker.style.display = 'none'; // Hide until we detect enemy
+
+    enemySpeedArrow = document.createElement('div');
+    enemySpeedArrow.className = 'enemy-speed-arrow';
+    enemySpeedArrow.style.display = 'none';
+    enemyRobotMarker.appendChild(enemySpeedArrow);
     
     mapWrapper.appendChild(enemyRobotMarker);
     
@@ -630,6 +658,30 @@ function updateEnemyRobotMarker() {
     enemyRobotMarker.style.height = robotHeight_px + 'px';
     enemyRobotMarker.style.transform = 'translate(-50%, -50%)';
     enemyRobotMarker.style.display = 'flex';
+
+    if (!enemySpeedArrow) return;
+
+    const speedAgeMs = Date.now() - enemyRobotSpeed.updatedAt;
+    const speedMps = Math.hypot(enemyRobotSpeed.vx, enemyRobotSpeed.vy);
+    const hasFreshSpeed = speedAgeMs <= ENEMY_SPEED_STALE_MS;
+
+    if (!hasFreshSpeed || speedMps < ENEMY_SPEED_MIN_MPS) {
+        enemySpeedArrow.style.display = 'none';
+        return;
+    }
+
+    // Convert map-frame velocity (m/s) to screen velocity (px/s).
+    const vxScreenPxPerSec = (enemyRobotSpeed.vy * 1000 / MAP_WIDTH_MM) * displayWidth;
+    const vyScreenPxPerSec = (enemyRobotSpeed.vx * 1000 / MAP_HEIGHT_MM) * displayHeight;
+    const speedScreenPxPerSec = Math.hypot(vxScreenPxPerSec, vyScreenPxPerSec);
+
+    // Arrow length represents speed as projected displacement over 180ms.
+    const arrowLengthPx = Math.max(16, Math.min(120, speedScreenPxPerSec * 0.18));
+    const arrowAngle = Math.atan2(vyScreenPxPerSec, vxScreenPxPerSec);
+
+    enemySpeedArrow.style.width = `${arrowLengthPx.toFixed(1)}px`;
+    enemySpeedArrow.style.transform = `translate(-50%, -50%) rotate(${arrowAngle}rad)`;
+    enemySpeedArrow.style.display = 'block';
 }
 
 function addTrailPoint(x, y) {

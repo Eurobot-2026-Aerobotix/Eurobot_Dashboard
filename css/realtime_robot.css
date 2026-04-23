@@ -190,8 +190,36 @@ h1 {
     font-size: 20px;
 }
 
+.enemy-speed-arrow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    height: 4px;
+    width: 0;
+    background: linear-gradient(90deg, rgba(255, 248, 179, 0.35) 0%, #ffe082 38%, #ffca28 72%, #ffb300 100%);
+    border-radius: 999px;
+    transform-origin: 0 50%;
+    z-index: 106;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(255, 202, 40, 0.65), 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+.enemy-speed-arrow::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid #ffc107;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    filter: drop-shadow(0 0 3px rgba(255, 193, 7, 0.8));
+}
+
 /* Obstacle markers */
-.obstacle-marker { !important;
+.obstacle-marker {
     background: #ff9800 !important;
     border: 2px solid #e65100 !important;
     border-radius: 4px;
@@ -218,8 +246,7 @@ h1 {
 .obstacle-marker.blue {
     background: #4169E1 !important;
     border-color: #0000CD !important;
-    color: #fff !importantr: #0000CD;
-    color: #fff;
+    color: #fff !important;
 }
 
 /* Side panel on the right of map */
