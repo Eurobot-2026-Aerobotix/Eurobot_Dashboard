@@ -7,6 +7,21 @@ let menuCloseTimeout = null;
 let context_strategy_number = null;
 
 const params = new URLSearchParams(window.location.search);
+const currentStrategyName = params.get("name");
+
+function syncDefaultTestStrategy() {
+  if (!currentStrategyName) {
+    return;
+  }
+
+  const currentStored = localStorage.getItem('pami_test_strategy_name');
+  if (currentStored !== currentStrategyName) {
+    localStorage.setItem('pami_test_strategy_name', currentStrategyName);
+    localStorage.setItem('pami_test_strategy_path', `strategies/${currentStrategyName}.yaml`);
+  }
+}
+
+syncDefaultTestStrategy();
 
 window.addEventListener("pageshow", (e) => {
   if (sessionStorage.getItem("refreshOnce")) {
@@ -80,23 +95,20 @@ for (let i = 0; i < pamiBtnsLength; i++) {
   // Check if this is the TEST square
   if (pamiBtns[i].classList.contains('test-square')) {
     pamiBtns[i].addEventListener("click", () => {
-      // Save the current strategy path for testing
-      const strategyName = params.get("name");
-      const testPath = `strategies/${strategyName}.yaml`;
-      const previousPamis = localStorage.getItem('pami_test_numbers') || '';
-      const selectedPamis = prompt('PAMIs to test (1-7, comma-separated). Leave empty for all:', previousPamis);
-      if (selectedPamis === null) {
+      if (!currentStrategyName) {
+        alert('No strategy selected. Go back and choose a strategy first.');
         return;
       }
+
+      // Save the current strategy path for testing
+      const strategyName = currentStrategyName;
+      const testPath = `strategies/${strategyName}.yaml`;
+      const selectedPamis = '1,2,3,4,5,6,7';
       
       // Save to localStorage
       localStorage.setItem('pami_test_strategy_path', testPath);
       localStorage.setItem('pami_test_strategy_name', strategyName);
-      if (selectedPamis.trim()) {
-        localStorage.setItem('pami_test_numbers', selectedPamis.trim());
-      } else {
-        localStorage.removeItem('pami_test_numbers');
-      }
+      localStorage.setItem('pami_test_numbers', selectedPamis);
       
       // Visual feedback
       pamiBtns[i].style.transform = 'scale(0.95)';
@@ -106,7 +118,7 @@ for (let i = 0; i < pamiBtnsLength; i++) {
         pamiBtns[i].style.opacity = '';
       }, 200);
       
-      alert(`Test strategy set to: ${strategyName}${selectedPamis.trim() ? `\nPAMIs: ${selectedPamis.trim()}` : '\nPAMIs: all (1-7)'}`);
+      alert(`Test strategy set to: ${strategyName}\nPAMIs: all (1-7)`);
     });
     
     // No context menu for TEST square
