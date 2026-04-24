@@ -1061,7 +1061,7 @@ function renderMap() {
 
       const backwards = action.command.includes("_backwards");
 
-      if (action.command.includes("set_position")) {
+      if (action.command.includes("set_position") || action.command.includes("prepare_for_start")) {
         const [x, y] = action.params;
         currentPos = { x, y };
         drawPoint(svg, x, y, "robot", action, 0, 1);
