@@ -22,6 +22,19 @@ let lastUpdateTime = null;
 let trailEnabled = true;
 let maxTrailPoints = 50;
 let currentPath = [];  // Store current planned path from hybrid A*
+let pathHistory = [];  // Store all paths for current game (cleared on /clear_map)
+
+// Distinct colors by draw order (first path, second path, ...)
+const PATH_COLORS = [
+    '#00ff00', // 1
+    '#ff3b30', // 2
+    '#007aff', // 3
+    '#ff9500', // 4
+    '#af52de', // 5
+    '#00c7be', // 6
+    '#ff2d55', // 7
+    '#8e8e93'  // 8
+];
 
 // Throttling for enemy robot updates (prevent browser lag from high-frequency lidar data)
 let lastEnemyUpdateTime = 0;
@@ -96,6 +109,9 @@ function initROS() {
 
         // Subscribe to task scheduler status
         subscribeToTaskSchedulerStatus();
+
+        // Subscribe to TEST controller results (used to detect clear_map)
+        subscribeToTestControllerResult();
     });
 
     ros.on('error', function(error) {
@@ -273,30 +289,28 @@ function subscribeToPathVisualization() {
     });
     
     listener.subscribe(function(message) {
-        // Extract path points from MarkerArray
-        currentPath = [];
-        
-        if (message.markers && message.markers.length > 0) {
-            // Find the path marker (first marker with LINE_STRIP type)
-            const pathMarker = message.markers.find(m => m.type === 4);  // LINE_STRIP = 4
-            
-            if (pathMarker && pathMarker.points) {
-                // Convert points to our coordinate system
-                currentPath = pathMarker.points.map(point => ({
-                    x: point.x,  // Already in meters
-                    y: point.y   // Already in meters
-                }));
-                
-                console.log(`✅ Received path with ${currentPath.length} waypoints`);
-                
-                // Draw the path
-                drawPath();
-            }
-        } else {
-            // Clear path if empty marker array
-            currentPath = [];
-            drawPath();
+        const markers = Array.isArray(message.markers) ? message.markers : [];
+
+        // Only process path markers (LINE_STRIP = 4).
+        // Ignore DELETEALL-only obstacle refreshes coming from map visualization updates.
+        const pathMarker = markers.find(m => m && m.type === 4 && Array.isArray(m.points));
+        if (!pathMarker || pathMarker.points.length === 0) {
+            return;
         }
+
+        // Convert points to dashboard coordinate source format (meters)
+        currentPath = pathMarker.points.map(point => ({
+            x: point.x,
+            y: point.y
+        }));
+
+        // Keep all paths for this game
+        pathHistory.push(currentPath);
+
+        console.log(`✅ Received path #${pathHistory.length} with ${currentPath.length} waypoints`);
+
+        // Draw all paths
+        drawPath();
     });
 }
 
@@ -315,6 +329,39 @@ function subscribeToTaskSchedulerStatus() {
             renderTaskSchedulerStatus(data);
         } catch (error) {
             console.error('Failed to parse /web/task_scheduler_status:', error);
+        }
+    });
+}
+
+function subscribeToTestControllerResult() {
+    console.log('📡 Subscribing to /web/test_controller_result');
+
+    const listener = new ROSLIB.Topic({
+        ros: ros,
+        name: '/web/test_controller_result',
+        messageType: 'std_msgs/String'
+    });
+
+    listener.subscribe(function(message) {
+        try {
+            const data = JSON.parse(message.data || '{}');
+            const isClearMapSuccess = Boolean(
+                data &&
+                data.success === true &&
+                String(data.controller || '').toLowerCase() === 'hybrid_astar' &&
+                String(data.action || '').toLowerCase() === 'clear_map'
+            );
+
+            if (!isClearMapSuccess) {
+                return;
+            }
+
+            currentPath = [];
+            pathHistory = [];
+            drawPath();
+            console.log('🧹 clear_map success received, cleared path history for new game');
+        } catch (error) {
+            console.error('Failed to parse /web/test_controller_result:', error);
         }
     });
 }
@@ -776,7 +823,7 @@ function drawPath() {
         existingPath.remove();
     }
     
-    if (currentPath.length === 0) {
+    if (pathHistory.length === 0) {
         return;
     }
     
@@ -800,38 +847,43 @@ function drawPath() {
     svg.style.pointerEvents = 'none';
     svg.style.zIndex = '60';
     
-    // Create path element
-    const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    
-    // Build SVG path data
-    let pathData = '';
-    currentPath.forEach((point, index) => {
-        // Convert from meters to mm
-        const x_mm = point.x * 1000;
-        const y_mm = point.y * 1000;
-        
-        // Convert to pixel coordinates (with x/y swap for map coordinate system)
-        const x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
-        const y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
-        
-        if (index === 0) {
-            pathData += `M ${x_px} ${y_px}`;
-        } else {
-            pathData += ` L ${x_px} ${y_px}`;
-        }
+    // Create one SVG path per computed trajectory in this game
+    pathHistory.forEach((path, pathIndex) => {
+        if (!Array.isArray(path) || path.length === 0) return;
+
+        const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        let pathData = '';
+
+        path.forEach((point, index) => {
+            // Convert from meters to mm
+            const x_mm = point.x * 1000;
+            const y_mm = point.y * 1000;
+
+            // Convert to pixel coordinates (with x/y swap for map coordinate system)
+            const x_px = (y_mm / MAP_WIDTH_MM) * displayWidth;
+            const y_px = (x_mm / MAP_HEIGHT_MM) * displayHeight;
+
+            if (index === 0) {
+                pathData += `M ${x_px} ${y_px}`;
+            } else {
+                pathData += ` L ${x_px} ${y_px}`;
+            }
+        });
+
+        pathElement.setAttribute('d', pathData);
+        pathElement.setAttribute('stroke', PATH_COLORS[pathIndex % PATH_COLORS.length]);
+        pathElement.setAttribute('stroke-width', pathIndex === pathHistory.length - 1 ? '3.5' : '2.5');
+        pathElement.setAttribute('fill', 'none');
+        pathElement.setAttribute('stroke-linecap', 'round');
+        pathElement.setAttribute('stroke-linejoin', 'round');
+        pathElement.setAttribute('opacity', pathIndex === pathHistory.length - 1 ? '0.95' : '0.75');
+
+        svg.appendChild(pathElement);
     });
-    
-    pathElement.setAttribute('d', pathData);
-    pathElement.setAttribute('stroke', '#00ff00');
-    pathElement.setAttribute('stroke-width', '3');
-    pathElement.setAttribute('fill', 'none');
-    pathElement.setAttribute('stroke-linecap', 'round');
-    pathElement.setAttribute('stroke-linejoin', 'round');
-    
-    svg.appendChild(pathElement);
+
     mapWrapper.appendChild(svg);
     
-    console.log(`✅ Drew path with ${currentPath.length} waypoints`);
+    console.log(`✅ Drew ${pathHistory.length} path(s)`);
 }
 
 function updateObstacleCount() {
