@@ -16,7 +16,7 @@ tasks:
     command: set_position
     params:
     - 300
-    - 2700
+    - 2650
     - 0
     wait: false
 - description: Task 2

@@ -1,5 +1,5 @@
 name: za9afouna
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -15,9 +15,9 @@ tasks:
   - device: STM
     command: set_position
     params:
-    - 262
-    - 345
-    - 14
+    - 300
+    - 350
+    - 0
     wait: false
 - description: Task 2
   global_goal:
@@ -90,7 +90,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 5
   global_goal:
@@ -114,7 +114,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 6
   global_goal:
@@ -181,7 +181,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 9
   global_goal:
@@ -235,7 +235,7 @@ tasks:
     wait: false
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 11
   global_goal:
@@ -259,7 +259,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 12
   global_goal:
@@ -300,9 +300,9 @@ tasks:
     wait: false
 - description: Task 14
   global_goal:
-    x: 285
-    y: 250
-    theta: 1.206861582589255
+    x: '291.44'
+    y: '252.17'
+    theta: 0.9580218347708751
   sequence:
   - device: STM
     command: bezier_backwards
@@ -311,8 +311,8 @@ tasks:
     - 240
     - 759.68
     - 260
-    - 285
-    - 250
+    - '291.44'
+    - '252.17'
     - 1000
     - 1000
     - 1100
