@@ -14,6 +14,7 @@ const go_to_args = ["x", "y", "speed"];
 const orientate_args = ["angle"];
 const bezier_args = ["x1", "y1", "x2", "y2", "x3", "y3", "backup x", "backup y", "speed"];
 const set_position_args = ["x", "y", "angle"];
+const prepare_for_start_args = ["x", "y", "theta"];
 const wait_enf_game_args = ["duration"];
 const steal_args = ["sx count","fx count"];
 
@@ -22,6 +23,7 @@ function getArgsTableForCommand(command) {
   if (command.includes("bezier")) return bezier_args;
   if (command.includes("orientate")) return orientate_args;
   if (command.includes("set_position")) return set_position_args;
+  if (command.includes("prepare_for_start")) return prepare_for_start_args;
   if (command.includes("wait_end_game")) return wait_enf_game_args;
   if (command.includes("steal")) return steal_args;
   return [];
@@ -276,6 +278,7 @@ function getModalParamsForCommand(command) {
 
 const options = [
     new Action("STM", "set_position"),
+  new Action("RASP_PI", "prepare_for_start"),
     new Action("STM", "go_to"),
     new Action("STM", "go_to_backwards"),
     new Action("STM", "bezier"),

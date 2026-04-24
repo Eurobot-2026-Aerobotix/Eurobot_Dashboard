@@ -1,0 +1,41 @@
+name: test_start
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: prepare_for_start
+    params:
+    - 300
+    - 300
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+- description: Task 3
+  global_goal:
+    x: '1101.80'
+    y: '751.57'
+    theta: 34.299041771687556
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1101.80'
+    - '751.57'
+    - 1100
+    wait: false
+order: 60
