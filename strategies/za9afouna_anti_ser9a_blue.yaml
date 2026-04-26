@@ -9,6 +9,19 @@ tasks:
     theta: null
   sequence:
   - device: RASP_PI
+    command: prepare_for_start
+    params:
+    - 262
+    - 2655
+    - 0
+    wait: false
+- description: Task 16
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
     command: Wait for manual start
     params: []
     wait: false
@@ -271,7 +284,7 @@ tasks:
   global_goal:
     x: '1656.00'
     y: '1635.62'
-    theta: -152
+    theta: 150
   sequence:
   - device: STM
     command: go_to_backwards
@@ -283,7 +296,7 @@ tasks:
   - device: STM
     command: orientate
     params:
-    - -152
+    - 150
     wait: false
   - device: ESP_back
     command: put_down
@@ -291,28 +304,53 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
+    x: '1462.97'
+    y: '1833.53'
+    theta: 134.28482917351312
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1462.97'
+    - '1833.53'
+    - 1000
+    wait: true
+- description: Task 18
+  global_goal:
+    x: '1462.97'
+    y: '1833.53'
+    theta: 134.28482917351312
+  sequence:
+  - device: RASP_PI
+    command: steal
+    params:
+    - 3000
+    - 3000
+    wait: false
+- description: Task 17
+  global_goal:
     x: '899.23'
     y: '2197.79'
-    theta: 90.25191526508233
+    theta: 89.0707549574045
   sequence:
   - device: STM
     command: bezier
     params:
-    - '1097.65'
-    - '2022.27'
-    - '901.78'
-    - '1617.82'
+    - '1239.24'
+    - '1958.10'
+    - '890.93'
+    - '1686.07'
     - '899.23'
     - '2197.79'
     - 1000
     - 1000
     - 1100
-    wait: true
+    wait: false
 - description: Task 15
   global_goal:
     x: '899.23'
     y: '2197.79'
-    theta: 90.25191526508233
+    theta: 89.0707549574045
   sequence:
   - device: RASP_PI
     command: wait_end_game

@@ -9,6 +9,19 @@ tasks:
     theta: null
   sequence:
   - device: RASP_PI
+    command: prepare_for_start
+    params:
+    - 262
+    - 345
+    - 0
+    wait: false
+- description: Task 14
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
     command: Wait for manual start
     params: []
     wait: false
@@ -91,7 +104,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 5
   global_goal:
@@ -120,7 +133,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 6
   global_goal:
@@ -187,7 +200,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 9
   global_goal:
@@ -211,7 +224,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 13
   global_goal:

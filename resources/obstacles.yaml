@@ -7,41 +7,6 @@ goal_point:
   y: 2700
   theta: 90
 batches:
-- batch_id: 1
-  known_id: s1
-  count: 4
-  direction: horizontal
-  phi_deg: 0.0
-  avg_adjacent_dist_m: 0.05
-  center:
-    x: 800.0
-    y: 175.0
-    z: 0.0
-  members:
-  - aruco_id: 47
-    map_pos:
-      x: 725
-      y: 175
-      z: 0
-    color: yellow
-  - aruco_id: 36
-    map_pos:
-      x: 775
-      y: 175
-      z: 0
-    color: blue
-  - aruco_id: 47
-    map_pos:
-      x: 825
-      y: 175
-      z: 0
-    color: yellow
-  - aruco_id: 47
-    map_pos:
-      x: 875
-      y: 175
-      z: 0
-    color: yellow
 - batch_id: 2
   known_id: s2
   count: 4
@@ -53,12 +18,12 @@ batches:
     y: 175.0
     z: 0.0
   members:
-  - aruco_id: 36
+  - aruco_id: 47
     map_pos:
       x: 1525
       y: 175
       z: 0
-    color: blue
+    color: yellow
   - aruco_id: 36
     map_pos:
       x: 1575
@@ -112,41 +77,6 @@ batches:
       y: 1025
       z: 0
     color: blue
-- batch_id: 6
-  known_id: s3
-  count: 4
-  direction: vertical
-  phi_deg: 0
-  avg_adjacent_dist_m: 0.05
-  center:
-    x: 1204.6
-    y: 1148.2
-    z: 0
-  members:
-  - aruco_id: 36
-    map_pos:
-      x: 1204.6
-      y: 1223.2
-      z: 0
-    color: blue
-  - aruco_id: 36
-    map_pos:
-      x: 1204.6
-      y: 1173.2
-      z: 0
-    color: blue
-  - aruco_id: 47
-    map_pos:
-      x: 1204.6
-      y: 1123.2
-      z: 0
-    color: yellow
-  - aruco_id: 47
-    map_pos:
-      x: 1204.6
-      y: 1073.2
-      z: 0
-    color: yellow
 - batch_id: 7
   known_id: s6
   count: 4
@@ -355,5 +285,40 @@ batches:
     map_pos:
       x: 1873.9
       y: 2376.3
+      z: 0
+    color: blue
+- batch_id: 13
+  known_id: top left
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 540.2
+    y: 1247.8
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 540.2
+      y: 1172.8
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 540.2
+      y: 1222.8
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 540.2
+      y: 1272.8
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 540.2
+      y: 1322.8
       z: 0
     color: blue
