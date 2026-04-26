@@ -59,6 +59,10 @@ const schedulerBackEmptyDisplay = document.getElementById('schedulerBackEmpty');
 const schedulerTrackedTaskDisplay = document.getElementById('schedulerTrackedTask');
 const schedulerQueueSizeDisplay = document.getElementById('schedulerQueueSize');
 const schedulerQueueList = document.getElementById('schedulerQueueList');
+const restartBeaconBtn = document.getElementById('restartBeaconBtn');
+const batchOverridePrefix = document.getElementById('batchOverridePrefix');
+const batchOverrideCode = document.getElementById('batchOverrideCode');
+const clearBatchOverrideBtn = document.getElementById('clearBatchOverrideBtn');
 
 // Scheduler UI animation state
 const schedulerQueueNodeByKey = new Map();
@@ -364,6 +368,264 @@ function subscribeToTestControllerResult() {
             console.error('Failed to parse /web/test_controller_result:', error);
         }
     });
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function callHybridAstarTestAction(action, payload = {}, timeoutMs = 7000) {
+    return new Promise((resolve, reject) => {
+        if (!isConnected || !ros) {
+            reject(new Error('Not connected to ROS2'));
+            return;
+        }
+
+        const requestId = `realtime-${action}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        const commandTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/web/test_controller',
+            messageType: 'std_msgs/String'
+        });
+
+        const resultTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/web/test_controller_result',
+            messageType: 'std_msgs/String'
+        });
+
+        let handled = false;
+        const timeoutHandle = setTimeout(() => {
+            if (handled) return;
+            handled = true;
+            resultTopic.unsubscribe();
+            reject(new Error(`${action} timeout`));
+        }, timeoutMs);
+
+        resultTopic.subscribe((message) => {
+            if (handled) return;
+
+            try {
+                const result = JSON.parse(message.data || '{}');
+                if (!result || result.request_id !== requestId) {
+                    return;
+                }
+
+                handled = true;
+                clearTimeout(timeoutHandle);
+                resultTopic.unsubscribe();
+
+                if (result.success) {
+                    resolve(result);
+                } else {
+                    reject(new Error(result.message || `${action} failed`));
+                }
+            } catch (error) {
+                handled = true;
+                clearTimeout(timeoutHandle);
+                resultTopic.unsubscribe();
+                reject(new Error(`Invalid ${action} response: ${error.message}`));
+            }
+        });
+
+        const msg = new ROSLIB.Message({
+            data: JSON.stringify({
+                controller: 'hybrid_astar',
+                action,
+                request_id: requestId,
+                ...(payload || {})
+            })
+        });
+
+        commandTopic.publish(msg);
+    });
+}
+
+async function restartBeacon() {
+    if (!isConnected || !ros) {
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+
+    if (restartBeaconBtn) {
+        restartBeaconBtn.disabled = true;
+        restartBeaconBtn.textContent = '⏳ Restarting...';
+    }
+
+    try {
+        console.log('🔁 Restart beacon flow: reset_beacon -> clear_map -> wait 1s -> update_map');
+        await callHybridAstarTestAction('reset_beacon');
+        await callHybridAstarTestAction('clear_map');
+        await delay(1000);
+        await callHybridAstarTestAction('update_map');
+        alert('Beacon restarted successfully:\nreset_beacon → clear_map → wait 1s → update_map');
+    } catch (error) {
+        console.error('❌ Restart beacon failed:', error);
+        alert(`Restart beacon failed: ${error.message}`);
+    } finally {
+        if (restartBeaconBtn) {
+            restartBeaconBtn.disabled = false;
+            restartBeaconBtn.textContent = '🔁 Restart Beacon';
+        }
+    }
+}
+
+function getOverrideCodeInput() {
+    const rawCode = String(batchOverrideCode?.value || '').trim();
+    if (!rawCode) {
+        throw new Error('Please enter a compact code like 14');
+    }
+    return rawCode;
+}
+
+function parseCompactBatchCode(rawCode) {
+    const compact = String(rawCode || '').replace(/\s+/g, '');
+    if (!/^\d{2}$/.test(compact)) {
+        throw new Error(`Invalid code '${rawCode}'. Expected 2 digits like 14.`);
+    }
+
+    const index = parseInt(compact[0], 10);
+    const patternCode = compact[1];
+    if (!Number.isFinite(index) || index <= 0) {
+        throw new Error(`Invalid batch index in code '${rawCode}'`);
+    }
+
+    const patternByCode = {
+        '1': 'yybb',
+        '2': 'ybyb',
+        '3': 'ybby',
+        '4': 'byyb',
+        '5': 'byby',
+        '6': 'bbyy'
+    };
+
+    const pattern = patternByCode[patternCode];
+    if (!pattern) {
+        throw new Error(`Invalid pattern code '${patternCode}' in '${rawCode}' (allowed 1..6)`);
+    }
+
+    return { index, pattern, compact };
+}
+
+function getKnownBatchCenterMm(prefix, index) {
+    const sxCenters = {
+        s1: { x: 800, y: 175 },
+        s2: { x: 1600, y: 175 },
+        s3: { x: 1200, y: 1150 },
+        s4: { x: 1825, y: 1100 },
+        s5: { x: 1200, y: 1850 },
+        s6: { x: 1825, y: 1900 },
+        s7: { x: 800, y: 2800 },
+        s8: { x: 1600, y: 2800 }
+    };
+
+    const fxCenters = {
+        f1: { x: 1200, y: 100 },
+        f2: { x: 1900, y: 700 },
+        f3: { x: 1200, y: 800 },
+        f5: { x: 1200, y: 1500 },
+        f6: { x: 1900, y: 1500 },
+        f8: { x: 1200, y: 2200 },
+        f9: { x: 1900, y: 2300 },
+        f10: { x: 1200, y: 2900 }
+    };
+
+    const knownId = `${prefix}${index}`;
+    const table = prefix === 's' ? sxCenters : fxCenters;
+    const center = table[knownId];
+    if (!center) {
+        throw new Error(`No predefined center for ${knownId}`);
+    }
+    return { knownId, center };
+}
+
+function getBatchDirectionForKnownId(knownId) {
+    if (knownId.startsWith('s')) {
+        return (knownId === 's1' || knownId === 's2') ? 'horizontal' : 'vertical';
+    }
+    return 'vertical';
+}
+
+function buildMembersFromPattern(centerMm, direction, pattern, arucoBaseId = 9000) {
+    const offsets = direction === 'horizontal'
+        ? [{ x: -75, y: 0 }, { x: -25, y: 0 }, { x: 25, y: 0 }, { x: 75, y: 0 }]
+        : [{ x: 0, y: -75 }, { x: 0, y: -25 }, { x: 0, y: 25 }, { x: 0, y: 75 }];
+
+    const chars = pattern.split('');
+    return offsets.map((offset, i) => ({
+        aruco_id: arucoBaseId + i,
+        position: {
+            x: centerMm.x + offset.x,
+            y: centerMm.y + offset.y
+        },
+        color: chars[i] === 'y' ? 'yellow' : 'blue'
+    }));
+}
+
+function publishBatchesLikePathfinding(batchesTable) {
+    return new Promise((resolve, reject) => {
+        if (!isConnected || !ros) {
+            reject(new Error('Not connected to ROS2'));
+            return;
+        }
+
+        try {
+            const topic = new ROSLIB.Topic({
+                ros,
+                name: '/web/send_batches',
+                messageType: 'std_msgs/String'
+            });
+
+            topic.publish(new ROSLIB.Message({
+                data: JSON.stringify({ batches: batchesTable })
+            }));
+
+            const updateMapService = new ROSLIB.Service({
+                ros,
+                name: '/update_map',
+                serviceType: 'std_srvs/Trigger'
+            });
+
+            updateMapService.callService(new ROSLIB.ServiceRequest({}), (result) => {
+                if (result && result.success) {
+                    resolve(result.message || 'update_map succeeded');
+                } else {
+                    reject(new Error((result && result.message) || 'update_map failed'));
+                }
+            }, (error) => {
+                reject(new Error(`Failed to call /update_map: ${error}`));
+            });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+async function applyBatchPatternOverride() {
+    try {
+        const code = getOverrideCodeInput();
+        const prefix = String(batchOverridePrefix?.value || 's').trim().toLowerCase();
+        if (prefix !== 's') {
+            throw new Error(`Invalid prefix '${prefix}'`);
+        }
+
+        await callHybridAstarTestAction('set_batch_pattern_override', { code, prefix });
+    } catch (error) {
+        console.error('❌ Failed to apply batch override:', error);
+        alert(`Failed to apply override: ${error.message}`);
+    }
+}
+
+async function clearBatchPatternOverride() {
+    try {
+        const code = getOverrideCodeInput();
+        const prefix = 's';
+        const res = await callHybridAstarTestAction('clear_batch_pattern_override', { code, prefix });
+        alert(res.message || 'Pattern override cleared');
+    } catch (error) {
+        console.error('❌ Failed to clear batch override:', error);
+        alert(`Failed to clear override: ${error.message}`);
+    }
 }
 
 function renderTaskSchedulerStatus(status) {
@@ -926,6 +1188,23 @@ function stopUpdateDisplayInterval() {
 
 // Start interval
 startUpdateDisplayInterval();
+
+if (restartBeaconBtn) {
+    restartBeaconBtn.addEventListener('click', restartBeacon);
+}
+
+if (batchOverrideCode) {
+    batchOverrideCode.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            applyBatchPatternOverride();
+        }
+    });
+}
+
+if (clearBatchOverrideBtn) {
+    clearBatchOverrideBtn.addEventListener('click', clearBatchPatternOverride);
+}
 
 // Stop interval when page is hidden to save CPU
 document.addEventListener('visibilitychange', () => {

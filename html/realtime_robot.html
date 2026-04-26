@@ -73,6 +73,18 @@
                                 <li class="queue-empty">No task scheduler data yet</li>
                             </ul>
                         </div>
+
+                        <button id="restartBeaconBtn" class="button" style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #ff7675 0%, #d63031 100%); color: #fff;">
+                            🔁 Restart Beacon
+                        </button>
+
+                        <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center;">
+                            <select id="batchOverridePrefix" style="flex: 0 0 64px; padding: 6px; border-radius: 6px; border: 1px solid #ccc;">
+                                <option value="s" selected>SX</option>
+                            </select>
+                            <input id="batchOverrideCode" type="text" placeholder="code 14" maxlength="8" style="flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc;" />
+                        </div>
+                        <button id="clearBatchOverrideBtn" class="button" style="margin-top: 8px; width: 100%;">🧽 Clear One</button>
                     </div>
                 </div>
             </div>
