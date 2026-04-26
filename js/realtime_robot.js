@@ -59,6 +59,7 @@ const schedulerBackEmptyDisplay = document.getElementById('schedulerBackEmpty');
 const schedulerTrackedTaskDisplay = document.getElementById('schedulerTrackedTask');
 const schedulerQueueSizeDisplay = document.getElementById('schedulerQueueSize');
 const schedulerQueueList = document.getElementById('schedulerQueueList');
+const restartBeaconBtn = document.getElementById('restartBeaconBtn');
 
 // Scheduler UI animation state
 const schedulerQueueNodeByKey = new Map();
@@ -364,6 +365,105 @@ function subscribeToTestControllerResult() {
             console.error('Failed to parse /web/test_controller_result:', error);
         }
     });
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function callHybridAstarTestAction(action, timeoutMs = 7000) {
+    return new Promise((resolve, reject) => {
+        if (!isConnected || !ros) {
+            reject(new Error('Not connected to ROS2'));
+            return;
+        }
+
+        const requestId = `realtime-${action}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+        const commandTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/web/test_controller',
+            messageType: 'std_msgs/String'
+        });
+
+        const resultTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/web/test_controller_result',
+            messageType: 'std_msgs/String'
+        });
+
+        let handled = false;
+        const timeoutHandle = setTimeout(() => {
+            if (handled) return;
+            handled = true;
+            resultTopic.unsubscribe();
+            reject(new Error(`${action} timeout`));
+        }, timeoutMs);
+
+        resultTopic.subscribe((message) => {
+            if (handled) return;
+
+            try {
+                const result = JSON.parse(message.data || '{}');
+                if (!result || result.request_id !== requestId) {
+                    return;
+                }
+
+                handled = true;
+                clearTimeout(timeoutHandle);
+                resultTopic.unsubscribe();
+
+                if (result.success) {
+                    resolve(result);
+                } else {
+                    reject(new Error(result.message || `${action} failed`));
+                }
+            } catch (error) {
+                handled = true;
+                clearTimeout(timeoutHandle);
+                resultTopic.unsubscribe();
+                reject(new Error(`Invalid ${action} response: ${error.message}`));
+            }
+        });
+
+        const msg = new ROSLIB.Message({
+            data: JSON.stringify({
+                controller: 'hybrid_astar',
+                action,
+                request_id: requestId
+            })
+        });
+
+        commandTopic.publish(msg);
+    });
+}
+
+async function restartBeacon() {
+    if (!isConnected || !ros) {
+        alert('Not connected to ROS2. Please check the connection.');
+        return;
+    }
+
+    if (restartBeaconBtn) {
+        restartBeaconBtn.disabled = true;
+        restartBeaconBtn.textContent = '⏳ Restarting...';
+    }
+
+    try {
+        console.log('🔁 Restart beacon flow: reset_beacon -> clear_map -> wait 1s -> update_map');
+        await callHybridAstarTestAction('reset_beacon');
+        await callHybridAstarTestAction('clear_map');
+        await delay(1000);
+        await callHybridAstarTestAction('update_map');
+        alert('Beacon restarted successfully:\nreset_beacon → clear_map → wait 1s → update_map');
+    } catch (error) {
+        console.error('❌ Restart beacon failed:', error);
+        alert(`Restart beacon failed: ${error.message}`);
+    } finally {
+        if (restartBeaconBtn) {
+            restartBeaconBtn.disabled = false;
+            restartBeaconBtn.textContent = '🔁 Restart Beacon';
+        }
+    }
 }
 
 function renderTaskSchedulerStatus(status) {
@@ -926,6 +1026,10 @@ function stopUpdateDisplayInterval() {
 
 // Start interval
 startUpdateDisplayInterval();
+
+if (restartBeaconBtn) {
+    restartBeaconBtn.addEventListener('click', restartBeacon);
+}
 
 // Stop interval when page is hidden to save CPU
 document.addEventListener('visibilitychange', () => {
