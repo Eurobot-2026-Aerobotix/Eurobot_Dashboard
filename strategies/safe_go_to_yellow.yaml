@@ -25,13 +25,6 @@ tasks:
     command: Wait for manual start
     params: []
     wait: false
-  - device: STM
-    command: set_position
-    params:
-    - 262
-    - 345
-    - 14
-    wait: false
 - description: Task 2
   global_goal:
     x: 1610
