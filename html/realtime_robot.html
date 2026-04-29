@@ -22,6 +22,37 @@
     <div class="logo-container">
         <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
     </div>
+
+    <div class="esp-status-panel">
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="frontStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Front ESP</span>
+                <span class="esp-status-value" id="frontStatusLabel">Disconnected</span>
+            </div>
+        </div>
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="backStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Back ESP</span>
+                <span class="esp-status-value" id="backStatusLabel">Disconnected</span>
+            </div>
+        </div>
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="pneumaticStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Pneumatic ESP</span>
+                <span class="esp-status-value" id="pneumaticStatusLabel">Disconnected</span>
+            </div>
+        </div>
+        <div class="esp-status-card">
+            <span class="esp-status-dot disconnected" id="beaconStatusDot"></span>
+            <div class="esp-status-text">
+                <span class="esp-status-name">Beacon</span>
+                <span class="esp-status-value" id="beaconStatusLabel">Not Ready</span>
+            </div>
+        </div>
+    </div>
     
     <div class="container">
         <div class="header">
@@ -88,6 +119,39 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="realtime-control-panel">
+            <div class="button-container">
+                <div>
+                    <button id="prepareBtn">Prepare Robot</button>
+                </div>
+                <div>
+                    <button id="startBtn">Start Strategy</button>
+                    <div class="start-options" style="margin-top: 10px;">
+                        <label class="pami-toggle-label" for="startWithPamiCheckbox">
+                            <input type="checkbox" id="startWithPamiCheckbox">
+                            Start with PAMI
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <button id="stopBtn">Stop Strategy</button>
+                </div>
+            </div>
+
+            <div id="status"></div>
+
+            <div class="output-controls">
+                <label for="outputSelector">View Output:</label>
+                <select id="outputSelector">
+                    <option value="strategy">Strategy</option>
+                    <option value="pathfinding">Pathfinding</option>
+                    <option value="pami">PAMI</option>
+                </select>
+            </div>
+
+            <div id="output"></div>
         </div>
     </div>
 
