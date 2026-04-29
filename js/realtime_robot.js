@@ -71,8 +71,337 @@ let schedulerQueueHeadKey = null;
 let schedulerTrackedTaskText = 'none';
 const QUEUE_DIRECTION_HOLD_MS = 1400;
 
+// Realtime control/log UI
+const prepareBtn = document.getElementById('prepareBtn');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const startWithPamiCheckbox = document.getElementById('startWithPamiCheckbox');
+const outputSelector = document.getElementById('outputSelector');
+const statusDiv = document.getElementById('status');
+const outputDiv = document.getElementById('output');
+
+const frontStatusDot = document.getElementById('frontStatusDot');
+const backStatusDot = document.getElementById('backStatusDot');
+const pneumaticStatusDot = document.getElementById('pneumaticStatusDot');
+const beaconStatusDot = document.getElementById('beaconStatusDot');
+const frontStatusLabel = document.getElementById('frontStatusLabel');
+const backStatusLabel = document.getElementById('backStatusLabel');
+const pneumaticStatusLabel = document.getElementById('pneumaticStatusLabel');
+const beaconStatusLabel = document.getElementById('beaconStatusLabel');
+
+const STATUS_TIMEOUT_MS = 2000;
+const STATUS_CHECK_INTERVAL_MS = 500;
+const MAX_OUTPUT_LINES = 1000;
+const START_WITH_PAMI_STORAGE_KEY = 'realtimeStartWithPamiEnabled';
+
+let currentSource = localStorage.getItem('currentSource') || 'strategy';
+let strategyEventSource = null;
+let pathfindingEventSource = null;
+let pamiEventSource = null;
+
+const espStatusState = {
+    front: { dot: frontStatusDot, label: frontStatusLabel, lastMessageAt: 0, connected: false, topic: null, mode: 'heartbeat' },
+    back: { dot: backStatusDot, label: backStatusLabel, lastMessageAt: 0, connected: false, topic: null, mode: 'heartbeat' },
+    pneumatic: { dot: pneumaticStatusDot, label: pneumaticStatusLabel, lastMessageAt: 0, connected: false, topic: null, mode: 'heartbeat' },
+    beacon: { dot: beaconStatusDot, label: beaconStatusLabel, lastMessageAt: 0, connected: false, topic: null, mode: 'value' },
+};
+
+function loadOutput(key) {
+    try {
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        return data.slice(-MAX_OUTPUT_LINES);
+    } catch (e) {
+        console.error(`Failed to load ${key} from localStorage:`, e);
+        localStorage.removeItem(key);
+        return [];
+    }
+}
+
+let strategyOutput = loadOutput('strategyOutput');
+let pathfindingOutput = loadOutput('pathfindingOutput');
+let pamiOutput = loadOutput('pamiOutput');
+
+const savedStartWithPami = localStorage.getItem(START_WITH_PAMI_STORAGE_KEY);
+if (startWithPamiCheckbox) {
+    startWithPamiCheckbox.checked = savedStartWithPami === null ? true : savedStartWithPami === 'true';
+    startWithPamiCheckbox.addEventListener('change', () => {
+        localStorage.setItem(START_WITH_PAMI_STORAGE_KEY, String(startWithPamiCheckbox.checked));
+    });
+}
+
+function displayCurrentOutput() {
+    if (!outputDiv) return;
+    const outputs = currentSource === 'strategy' ? strategyOutput : currentSource === 'pathfinding' ? pathfindingOutput : pamiOutput;
+    outputDiv.innerHTML = '';
+    outputs.forEach((text) => {
+        const line = document.createElement('div');
+        line.className = 'output-line';
+        line.textContent = text;
+        outputDiv.appendChild(line);
+    });
+    outputDiv.scrollTop = outputDiv.scrollHeight;
+}
+
+function isNearBottom(element, threshold = 24) {
+    const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight);
+    return distanceFromBottom <= threshold;
+}
+
+function appendOutputLine(lineText) {
+    if (!outputDiv) return;
+    const stickToBottom = isNearBottom(outputDiv);
+    const line = document.createElement('div');
+    line.className = 'output-line';
+    line.textContent = lineText;
+    outputDiv.appendChild(line);
+    if (stickToBottom) {
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+}
+
+function showStatus(message, type = 'info') {
+    if (!statusDiv) return;
+    const statusMsg = document.createElement('div');
+    statusMsg.className = `status-message status-${type}`;
+    statusMsg.textContent = message;
+    statusDiv.appendChild(statusMsg);
+    setTimeout(() => statusMsg.remove(), 5000);
+}
+
+function setEspConnectionState(key, isConnected, customLabel = null) {
+    const entry = espStatusState[key];
+    if (!entry) return;
+    entry.connected = isConnected;
+    entry.dot?.classList.toggle('connected', isConnected);
+    entry.dot?.classList.toggle('disconnected', !isConnected);
+    if (entry.label) {
+        entry.label.textContent = customLabel ?? (isConnected ? 'Connected' : 'Disconnected');
+    }
+}
+
+function markEspMessageReceived(key) {
+    const entry = espStatusState[key];
+    if (!entry) return;
+    entry.lastMessageAt = Date.now();
+    setEspConnectionState(key, true);
+}
+
+function setBeaconReadyState(isReady) {
+    setEspConnectionState('beacon', isReady, isReady ? 'Ready' : 'Not Ready');
+}
+
+function markBeaconMessageReceived(message) {
+    const value = Number(message?.data ?? 0);
+    espStatusState.beacon.lastMessageAt = Date.now();
+    setBeaconReadyState(value === 1);
+}
+
+function createStatusSubscription(key, topicName, onMessage = null, messageType = 'std_msgs/msg/Int64') {
+    const entry = espStatusState[key];
+    if (!ros || !entry) return null;
+
+    const topic = new ROSLIB.Topic({ ros, name: topicName, messageType });
+    topic.subscribe((message) => {
+        if (onMessage) {
+            onMessage(message);
+            return;
+        }
+        markEspMessageReceived(key);
+    });
+
+    entry.topic = topic;
+    return topic;
+}
+
+function subscribeFrontStatus() { return createStatusSubscription('front', '/front/status'); }
+function subscribeBackStatus() { return createStatusSubscription('back', '/back/status'); }
+function subscribePneumaticStatus() { return createStatusSubscription('pneumatic', '/pneumatic/status'); }
+function subscribeBeaconStatus() { return createStatusSubscription('beacon', '/web/beacon_status', markBeaconMessageReceived, 'std_msgs/msg/Int32'); }
+
+function disconnectAllEspTopics() {
+    Object.entries(espStatusState).forEach(([key, entry]) => {
+        if (entry.topic) {
+            try { entry.topic.unsubscribe(); } catch (error) { console.warn('Failed to unsubscribe ESP status topic:', error); }
+            entry.topic = null;
+        }
+        entry.lastMessageAt = 0;
+        if (entry.mode === 'value' && key === 'beacon') {
+            setBeaconReadyState(false);
+        } else {
+            setEspConnectionState(key, false);
+        }
+    });
+}
+
+function initializeEspStatusMonitoring() {
+    if (typeof ROSLIB === 'undefined' || !ros) return;
+    disconnectAllEspTopics();
+    subscribeFrontStatus();
+    subscribeBackStatus();
+    subscribePneumaticStatus();
+    subscribeBeaconStatus();
+}
+
+setInterval(() => {
+    const now = Date.now();
+    Object.entries(espStatusState).forEach(([key, entry]) => {
+        if (entry.mode !== 'heartbeat') return;
+        if (entry.lastMessageAt === 0) {
+            setEspConnectionState(key, false);
+            return;
+        }
+        const isFresh = (now - entry.lastMessageAt) <= STATUS_TIMEOUT_MS;
+        setEspConnectionState(key, isFresh);
+    });
+}, STATUS_CHECK_INTERVAL_MS);
+
+function startStreaming(source) {
+    if (source === 'strategy') {
+        if (strategyEventSource) strategyEventSource.close();
+        strategyEventSource = new EventSource(`${API_URL}/stream/strategy`);
+        strategyEventSource.onmessage = (event) => {
+            strategyOutput.push(event.data);
+            if (strategyOutput.length > MAX_OUTPUT_LINES) strategyOutput = strategyOutput.slice(-MAX_OUTPUT_LINES);
+            try { localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput)); } catch (_) { /* ignore */ }
+            if (currentSource === 'strategy') appendOutputLine(event.data);
+        };
+    } else if (source === 'pathfinding') {
+        if (pathfindingEventSource) pathfindingEventSource.close();
+        pathfindingEventSource = new EventSource(`${API_URL}/stream/pathfinding`);
+        pathfindingEventSource.onmessage = (event) => {
+            pathfindingOutput.push(event.data);
+            if (pathfindingOutput.length > MAX_OUTPUT_LINES) pathfindingOutput = pathfindingOutput.slice(-MAX_OUTPUT_LINES);
+            try { localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput)); } catch (_) { /* ignore */ }
+            if (currentSource === 'pathfinding') appendOutputLine(event.data);
+        };
+    } else if (source === 'pami') {
+        if (pamiEventSource) pamiEventSource.close();
+        pamiEventSource = new EventSource(`${API_URL}/stream/pami`);
+        pamiEventSource.onmessage = (event) => {
+            pamiOutput.push(event.data);
+            if (pamiOutput.length > MAX_OUTPUT_LINES) pamiOutput = pamiOutput.slice(-MAX_OUTPUT_LINES);
+            try { localStorage.setItem('pamiOutput', JSON.stringify(pamiOutput)); } catch (_) { /* ignore */ }
+            if (currentSource === 'pami') appendOutputLine(event.data);
+        };
+    }
+}
+
+function stopOtherStreams(selectedSource) {
+    if (selectedSource !== 'strategy' && strategyEventSource) { strategyEventSource.close(); strategyEventSource = null; }
+    if (selectedSource !== 'pathfinding' && pathfindingEventSource) { pathfindingEventSource.close(); pathfindingEventSource = null; }
+    if (selectedSource !== 'pami' && pamiEventSource) { pamiEventSource.close(); pamiEventSource = null; }
+}
+
+function setupOutputStreaming() {
+    if (outputSelector) {
+        outputSelector.value = currentSource;
+        outputSelector.addEventListener('change', () => {
+            currentSource = outputSelector.value;
+            localStorage.setItem('currentSource', currentSource);
+            stopOtherStreams(currentSource);
+            startStreaming(currentSource);
+            displayCurrentOutput();
+        });
+    }
+
+    startStreaming(currentSource);
+    displayCurrentOutput();
+}
+
+async function prepareRobot() {
+    if (prepareBtn) prepareBtn.disabled = true;
+    showStatus('Preparing robot...', 'info');
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(`${API_URL}/prepare`, { method: 'POST', signal: controller.signal });
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (response.ok) {
+            showStatus(data.message || 'Robot prepared successfully!', 'success');
+            pathfindingOutput = [];
+            localStorage.setItem('pathfindingOutput', JSON.stringify(pathfindingOutput));
+            if (outputDiv) outputDiv.innerHTML = '';
+            currentSource = 'pathfinding';
+            localStorage.setItem('currentSource', currentSource);
+            if (outputSelector) outputSelector.value = currentSource;
+            stopOtherStreams(currentSource);
+            startStreaming('pathfinding');
+        } else {
+            showStatus(data.error || 'Failed to prepare robot', 'error');
+        }
+    } catch (error) {
+        showStatus(error.name === 'AbortError' ? 'Request timeout - too many open connections. Try refreshing the page.' : `Error: ${error.message}`, 'error');
+    } finally {
+        if (prepareBtn) prepareBtn.disabled = false;
+    }
+}
+
+async function startStrategy() {
+    if (startBtn) startBtn.disabled = true;
+    const publishPami = Boolean(startWithPamiCheckbox && startWithPamiCheckbox.checked);
+    showStatus(`Starting strategy${publishPami ? ' with PAMI' : ''}...`, 'info');
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(`${API_URL}/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publish_pami: publishPami }),
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (response.ok) {
+            showStatus(data.message || 'Strategy started successfully!', 'success');
+            strategyOutput = [];
+            localStorage.setItem('strategyOutput', JSON.stringify(strategyOutput));
+            if (outputDiv) outputDiv.innerHTML = '';
+            currentSource = 'strategy';
+            localStorage.setItem('currentSource', currentSource);
+            if (outputSelector) outputSelector.value = currentSource;
+            stopOtherStreams(currentSource);
+            startStreaming('strategy');
+        } else {
+            showStatus(data.error || 'Failed to start strategy', 'error');
+        }
+    } catch (error) {
+        showStatus(error.name === 'AbortError' ? 'Request timeout - too many open connections. Try refreshing the page.' : `Error: ${error.message}`, 'error');
+    } finally {
+        if (startBtn) startBtn.disabled = false;
+    }
+}
+
+async function stopStrategy() {
+    if (stopBtn) stopBtn.disabled = true;
+    showStatus('Stopping strategy...', 'info');
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(`${API_URL}/stop`, { method: 'POST', signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        const data = await response.json();
+        if (response.ok) {
+            showStatus(data.message || 'Strategy stopped successfully!', 'success');
+        } else {
+            showStatus(data.error || 'Failed to stop strategy', 'error');
+        }
+    } catch (error) {
+        showStatus(error.name === 'AbortError' ? 'Request timeout - too many open connections. Try refreshing the page.' : `Error: ${error.message}`, 'error');
+    } finally {
+        if (stopBtn) stopBtn.disabled = false;
+    }
+}
+
 // Initialize ROS2 Bridge
 initROS();
+setupOutputStreaming();
 
 // Initialize on page load
 window.addEventListener('load', () => {
@@ -113,6 +442,9 @@ function initROS() {
 
         // Subscribe to task scheduler status
         subscribeToTaskSchedulerStatus();
+
+        // Subscribe to ESP status heartbeat/value topics
+        initializeEspStatusMonitoring();
 
         // Subscribe to TEST controller results (used to detect clear_map)
         subscribeToTestControllerResult();
@@ -443,7 +775,7 @@ function callHybridAstarTestAction(action, payload = {}, timeoutMs = 7000) {
 
 async function restartBeacon() {
     if (!isConnected || !ros) {
-        alert('Not connected to ROS2. Please check the connection.');
+        showStatus('Not connected to ROS2. Please check the connection.', 'error');
         return;
     }
 
@@ -454,14 +786,15 @@ async function restartBeacon() {
 
     try {
         console.log('🔁 Restart beacon flow: reset_beacon -> clear_map -> wait 1s -> update_map');
+        showStatus('Restarting beacon...', 'info');
         await callHybridAstarTestAction('reset_beacon');
         await callHybridAstarTestAction('clear_map');
         await delay(1000);
         await callHybridAstarTestAction('update_map');
-        alert('Beacon restarted successfully:\nreset_beacon → clear_map → wait 1s → update_map');
+        showStatus('Beacon restarted successfully.', 'success');
     } catch (error) {
         console.error('❌ Restart beacon failed:', error);
-        alert(`Restart beacon failed: ${error.message}`);
+        showStatus(`Restart beacon failed: ${error.message}`, 'error');
     } finally {
         if (restartBeaconBtn) {
             restartBeaconBtn.disabled = false;
@@ -1205,6 +1538,25 @@ if (batchOverrideCode) {
 if (clearBatchOverrideBtn) {
     clearBatchOverrideBtn.addEventListener('click', clearBatchPatternOverride);
 }
+
+if (prepareBtn) {
+    prepareBtn.addEventListener('click', prepareRobot);
+}
+
+if (startBtn) {
+    startBtn.addEventListener('click', startStrategy);
+}
+
+if (stopBtn) {
+    stopBtn.addEventListener('click', stopStrategy);
+}
+
+window.addEventListener('beforeunload', () => {
+    if (strategyEventSource) strategyEventSource.close();
+    if (pathfindingEventSource) pathfindingEventSource.close();
+    if (pamiEventSource) pamiEventSource.close();
+    disconnectAllEspTopics();
+});
 
 // Stop interval when page is hidden to save CPU
 document.addEventListener('visibilitychange', () => {
