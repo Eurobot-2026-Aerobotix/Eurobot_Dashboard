@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -294,8 +294,8 @@ tasks:
   - device: ESP_back
     command: put_down
     params:
-      use_computed_insert_distance: true
       insert_distance_mm: 145.6
+      use_computed_insert_distance: true
     wait: true
 - description: Task 18
   global_goal:

@@ -1,5 +1,5 @@
 name: za9afouna_IEEE
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -9,15 +9,21 @@ tasks:
     theta: null
   sequence:
   - device: RASP_PI
-    command: Wait for manual start
-    params: []
-    wait: false
-  - device: STM
-    command: set_position
+    command: prepare_for_start
     params:
     - 262
     - 345
-    - 14
+    - 0
+    wait: false
+- description: Task 18
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
     wait: false
 - description: Task 2
   global_goal:
@@ -66,7 +72,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 4
   global_goal:
@@ -132,7 +138,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 7
   global_goal:
@@ -156,7 +162,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 8
   global_goal:
@@ -223,7 +229,7 @@ tasks:
     wait: true
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 11
   global_goal:
@@ -277,7 +283,7 @@ tasks:
     wait: false
   - device: ESP_front
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 13
   global_goal:
@@ -301,7 +307,7 @@ tasks:
     wait: false
   - device: ESP_back
     command: put_down
-    params: []
+    params: {}
     wait: true
 - description: Task 17
   global_goal:
