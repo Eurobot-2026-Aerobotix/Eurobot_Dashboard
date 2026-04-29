@@ -1,4 +1,4 @@
-strategy_name: lyouma_pizza_yellow
+strategy_name: ninja_complete_3_yellow
 pami_number: 5
 sequence:
 - - 3
@@ -25,4 +25,4 @@ sequence:
   - 380
   - 1
 color: yellow
-order: 3
+order: 6

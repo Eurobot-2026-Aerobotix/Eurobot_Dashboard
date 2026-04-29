@@ -1,4 +1,4 @@
-strategy_name: wini_l_pizza
+strategy_name: ninja_complete_3_yellow
 pami_number: 3
 sequence:
 - - 3
@@ -30,7 +30,7 @@ sequence:
   - 1
 - - 1
   - '554.32'
-  - 1138.51
+  - '1138.51'
   - 380
 color: yellow
-order: 4
+order: 6

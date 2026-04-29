@@ -1,4 +1,4 @@
-strategy_name: ghodwa_l_pizza
+strategy_name: ninja_complete_1_yellow
 pami_number: 1
 sequence:
 - - 3
@@ -12,7 +12,7 @@ sequence:
   - 338.8600000000001
   - 380
 - - 5
-  - 85000
+  - 0
 - - 1
   - 1687.15
   - 383.3899999999999
@@ -28,4 +28,4 @@ sequence:
 - - 5
   - 150000
 color: yellow
-order: 6
+order: 5
