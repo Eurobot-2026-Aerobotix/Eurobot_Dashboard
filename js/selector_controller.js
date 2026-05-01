@@ -378,7 +378,7 @@ function mirror_strategy(strategy) {
         return typeof value === "string" ? String(mirrored) : mirrored;
       };
 
-      if (action.command.includes("set_position") || action.command.includes("go_to")) {
+      if (action.command.includes("set_position") || action.command.includes("prepare_for_start") || action.command.includes("go_to")) {
         if (action.params.length >= 2) action.params[1] = mirrorValue(action.params[1]);
       }
       if (action.command.includes("set_position")) {

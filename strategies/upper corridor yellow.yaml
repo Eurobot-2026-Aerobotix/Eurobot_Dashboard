@@ -1,5 +1,5 @@
 name: upper corridor yellow
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1

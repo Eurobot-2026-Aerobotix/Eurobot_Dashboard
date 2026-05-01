@@ -1,5 +1,5 @@
 name: test_prepare_blue
-selected: true
+selected: false
 color: blue
 tasks:
 - description: Task 1
@@ -12,7 +12,7 @@ tasks:
     command: prepare_for_start
     params:
     - 262
-    - 345
+    - 2655
     - 0
     wait: false
 - description: Task 18
