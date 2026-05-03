@@ -31,6 +31,10 @@ class RequestQueue {
     this.loadFromStorage();
   }
 
+  getRequestKey(request) {
+    return `${request.method}:${request.url}`;
+  }
+
   loadFromStorage() {
     try {
       const stored = localStorage.getItem('strategyRequestQueue');
@@ -53,11 +57,32 @@ class RequestQueue {
   }
 
   addRequest(request) {
-    this.queue.push({
+    const normalizedRequest = {
       id: Date.now() + Math.random(),
       timestamp: Date.now(),
       ...request
+    };
+
+    const requestKey = this.getRequestKey(normalizedRequest);
+    const pendingIndex = this.queue.findIndex((queuedRequest, index) => {
+      // Keep currently running request untouched.
+      if (this.processing && index === 0) {
+        return false;
+      }
+      return this.getRequestKey(queuedRequest) === requestKey;
     });
+
+    if (pendingIndex !== -1) {
+      this.queue[pendingIndex] = {
+        ...this.queue[pendingIndex],
+        ...normalizedRequest,
+        id: this.queue[pendingIndex].id,
+        timestamp: Date.now()
+      };
+    } else {
+      this.queue.push(normalizedRequest);
+    }
+
     this.saveToStorage();
     this.processQueue();
   }
@@ -72,8 +97,6 @@ class RequestQueue {
         await this.executeRequest(request);
         this.queue.shift();
         this.saveToStorage();
-        // Small delay between requests to avoid overwhelming the server
-        await new Promise(r => setTimeout(r, 100));
       } catch (error) {
         console.error(`Failed to process request:`, error);
         // Don't remove from queue, will retry next time
@@ -138,47 +161,83 @@ async function fetchWithTimeout(url, timeout = 10000) {
  * Uses parallel fetching for better performance with multiple windows
  */
 export async function loadAllStrategies() {
+  // Prefer server-side bulk endpoint to reduce N+1 requests.
+  try {
+    const bulkRes = await fetchWithTimeout(`${STRATEGY_BASE_URL}/full`);
+    if (bulkRes.ok) {
+      const allStrategies = await bulkRes.json();
+      return allStrategies
+        .map((strategy) => {
+          try {
+            return Strategy.fromObject(strategy);
+          } catch {
+            return null;
+          }
+        })
+        .filter((strategy) => strategy !== null);
+    }
+  } catch (error) {
+    console.warn('Bulk strategy endpoint unavailable, falling back to per-file loading:', error.message);
+  }
+
   const res = await fetchWithTimeout(STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
 
-  // Fetch all files in parallel instead of sequentially
   const fetchPromises = files.map(async (file) => {
     try {
       const fileRes = await fetchWithTimeout(`${STRATEGY_BASE_URL}/${file}`);
-      if (!fileRes.ok) return null; // skip failed files
+      if (!fileRes.ok) return null;
       const data = await fileRes.json();
       return Strategy.fromObject(data);
     } catch (error) {
       console.warn(`Failed to load strategy ${file}:`, error.message);
-      return null; // skip failed files
+      return null;
     }
   });
 
   const results = await Promise.all(fetchPromises);
-  return results.filter(s => s !== null); // remove failed loads
+  return results.filter(s => s !== null);
 }
 
 export async function loadPAMIStrategies() {
+  // Prefer server-side bulk endpoint to reduce N+1 requests.
+  try {
+    const bulkRes = await fetchWithTimeout(`${PAMI_STRATEGY_BASE_URL}/full`);
+    if (bulkRes.ok) {
+      const allPamiStrategies = await bulkRes.json();
+      return allPamiStrategies
+        .map((strategy) => {
+          try {
+            return Pami_Strategy.fromObject(strategy);
+          } catch {
+            return null;
+          }
+        })
+        .filter((strategy) => strategy !== null);
+    }
+  } catch (error) {
+    console.warn('Bulk PAMI endpoint unavailable, falling back to per-file loading:', error.message);
+  }
+
   const res = await fetchWithTimeout(PAMI_STRATEGY_BASE_URL);
   if (!res.ok) throw new Error("Failed to fetch strategies");
   const files = await res.json();
 
-  // Fetch all files in parallel instead of sequentially
   const fetchPromises = files.map(async (file) => {
     try {
       const fileRes = await fetchWithTimeout(`${PAMI_STRATEGY_BASE_URL}/${file}`);
-      if (!fileRes.ok) return null; // skip failed files
+      if (!fileRes.ok) return null;
       const data = await fileRes.json();
       return Pami_Strategy.fromObject(data);
     } catch (error) {
       console.warn(`Failed to load PAMI strategy ${file}:`, error.message);
-      return null; // skip failed files
+      return null;
     }
   });
 
   const results = await Promise.all(fetchPromises);
-  return results.filter(s => s !== null); // remove failed loads
+  return results.filter(s => s !== null);
 }
 
 
