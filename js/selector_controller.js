@@ -102,6 +102,39 @@ function sortStrategies() {
   });
 }
 
+async function persistSelectedStrategy(nextSelectedIndex) {
+  if (nextSelectedIndex < 0 || nextSelectedIndex >= strategies.length) {
+    return;
+  }
+
+  const previouslySelectedIndex = strategies.findIndex((strategy) => strategy.selected === true);
+  if (previouslySelectedIndex === nextSelectedIndex) {
+    return;
+  }
+
+  const strategiesToPersist = [];
+
+  if (previouslySelectedIndex !== -1) {
+    const previouslySelected = strategies[previouslySelectedIndex];
+    if (previouslySelected.selected) {
+      previouslySelected.selected = false;
+      strategiesToPersist.push(previouslySelected);
+    }
+  }
+
+  const nextSelected = strategies[nextSelectedIndex];
+  if (!nextSelected.selected) {
+    nextSelected.selected = true;
+    strategiesToPersist.push(nextSelected);
+  }
+
+  if (strategiesToPersist.length === 0) {
+    return;
+  }
+
+  await Promise.all(strategiesToPersist.map((strategy) => updateStrategy(strategy)));
+}
+
 // Get unique folders from strategies
 function getUniqueFolders() {
   const folders = new Set(storedFolders);
@@ -412,12 +445,7 @@ function renderList() {
     const startHold = (e) => {
       e.preventDefault();
       holdTimer = setTimeout(async () => {
-        const strats = strategies; // cache reference
-        const stratsLength = strats.length;
-        for (let j = 0; j < stratsLength; j++) {
-          strats[j].selected = (j === actualIndex);
-        }
-        await Promise.all(strats.map(st => updateStrategy(st)));
+        await persistSelectedStrategy(actualIndex);
         renderList();
       }, HOLD_MS);
     };

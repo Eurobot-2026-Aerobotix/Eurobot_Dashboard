@@ -250,6 +250,26 @@ def list_strategies():
     ]
     return jsonify(files)
 
+
+@app.route("/strategies/full", methods=["GET"])
+def list_strategies_full():
+    strategies = []
+    with strategy_lock:
+        for filename in os.listdir(STRATEGIES_DIR):
+            if not filename.endswith(".yaml"):
+                continue
+
+            path = os.path.join(STRATEGIES_DIR, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    strategies.append(data)
+            except Exception as e:
+                print(f"Warning: Could not read strategy {filename}: {e}")
+
+    return jsonify(strategies)
+
 @app.route("/pami_strategies", methods=["GET"])
 def list_pami_strategies():
     files = [
@@ -257,6 +277,28 @@ def list_pami_strategies():
         if f.endswith(".yaml")
     ]
     return jsonify(files)
+
+
+@app.route("/pami_strategies/full", methods=["GET"])
+def list_pami_strategies_full():
+    pami_strategies = []
+    with strategy_lock:
+        for filename in os.listdir(PAMI_STRATEGIES_DIR):
+            if not filename.endswith(".yaml"):
+                continue
+
+            path = os.path.join(PAMI_STRATEGIES_DIR, filename)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                data = ensure_pami_color(data)
+                data = ensure_pami_order(data)
+                if isinstance(data, dict):
+                    pami_strategies.append(data)
+            except Exception as e:
+                print(f"Warning: Could not read PAMI strategy {filename}: {e}")
+
+    return jsonify(pami_strategies)
 
 # -------------------------------------------------
 # Read a strategy file
@@ -376,9 +418,16 @@ def save_strategy(filename):
     with strategy_lock:  # Protect file write and strategy path update
         with open(path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False)
+
         global SELECTED_STRATEGY_PATH
-        SELECTED_STRATEGY_PATH = get_selected_strategy_path()
-        print(f"Selected strategy updated to: {SELECTED_STRATEGY_PATH}", flush=True)
+        is_selected = bool(data.get("selected")) if isinstance(data, dict) else False
+
+        if is_selected:
+            SELECTED_STRATEGY_PATH = path
+        elif SELECTED_STRATEGY_PATH and os.path.abspath(SELECTED_STRATEGY_PATH) == os.path.abspath(path):
+            # Only rescan if we just deselected the currently tracked strategy.
+            SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+
     return jsonify({"status": "saved", "file": filename})
 
 
@@ -1260,7 +1309,11 @@ def get_selected_strategy_service():
     """
     global SELECTED_STRATEGY_PATH
     with strategy_lock:  # Protect reading SELECTED_STRATEGY_PATH
-        SELECTED_STRATEGY_PATH = get_selected_strategy_path()
+        if SELECTED_STRATEGY_PATH and not os.path.exists(SELECTED_STRATEGY_PATH):
+            SELECTED_STRATEGY_PATH = None
+
+        if not SELECTED_STRATEGY_PATH:
+            SELECTED_STRATEGY_PATH = get_selected_strategy_path()
 
         if not SELECTED_STRATEGY_PATH:
             return jsonify({"status": "error", "error": "No strategy selected"}), 404
