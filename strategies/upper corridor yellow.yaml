@@ -1,5 +1,5 @@
 name: upper corridor yellow
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -195,7 +195,7 @@ tasks:
 - description: Task 8
   global_goal:
     x: 1600
-    y: 400
+    y: 370
     theta: 90
   sequence:
   - device: STM
@@ -209,7 +209,7 @@ tasks:
     command: go_to_backwards
     params:
     - 1600
-    - 400
+    - 370
     - 1100
     - 1
     wait: false
@@ -221,13 +221,13 @@ tasks:
   global_goal:
     x: '1676.72'
     y: '635.14'
-    theta: -169.1819784858968
+    theta: -169.42724636525918
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1601.78'
-    - '620.82'
+    - 1600
+    - 620.82
     - 1100
     wait: true
   - device: STM
@@ -319,8 +319,8 @@ tasks:
   - device: RASP_PI
     command: steal
     params:
-    - 3000
-    - 3000
+    - 300
+    - 300
     wait: false
 - description: Task 13
   global_goal:

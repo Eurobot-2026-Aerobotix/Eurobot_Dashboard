@@ -11,7 +11,7 @@ sequence:
   - 200
   - 1
 - - 1
-  - 166.86
+  - 180
   - 1100
   - 180
   - 1
@@ -187,4 +187,4 @@ sequence:
   - 180
   - 1
 color: yellow
-order: 6
+order: 5

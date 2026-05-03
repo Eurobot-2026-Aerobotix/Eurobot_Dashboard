@@ -1,4 +1,4 @@
-strategy_name: ninja_complete_1_yellow
+strategy_name: ninja_complete_4_yellow
 pami_number: 4
 sequence:
 - - 3
@@ -33,4 +33,4 @@ sequence:
   - 380
   - 1
 color: yellow
-order: 5
+order: 6
