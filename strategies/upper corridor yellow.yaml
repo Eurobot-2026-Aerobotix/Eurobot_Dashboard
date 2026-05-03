@@ -1,5 +1,5 @@
 name: upper corridor yellow
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
@@ -353,3 +353,5 @@ tasks:
     - 1100
     wait: false
 order: 37
+folders:
+- default

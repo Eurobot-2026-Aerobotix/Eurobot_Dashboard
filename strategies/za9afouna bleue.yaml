@@ -331,3 +331,5 @@ tasks:
     - 1100
     wait: false
 order: 36
+folders:
+- default

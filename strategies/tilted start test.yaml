@@ -1,5 +1,5 @@
 name: tilted start test
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -338,3 +338,5 @@ tasks:
     - 1100
     wait: false
 order: 2
+folders:
+- default

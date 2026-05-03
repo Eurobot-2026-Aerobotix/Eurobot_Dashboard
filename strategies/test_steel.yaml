@@ -32,3 +32,5 @@ tasks:
     - 0
     wait: false
 order: 56
+folders:
+- default
