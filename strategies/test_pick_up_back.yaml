@@ -53,3 +53,5 @@ tasks:
     params: {}
     wait: true
 order: 32
+folders:
+- default

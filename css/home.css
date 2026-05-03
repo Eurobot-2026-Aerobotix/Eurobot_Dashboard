@@ -11,6 +11,24 @@ body {
     padding: 30px;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     min-height: 100vh;
+    transition: background 0.5s ease, background-color 0.5s ease;
+    background-attachment: fixed;
+}
+
+@keyframes fadeInBackground {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+body.eurobot-background {
+    background:
+        linear-gradient(180deg, rgba(10, 12, 18, 0.52) 0%, rgba(10, 12, 18, 0.32) 45%, rgba(10, 12, 18, 0.7) 100%),
+        url("../resources/eurobot.jpg") center center / cover no-repeat fixed;
+    animation: fadeInBackground 0.8s ease forwards;
 }
 
 .navbar {
@@ -110,6 +128,22 @@ h1 {
     margin-bottom: 40px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     letter-spacing: 1px;
+}
+
+.dashboard-title {
+    cursor: pointer;
+    user-select: none;
+    display: block;
+    width: 100%;
+    padding: 0 18px 8px;
+    border-radius: 14px;
+    transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.dashboard-title:hover {
+    transform: translateY(-2px);
+    background: rgba(102, 126, 234, 0.16);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
 .esp-status-panel {

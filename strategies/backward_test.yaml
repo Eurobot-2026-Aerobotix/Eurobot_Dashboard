@@ -3,3 +3,5 @@ selected: false
 color: blue
 tasks: []
 order: 57
+folders:
+- default

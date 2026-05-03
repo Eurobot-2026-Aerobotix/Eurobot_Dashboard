@@ -23,6 +23,98 @@ const getPamiStrategiesBaseURL = () => {
 
 const PAMI_STRATEGY_BASE_URL = getPamiStrategiesBaseURL();
 
+// Request Queue Management for persistent saves
+class RequestQueue {
+  constructor() {
+    this.queue = [];
+    this.processing = false;
+    this.loadFromStorage();
+  }
+
+  loadFromStorage() {
+    try {
+      const stored = localStorage.getItem('strategyRequestQueue');
+      if (stored) {
+        this.queue = JSON.parse(stored);
+        console.log(`Loaded ${this.queue.length} pending requests from storage`);
+      }
+    } catch (error) {
+      console.error('Failed to load request queue:', error);
+      this.queue = [];
+    }
+  }
+
+  saveToStorage() {
+    try {
+      localStorage.setItem('strategyRequestQueue', JSON.stringify(this.queue));
+    } catch (error) {
+      console.error('Failed to save request queue:', error);
+    }
+  }
+
+  addRequest(request) {
+    this.queue.push({
+      id: Date.now() + Math.random(),
+      timestamp: Date.now(),
+      ...request
+    });
+    this.saveToStorage();
+    this.processQueue();
+  }
+
+  async processQueue() {
+    if (this.processing || this.queue.length === 0) return;
+    this.processing = true;
+
+    while (this.queue.length > 0) {
+      const request = this.queue[0];
+      try {
+        await this.executeRequest(request);
+        this.queue.shift();
+        this.saveToStorage();
+        // Small delay between requests to avoid overwhelming the server
+        await new Promise(r => setTimeout(r, 100));
+      } catch (error) {
+        console.error(`Failed to process request:`, error);
+        // Don't remove from queue, will retry next time
+        break;
+      }
+    }
+
+    this.processing = false;
+  }
+
+  async executeRequest(request) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body ? JSON.stringify(request.body) : undefined,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+}
+
+const requestQueue = new RequestQueue();
+
+// Process any pending requests on page load
+window.addEventListener('load', () => {
+  requestQueue.processQueue();
+});
+
 // Fetch with timeout to prevent hanging when multiple windows open
 async function fetchWithTimeout(url, timeout = 10000) {
   const controller = new AbortController();
@@ -96,27 +188,17 @@ export async function loadPAMIStrategies() {
  * @param {Strategy} strategy - Strategy object to save
  */
 export async function saveStrategy(strategy) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  // Queue the request for persistent saving
+  requestQueue.addRequest({
+    type: 'saveStrategy',
+    url: `${STRATEGY_BASE_URL}/${strategy.name}.yaml`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: strategy
+  });
   
-  try {
-    const res = await fetch(`${STRATEGY_BASE_URL}/${strategy.name}.yaml`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(strategy),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) throw new Error("Failed to save strategy");
-    return await res.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Save timeout - server may be busy');
-    }
-    throw error;
-  }
+  // Return immediately - queue will process it
+  return Promise.resolve({ status: 'queued' });
 }
 
 /**
@@ -125,27 +207,17 @@ export async function saveStrategy(strategy) {
  * @param {Strategy} strategy - Strategy object to save
  */
 export async function savePamiStrategy(strategy) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  // Queue the request for persistent saving
+  requestQueue.addRequest({
+    type: 'savePamiStrategy',
+    url: `${PAMI_STRATEGY_BASE_URL}/${strategy.strategy_name}/${strategy.pami_number}`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: strategy
+  });
   
-  try {
-    const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${strategy.strategy_name}/${strategy.pami_number}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(strategy),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) throw new Error("Failed to save strategy");
-    return await res.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Save timeout - server may be busy');
-    }
-    throw error;
-  }
+  // Return immediately - queue will process it
+  return Promise.resolve({ status: 'queued' });
 }
 
 /**
@@ -153,25 +225,16 @@ export async function savePamiStrategy(strategy) {
  * @param {string} filename - e.g., "myStrategy.yaml"
  */
 export async function deleteStrategy(filename) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  // Queue the request for persistent deletion
+  requestQueue.addRequest({
+    type: 'deleteStrategy',
+    url: `${STRATEGY_BASE_URL}/${filename}`,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
   
-  try {
-    const res = await fetch(`${STRATEGY_BASE_URL}/${filename}`, {
-      method: "DELETE",
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) throw new Error("Failed to delete strategy");
-    return await res.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Delete timeout - server may be busy');
-    }
-    throw error;
-  }
+  // Return immediately - queue will process it
+  return Promise.resolve({ status: 'queued' });
 }
 
 /**
@@ -179,25 +242,16 @@ export async function deleteStrategy(filename) {
  * @param {string} strategyName
  */
 export async function deletePamiStrategyGroup(strategyName) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const res = await fetch(`${PAMI_STRATEGY_BASE_URL}/${encodeURIComponent(strategyName)}`, {
-      method: "DELETE",
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) throw new Error("Failed to delete PAMI strategy group");
-    return await res.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Delete timeout - server may be busy');
-    }
-    throw error;
-  }
+  // Queue the request for persistent deletion
+  requestQueue.addRequest({
+    type: 'deletePamiStrategyGroup',
+    url: `${PAMI_STRATEGY_BASE_URL}/${encodeURIComponent(strategyName)}`,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  // Return immediately - queue will process it
+  return Promise.resolve({ status: 'queued' });
 }
 
 async function calculate_global_poses(strategy) {

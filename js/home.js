@@ -29,6 +29,7 @@ const frontStatusLabel = document.getElementById('frontStatusLabel');
 const backStatusLabel = document.getElementById('backStatusLabel');
 const pneumaticStatusLabel = document.getElementById('pneumaticStatusLabel');
 const beaconStatusLabel = document.getElementById('beaconStatusLabel');
+const dashboardTitle = document.getElementById('dashboardTitle');
 
 let strategyEventSource = null;
 let pathfindingEventSource = null;
@@ -111,6 +112,12 @@ if (startWithPamiCheckbox && savedStartWithPami !== null) {
 if (startWithPamiCheckbox) {
     startWithPamiCheckbox.addEventListener('change', function() {
         localStorage.setItem(START_WITH_PAMI_STORAGE_KEY, String(startWithPamiCheckbox.checked));
+    });
+}
+
+if (dashboardTitle) {
+    dashboardTitle.addEventListener('click', () => {
+        document.body.classList.add('eurobot-background');
     });
 }
 

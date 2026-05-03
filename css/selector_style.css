@@ -64,13 +64,47 @@ h1 {
 }
 
 .strategy-item {
-    padding: 12px;
+    padding: 0;
     cursor: pointer;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
     border-radius: 8px;
     margin: 5px 0;
     color: #e0e0e0;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 50px;
+}
+
+.strategy-left-zone {
+    flex: 0 0 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    position: relative;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+    background-size: 8px 8px;
+    background-position: 0 0, 4px 4px;
+}
+
+.strategy-left-zone:active {
+    cursor: grabbing;
+}
+
+.strategy-right-zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.strategy-name {
+    flex-grow: 1;
 }
 
 .strategy-item:hover {
@@ -146,4 +180,142 @@ button:disabled {
 #pami-strategy-list-blue::-webkit-scrollbar-thumb {
     background: rgba(33, 150, 243, 0.6);
     border-radius: 10px;
+}
+
+/* Folder Container Layout */
+.folder-container {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto 30px;
+    justify-content: center;
+}
+
+.folder-sidebar {
+    background-color: rgba(30, 30, 30, 0.9);
+    padding: 30px 20px;
+    border-radius: 15px;
+    width: 200px;
+    min-width: 180px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.folder-sidebar h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #e0e0e0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#folder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.folder-item {
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    background-color: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    color: #e0e0e0;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-size: 14px;
+    word-wrap: break-word;
+}
+
+.folder-item:hover {
+    background-color: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.6);
+    transform: translateX(3px);
+}
+
+.folder-item.selected {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    border-color: rgba(102, 126, 234, 1);
+}
+
+.folder-item.drag-over {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #fff;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.8), inset 0 0 10px rgba(102, 126, 234, 0.5);
+    transform: scale(1.05);
+}
+
+#create-folder-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    background-color: rgba(102, 126, 234, 0.2);
+    border: 1px dashed rgba(102, 126, 234, 0.6);
+    color: #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+#create-folder-btn:hover {
+    background-color: rgba(102, 126, 234, 0.3);
+    border-color: rgba(102, 126, 234, 1);
+}
+
+.folder-context-menu {
+    position: absolute;
+    background-color: #1e1e2e;
+    border: 1px solid rgba(102, 126, 234, 0.6);
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 120px;
+}
+
+.folder-context-menu button {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 0;
+    flex: none;
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    text-align: left;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+.folder-context-menu button:hover {
+    background-color: rgba(102, 126, 234, 0.3);
+    transform: none;
+}
+
+.folder-context-menu button:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.folder-context-menu button:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.strategy-item[draggable="true"] {
+    cursor: move;
+}
+
+@media (max-width: 768px) {
+    .folder-container {
+        flex-direction: column;
+    }
+    
+    .folder-sidebar {
+        width: 100%;
+        min-width: unset;
+    }
 }

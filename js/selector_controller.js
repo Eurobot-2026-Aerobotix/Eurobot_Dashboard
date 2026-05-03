@@ -10,9 +10,11 @@ import {
 import { Strategy } from "../classes/Strategy.js";
 
 // HTML elements
+const folderListDiv = document.getElementById("folder-list");
 const listDivYellow = document.getElementById("strategy-list-yellow");
 const listDivBlue = document.getElementById("strategy-list-blue");
 const createBtn = document.getElementById("create-btn");
+const renameBtn = document.getElementById("rename-btn");
 const pamiBtn = document.getElementById("pami-btn");
 const deleteBtn = document.getElementById("delete-btn");
 const branchBtn = document.getElementById("branch-btn");
@@ -29,6 +31,49 @@ let busy = false;
 let pamiStrategyGroups = [];
 let clickedPamiName = null;
 let activeList = "robot";
+let currentFolder = "all"; // Track current folder filter
+let allFolders = []; // Track all unique folders
+let draggedStrategyIndex = null; // Track dragged strategy
+const FOLDER_STORAGE_KEY = "strategyFolders";
+
+function loadStoredFolders() {
+  try {
+    const raw = localStorage.getItem(FOLDER_STORAGE_KEY);
+    const folders = raw ? JSON.parse(raw) : [];
+    return Array.isArray(folders) ? folders.filter(Boolean) : [];
+  } catch (error) {
+    console.warn("Failed to load stored folders:", error);
+    return [];
+  }
+}
+
+function saveStoredFolders(folders) {
+  localStorage.setItem(FOLDER_STORAGE_KEY, JSON.stringify(folders));
+}
+
+let storedFolders = loadStoredFolders();
+
+function addStoredFolder(folderName) {
+  if (!folderName || storedFolders.includes(folderName)) return false;
+  storedFolders.push(folderName);
+  storedFolders.sort();
+  saveStoredFolders(storedFolders);
+  return true;
+}
+
+function removeStoredFolder(folderName) {
+  storedFolders = storedFolders.filter((folder) => folder !== folderName);
+  saveStoredFolders(storedFolders);
+}
+
+function renameStoredFolder(oldName, newName) {
+  const index = storedFolders.indexOf(oldName);
+  if (index === -1 || storedFolders.includes(newName)) return false;
+  storedFolders[index] = newName;
+  storedFolders.sort();
+  saveStoredFolders(storedFolders);
+  return true;
+}
 
 // -------------------------------------------------
 // Helpers
@@ -57,7 +102,235 @@ function sortStrategies() {
   });
 }
 
+// Get unique folders from strategies
+function getUniqueFolders() {
+  const folders = new Set(storedFolders);
+  strategies.forEach((s) => {
+    if (Array.isArray(s.folders)) {
+      s.folders.forEach(f => folders.add(f));
+    } else {
+      folders.add(s.folder || "default");
+    }
+  });
+  return Array.from(folders).sort();
+}
+
+// Filter strategies by current folder
+function getFilteredStrategies() {
+  if (currentFolder === "all") {
+    return strategies;
+  }
+  return strategies.filter((s) => {
+    const folders = Array.isArray(s.folders) ? s.folders : (s.folder ? [s.folder] : ["default"]);
+    return folders.includes(currentFolder);
+  });
+}
+
+// Delete folder and remove it from all strategies
+async function deleteFolder(folderName) {
+  // Remove folder from all strategies that have it
+  for (let strategy of strategies) {
+    if (Array.isArray(strategy.folders)) {
+      strategy.folders = strategy.folders.filter(f => f !== folderName);
+      // If no folders left, set to default
+      if (strategy.folders.length === 0) {
+        strategy.folders = ["default"];
+      }
+      await updateStrategy(strategy);
+    }
+  }
+
+  removeStoredFolder(folderName);
+  
+  // If current folder was deleted, go back to "all"
+  if (currentFolder === folderName) {
+    currentFolder = "all";
+  }
+  
+  renderFolders();
+  renderList();
+}
+
+// Rename folder in all strategies
+async function renameFolder(oldName, newName) {
+  if (!newName.trim()) return;
+  if (oldName === newName) return;
+  
+  // Check if new name already exists
+  const folders = getUniqueFolders();
+  if (folders.includes(newName)) {
+    alert("Folder already exists!");
+    return;
+  }
+  
+  // Update all strategies with the old folder name
+  for (let strategy of strategies) {
+    if (Array.isArray(strategy.folders)) {
+      const index = strategy.folders.indexOf(oldName);
+      if (index > -1) {
+        strategy.folders[index] = newName;
+        await updateStrategy(strategy);
+      }
+    }
+  }
+
+  renameStoredFolder(oldName, newName);
+  
+  // If current folder was renamed, update it
+  if (currentFolder === oldName) {
+    currentFolder = newName;
+  }
+  
+  renderFolders();
+  renderList();
+}
+
+// Render folder list
+function renderFolders() {
+  if (!folderListDiv) return;
+  
+  folderListDiv.innerHTML = "";
+  const folders = getUniqueFolders();
+  allFolders = ["all", ...folders];
+  
+  allFolders.forEach((folder) => {
+    const div = document.createElement("div");
+    div.className = "folder-item";
+    if (folder === currentFolder) div.classList.add("selected");
+    
+    div.textContent = folder === "all" ? "All" : folder;
+    div.dataset.folder = folder;
+    div.style.position = "relative";
+    
+    div.ondblclick = () => {
+      currentFolder = folder;
+      renderFolders();
+      renderList();
+    };
+    
+    div.onclick = () => {
+      currentFolder = folder;
+      renderFolders();
+      renderList();
+    };
+    
+    // Drag and drop support for all folders
+    div.ondragover = (e) => {
+      e.preventDefault();
+      div.classList.add("drag-over");
+    };
+    
+    div.ondragleave = () => {
+      div.classList.remove("drag-over");
+    };
+    
+    div.ondrop = async (e) => {
+      e.preventDefault();
+      div.classList.remove("drag-over");
+      
+      if (draggedStrategyIndex === null) return;
+      
+      const strategy = strategies[draggedStrategyIndex];
+      if (!strategy) return;
+      
+      // Ensure folders array exists
+      if (!Array.isArray(strategy.folders)) {
+        strategy.folders = [strategy.folder || "default"];
+      }
+      
+      // If dropping to "all" folder and currently viewing a specific folder
+      if (folder === "all" && currentFolder !== "all") {
+        // Remove the current folder from this strategy
+        strategy.folders = strategy.folders.filter(f => f !== currentFolder);
+        if (strategy.folders.length === 0) {
+          strategy.folders = ["default"];
+        }
+        await updateStrategy(strategy);
+        renderList();
+        renderFolders();
+      } else if (folder !== "all") {
+        // Adding to a specific folder
+        if (!strategy.folders.includes(folder)) {
+          strategy.folders.push(folder);
+          await updateStrategy(strategy);
+          renderList();
+          renderFolders();
+        }
+      }
+      
+      draggedStrategyIndex = null;
+    };
+    
+    // Right-click context menu for non-"all" folders
+    if (folder !== "all") {
+      div.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Remove any existing context menus
+        document.querySelectorAll(".folder-context-menu").forEach(m => m.remove());
+        
+        // Create context menu
+        const menu = document.createElement("div");
+        menu.className = "folder-context-menu";
+        menu.style.left = e.pageX + "px";
+        menu.style.top = e.pageY + "px";
+        
+        const renameBtn = document.createElement("button");
+        renameBtn.textContent = "Rename";
+        renameBtn.onclick = async () => {
+          const newName = prompt(`Rename "${folder}" to:`, folder);
+          menu.remove();
+          if (newName) {
+            await renameFolder(folder, newName);
+          }
+        };
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.onclick = async () => {
+          menu.remove();
+          if (confirm(`Delete folder "${folder}"? Strategies will move to default.`)) {
+            await deleteFolder(folder);
+          }
+        };
+        
+        menu.appendChild(renameBtn);
+        menu.appendChild(deleteBtn);
+        document.body.appendChild(menu);
+        
+        // Close menu when clicking elsewhere
+        document.addEventListener("click", () => menu.remove(), { once: true });
+      };
+    }
+    
+    folderListDiv.appendChild(div);
+  });
+  
+  // Add create folder button
+  const createBtn = document.createElement("button");
+  createBtn.id = "create-folder-btn";
+  createBtn.textContent = "+ New Folder";
+  createBtn.onclick = async () => {
+    const folderName = prompt("Folder name:");
+    if (folderName && folderName.trim()) {
+      const normalizedFolderName = folderName.trim();
+      const folders = getUniqueFolders();
+      if (folders.includes(normalizedFolderName)) {
+        alert("Folder already exists!");
+        return;
+      }
+      addStoredFolder(normalizedFolderName);
+      currentFolder = normalizedFolderName;
+      renderFolders();
+      renderList();
+    }
+  };
+  folderListDiv.appendChild(createBtn);
+}
+
 function renderList() {
+  const filteredStrategies = getFilteredStrategies();
   sortStrategies();
 
   listDivYellow.innerHTML = "";
@@ -66,42 +339,74 @@ function renderList() {
   // Use document fragments for better performance
   const yellowFragment = document.createDocumentFragment();
   const blueFragment = document.createDocumentFragment();
-  const strategiesLength = strategies.length;
+  const strategiesLength = filteredStrategies.length;
 
   for (let i = 0; i < strategiesLength; i++) {
-    const s = strategies[i];
+    const s = filteredStrategies[i];
     const div = document.createElement("div");
     div.className = "strategy-item";
-    if (i === clickedIndex) div.classList.add("selected");
+    div.draggable = true;
+    // Get the actual index in the full strategies array for clickedIndex comparison
+    const actualIndex = strategies.indexOf(s);
+    if (actualIndex === clickedIndex) div.classList.add("selected");
 
-    div.textContent = s.name;
+    // Left zone - drag zone
+    const leftZone = document.createElement("div");
+    leftZone.className = "strategy-left-zone";
+    div.appendChild(leftZone);
 
-    // selected icon
+    // Right zone - interaction zone
+    const rightZone = document.createElement("div");
+    rightZone.className = "strategy-right-zone";
+
+    // Create name span in right zone
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "strategy-name";
+    nameSpan.textContent = s.name;
+    rightZone.appendChild(nameSpan);
+
+    // selected icon in right zone
     if (s.selected) {
       const img = document.createElement("img");
       img.src = "../resources/harissa.png";
       img.className = "selected-icon";
       img.style.height = "30px";
       img.style.marginLeft = "8px";
-      div.appendChild(img);
+      rightZone.appendChild(img);
     }
 
-    // single click (UI selection only)
-    div.onclick = () => {
+    div.appendChild(rightZone);
+
+    // single click (UI selection only) - on right zone only
+    rightZone.onclick = (e) => {
+      e.stopPropagation();
       activeList = "robot";
-      clickedIndex = i;
+      clickedIndex = actualIndex;
       clickedPamiName = null;
       updatePamiButtons();
       renderList();
       updateButtons();
     };
 
-    // double click (open)
-    div.ondblclick = () => {
-      window.location.href = `strategy_viewer.html?name=${s.name}`;
+    // double click (open) - only on right zone
+    rightZone.ondblclick = (e) => {
+      e.stopPropagation();
+      window.location.href = `strategy_viewer.html?name=${s.name}&folder=${encodeURIComponent(currentFolder)}`;
+    };
+    
+    // Drag and drop handlers on the main item
+    div.ondragstart = (e) => {
+      e.dataTransfer.effectAllowed = "copy";
+      draggedStrategyIndex = actualIndex;
+      div.style.opacity = "0.5";
+    };
+    
+    div.ondragend = (e) => {
+      div.style.opacity = "1";
+      draggedStrategyIndex = null;
     };
 
-    // long press = mark as active strategy
+    // long press = mark as active strategy (only on right zone)
     const HOLD_MS = 300;
     let holdTimer;
     const startHold = (e) => {
@@ -110,7 +415,7 @@ function renderList() {
         const strats = strategies; // cache reference
         const stratsLength = strats.length;
         for (let j = 0; j < stratsLength; j++) {
-          strats[j].selected = (j === i);
+          strats[j].selected = (j === actualIndex);
         }
         await Promise.all(strats.map(st => updateStrategy(st)));
         renderList();
@@ -123,12 +428,13 @@ function renderList() {
       }
     };
 
-    div.addEventListener("mousedown", startHold);
-    div.addEventListener("touchstart", startHold, { passive: false });
-    div.addEventListener("mouseup", cancelHold);
-    div.addEventListener("mouseleave", cancelHold);
-    div.addEventListener("touchend", cancelHold);
-    div.addEventListener("touchcancel", cancelHold);
+    // Attach long-press listeners to right zone only
+    rightZone.addEventListener("mousedown", startHold);
+    rightZone.addEventListener("touchstart", startHold, { passive: false });
+    rightZone.addEventListener("mouseup", cancelHold);
+    rightZone.addEventListener("mouseleave", cancelHold);
+    rightZone.addEventListener("touchend", cancelHold);
+    rightZone.addEventListener("touchcancel", cancelHold);
 
     if (s.color === "yellow") {
       yellowFragment.appendChild(div);
@@ -145,6 +451,7 @@ function renderList() {
 function updateButtons() {
   const enabled = clickedIndex !== null;
   if (pamiBtn) pamiBtn.disabled = !enabled;
+  if (renameBtn) renameBtn.disabled = !enabled;
   deleteBtn.disabled = !enabled;
   branchBtn.disabled = !enabled;
 }
@@ -258,9 +565,26 @@ function renderPamiList() {
     const div = document.createElement("div");
     div.className = "strategy-item";
     if (clickedPamiName === name) div.classList.add("selected");
-    div.textContent = name;
 
-    div.onclick = () => {
+    // Left zone - for consistency (not draggable for PAMI)
+    const leftZone = document.createElement("div");
+    leftZone.className = "strategy-left-zone";
+    leftZone.style.visibility = "hidden";
+    div.appendChild(leftZone);
+
+    // Right zone - interaction zone
+    const rightZone = document.createElement("div");
+    rightZone.className = "strategy-right-zone";
+
+    // Create name span
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "strategy-name";
+    nameSpan.textContent = name;
+    rightZone.appendChild(nameSpan);
+    div.appendChild(rightZone);
+
+    rightZone.onclick = (e) => {
+      e.stopPropagation();
       activeList = "pami";
       clickedPamiName = name;
       clickedIndex = null;
@@ -269,7 +593,8 @@ function renderPamiList() {
       updatePamiButtons();
     };
 
-    div.ondblclick = () => {
+    nameSpan.ondblclick = (e) => {
+      e.stopPropagation();
       window.location.href = `pami_strategy_selector.html?name=${encodeURIComponent(name)}`;
     };
 
@@ -284,9 +609,27 @@ function renderPamiList() {
 // Actions
 // -------------------------------------------------
 
+// Parse URL parameters
+function getUrlParameter(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name) || "all";
+}
+
 async function loadStrategies() {
   strategies = await loadAllStrategies();
+  // Initialize folder from URL parameter
+  currentFolder = getUrlParameter("folder");
+
+  storedFolders = loadStoredFolders();
+  
+  // Validate folder exists, otherwise use "all"
+  const validFolders = ["all", ...getUniqueFolders()];
+  if (!validFolders.includes(currentFolder)) {
+    currentFolder = "all";
+  }
+  
   clickedIndex = null;
+  renderFolders();
   renderList();
   updateButtons();
 }
@@ -470,6 +813,53 @@ createBtn.addEventListener("click", async () => {
   strategies.push(newStrategy);
   renderList();
 });
+
+// RENAME
+if (renameBtn) {
+  renameBtn.addEventListener("click", async () => {
+    if (clickedIndex === null) return;
+
+    const strategy = strategies[clickedIndex];
+    const oldName = strategy.name;
+    let newName = prompt("Enter new strategy name:", oldName);
+    if (!newName || !newName.trim()) return;
+    newName = newName.trim().replace(/\s+/g, "_");
+
+    if (newName === oldName) return; // No change
+
+    if (strategies.some(s => s.name === newName)) {
+      alert("Strategy name already exists");
+      return;
+    }
+
+    strategy.name = newName;
+    await saveStrategy(strategy);
+    await deleteStrategy(oldName + ".yaml");
+
+    // Also rename all PAMI strategies linked to this strategy
+    try {
+      const pamiStrategies = await loadPAMIStrategies();
+      const linkedPamiStrategies = pamiStrategies.filter(
+        (pamiStrategy) => pamiStrategy.strategy_name === oldName
+      );
+
+      await Promise.all(
+        linkedPamiStrategies.map((pamiStrategy) => {
+          pamiStrategy.strategy_name = newName;
+          return savePamiStrategy(pamiStrategy);
+        })
+      );
+
+      await loadPamiStrategyNames();
+    } catch (error) {
+      console.warn("Failed to rename linked PAMI strategies:", error);
+    }
+
+    renderList();
+    renderFolders();
+    updateButtons();
+  });
+}
 
 // DELETE
 deleteBtn.addEventListener("click", async () => {
