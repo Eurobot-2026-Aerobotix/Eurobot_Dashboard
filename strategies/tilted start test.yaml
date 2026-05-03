@@ -1,5 +1,5 @@
 name: tilted start test
-selected: true
+selected: false
 color: yellow
 tasks:
 - description: Task 1
