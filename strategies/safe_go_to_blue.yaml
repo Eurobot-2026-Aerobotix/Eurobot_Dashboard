@@ -9,6 +9,20 @@ tasks:
     y: null
   sequence:
   - device: RASP_PI
+    command: prepare_for_start
+    params:
+    - 262
+    - 2655
+    - 0
+    wait: false
+- description: Task 15
+  global_goal:
+    theta: null
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
     command: Wait for manual start
     params: []
     wait: false
@@ -17,7 +31,17 @@ tasks:
     params:
     - 262
     - 2655
-    - -14
+    - 0
+    wait: false
+- description: Task 15
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
     wait: false
 - description: Task 2
   global_goal:

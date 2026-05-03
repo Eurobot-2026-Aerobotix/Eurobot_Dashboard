@@ -219,11 +219,24 @@ tasks:
     command: put_down
     params: {}
     wait: true
+- description: Task 15
+  global_goal:
+    x: '1040.41'
+    y: '413.02'
+    theta: 122.70415124087756
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1040.41'
+    - '413.02'
+    - 1000
+    wait: true
 - description: Task 13
   global_goal:
-    x: '1111.04'
-    y: '303.02'
-    theta: 120.53517858818455
+    x: '1040.41'
+    y: '413.02'
+    theta: 122.70415124087756
   sequence:
   - device: RASP_PI
     command: steal
@@ -237,13 +250,6 @@ tasks:
     y: 880
     theta: 89.02691684722467
   sequence:
-  - device: STM
-    command: go_to
-    params:
-    - '1040.41'
-    - '413.02'
-    - 1000
-    wait: true
   - device: STM
     command: bezier
     params:
