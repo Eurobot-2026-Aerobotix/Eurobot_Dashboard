@@ -1,15 +1,15 @@
-strategy_name: ninja_complete_5_yellow
+strategy_name: ninja_complete_4_blue
 pami_number: 5
 sequence:
 - - 3
   - 291
-  - 52
-  - 90
+  - 2948
+  - -90
 - - 0
   - 12000
 - - 1
   - 275.02
-  - 81.0300000000002
+  - 2918.97
   - 380
 - - 5
   - 85000
@@ -17,12 +17,12 @@ sequence:
   - 6000
 - - 4
   - 290
-  - 412.3499999999999
+  - 2587.65
   - 830.87
-  - 658.96
+  - 2341.04
   - 1115.62
-  - 190.17000000000007
+  - 2809.83
   - 380
   - 1
-color: yellow
-order: 7
+color: blue
+order: 6

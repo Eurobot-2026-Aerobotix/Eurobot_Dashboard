@@ -1,4 +1,4 @@
-strategy_name: ninja_complete_5_yellow
+strategy_name: ninja_safe_strategy_yellow
 pami_number: 3
 sequence:
 - - 3
@@ -20,17 +20,19 @@ sequence:
 - - 0
   - 2500
 - - 4
-  - 645.27
-  - 355.42999999999984
-  - 555.85
-  - 431.73
-  - 563.47
-  - 584.27
+  - 572.4
+  - 349.25
+  - '543.75'
+  - '406.54'
+  - 559.37
+  - 610
   - 380
   - 1
+- - 0
+  - 1000
 - - 1
-  - '554.32'
-  - '1138.51'
-  - 380
+  - 504.69
+  - 1660
+  - 200
 color: yellow
-order: 7
+order: 2

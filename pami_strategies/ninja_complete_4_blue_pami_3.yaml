@@ -1,0 +1,23 @@
+strategy_name: ninja_complete_4_blue
+pami_number: 3
+sequence:
+- - 3
+  - 71
+  - 2950
+  - -90
+- - 0
+  - 5000
+- - 1
+  - 71
+  - 2649.92
+  - 380
+- - 1
+  - 210
+  - 2649
+  - 380
+- - 5
+  - 0
+- - 0
+  - 1000
+color: blue
+order: 6
