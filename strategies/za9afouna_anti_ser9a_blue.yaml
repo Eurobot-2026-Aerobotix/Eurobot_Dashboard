@@ -15,7 +15,7 @@ tasks:
     - 2655
     - 0
     wait: false
-- description: Task 16
+- description: Task 18
   global_goal:
     x: null
     y: null
@@ -24,13 +24,6 @@ tasks:
   - device: RASP_PI
     command: Wait for manual start
     params: []
-    wait: false
-  - device: STM
-    command: set_position
-    params:
-    - 262
-    - 2655
-    - -14
     wait: false
 - description: Task 2
   global_goal:

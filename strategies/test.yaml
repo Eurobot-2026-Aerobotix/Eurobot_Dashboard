@@ -4,6 +4,29 @@ color: yellow
 tasks:
 - description: Task 1
   global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: prepare_for_start
+    params:
+    - 262
+    - 345
+    - 0
+    wait: false
+- description: Task 18
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+- description: Task 1
+  global_goal:
     x: '1196.28'
     y: '1099.97'
     theta: 89.06782369437602

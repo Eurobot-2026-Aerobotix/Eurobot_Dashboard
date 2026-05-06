@@ -2,6 +2,16 @@ name: test_steel
 selected: false
 color: blue
 tasks:
+- description: Task 18
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
 - description: Task 1
   global_goal:
     x: null
