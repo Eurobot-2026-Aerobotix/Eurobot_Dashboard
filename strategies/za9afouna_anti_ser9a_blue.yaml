@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a_blue
-selected: false
+selected: true
 color: blue
 tasks:
 - description: Task 1
@@ -297,22 +297,22 @@ tasks:
     wait: true
 - description: Task 12
   global_goal:
-    x: '1462.97'
-    y: '1833.53'
-    theta: 134.28482917351312
+    x: 1416.58
+    y: 1773.85
+    theta: 149.99985667389683
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1462.97'
-    - '1833.53'
+    - 1416.58
+    - 1773.85
     - 1000
     wait: true
 - description: Task 18
   global_goal:
-    x: '1462.97'
-    y: '1833.53'
-    theta: 134.28482917351312
+    x: 1416.58
+    y: 1773.85
+    theta: 149.99985667389683
   sequence:
   - device: RASP_PI
     command: steal
