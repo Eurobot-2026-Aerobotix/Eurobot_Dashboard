@@ -80,6 +80,13 @@ const outputSelector = document.getElementById('outputSelector');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 
+// Strategy selector UI (replaces iframe)
+const strategySelect = document.getElementById('strategySelect');
+const strategySelectBtn = document.getElementById('strategySelectBtn');
+const strategyOpenBtn = document.getElementById('strategyOpenBtn');
+const selectedStrategyLabel = document.getElementById('selectedStrategyLabel');
+const SELECTED_STRATEGY_KEY = 'realtimeSelectedStrategy';
+
 const frontStatusDot = document.getElementById('frontStatusDot');
 const backStatusDot = document.getElementById('backStatusDot');
 const pneumaticStatusDot = document.getElementById('pneumaticStatusDot');
@@ -347,10 +354,14 @@ async function startStrategy() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const selectedStrategy = localStorage.getItem(SELECTED_STRATEGY_KEY) || null;
+        const body = { publish_pami: publishPami };
+        if (selectedStrategy) body.strategy = selectedStrategy;
+
         const response = await fetch(`${API_URL}/start`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ publish_pami: publishPami }),
+            body: JSON.stringify(body),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -402,6 +413,79 @@ async function stopStrategy() {
 // Initialize ROS2 Bridge
 initROS();
 setupOutputStreaming();
+
+// --- Strategy selector logic (minimal) ---
+async function fetchStrategiesList() {
+    try {
+        // Try simple file list first
+        const res = await fetch(`${API_URL}/strategies`);
+        if (res.ok) {
+            const files = await res.json();
+            // files may be array of filenames or array of objects
+            return files.map(f => (typeof f === 'string' ? f : (f.name || f.filename || f.strategy_name || 'unknown'))).filter(Boolean);
+        }
+    } catch (e) {
+        // ignore and try fallback
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/strategies/full`);
+        if (res.ok) {
+            const objs = await res.json();
+            return objs.map(o => (o.name || o.strategy_name || o.filename)).filter(Boolean);
+        }
+    } catch (e) {
+        console.warn('Failed to fetch strategies list:', e.message);
+    }
+
+    return [];
+}
+
+async function loadStrategiesUI() {
+    if (!strategySelect) return;
+    strategySelect.innerHTML = '<option>Loading...</option>';
+    const items = await fetchStrategiesList();
+    strategySelect.innerHTML = '';
+    if (!items || items.length === 0) {
+        const opt = document.createElement('option'); opt.textContent = 'No strategies found'; opt.value = '';
+        strategySelect.appendChild(opt);
+        return;
+    }
+
+    items.forEach((name) => {
+        const display = String(name).replace(/\.ya?ml$/i, '');
+        const opt = document.createElement('option');
+        opt.value = display;
+        opt.textContent = display;
+        strategySelect.appendChild(opt);
+    });
+
+    // Restore previously selected
+    const prev = localStorage.getItem(SELECTED_STRATEGY_KEY);
+    if (prev) {
+        for (const o of strategySelect.options) {
+            if (o.value === prev) { strategySelect.value = prev; break; }
+        }
+        selectedStrategyLabel.textContent = prev || 'none';
+    } else {
+        selectedStrategyLabel.textContent = 'none';
+    }
+}
+
+if (strategySelectBtn) {
+    strategySelectBtn.addEventListener('click', () => {
+        const val = strategySelect?.value || null;
+        if (!val) return;
+        localStorage.setItem(SELECTED_STRATEGY_KEY, val);
+        if (selectedStrategyLabel) selectedStrategyLabel.textContent = val;
+        showStatus(`Selected strategy: ${val}`, 'success');
+    });
+}
+
+// Load strategies when page loads
+window.addEventListener('load', () => {
+    loadStrategiesUI();
+});
 
 // Initialize on page load
 window.addEventListener('load', () => {
@@ -1531,6 +1615,7 @@ if (batchOverrideCode) {
         if (event.key === 'Enter') {
             event.preventDefault();
             applyBatchPatternOverride();
+            document.getElementById('batchOverrideCode').value = '';
         }
     });
 }

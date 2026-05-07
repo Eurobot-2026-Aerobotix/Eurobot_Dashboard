@@ -122,7 +122,7 @@
         </div>
 
         <div class="realtime-control-panel">
-            <div class="button-container">
+            <div class="button-container" style="padding-left:auto; padding-right:auto; display:flex; gap:12px; justify-content:center;">
                 <div>
                     <button id="prepareBtn">Prepare Robot</button>
                 </div>
@@ -163,11 +163,17 @@
                 </div>
                 <p class="embed-description">Browse and manage strategies without leaving the realtime view.</p>
                 <div class="iframe-shell">
-                    <iframe
-                        title="Strategy Selector"
-                        src="strategy_selector.html"
-                        loading="lazy"
-                    ></iframe>
+                    <div class="strategy-mini">
+                        <label for="strategySelect" style="display:block; font-weight:600; margin-bottom:6px;">Choose strategy</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <select id="strategySelect" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ccc;">
+                                <option>Loading...</option>
+                            </select>
+                            <button id="strategySelectBtn" class="button">Select</button>
+                            <a class="button" id="strategyOpenBtn" href="strategy_selector.html" target="_blank" rel="noreferrer">Open</a>
+                        </div>
+                        <div style="margin-top:8px; font-size:0.95rem; color:#444;">Selected: <span id="selectedStrategyLabel">none</span></div>
+                    </div>
                 </div>
             </section>
         </div>

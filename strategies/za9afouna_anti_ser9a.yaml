@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a
-selected: false
+selected: true
 color: yellow
 tasks:
 - description: Task 1
@@ -231,9 +231,9 @@ tasks:
     wait: true
 - description: Task 3
   global_goal:
-    x: '1518.64'
-    y: '1399.99'
-    theta: 165.0681155017735
+    x: '1520.95'
+    y: '1398.37'
+    theta: 165.79627339727398
   sequence:
   - device: STM
     command: go_to
@@ -252,8 +252,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - '1518.64'
-    - '1399.99'
+    - '1520.95'
+    - '1398.37'
     - 1100
     wait: false
   - device: ESP_front
@@ -264,7 +264,7 @@ tasks:
   global_goal:
     x: '1386.36'
     y: '1433.06'
-    theta: 165.96375653207355
+    theta: 165.54683098718124
   sequence:
   - device: STM
     command: go_to
@@ -294,27 +294,27 @@ tasks:
   - device: ESP_back
     command: put_down
     params:
-      insert_distance_mm: 145.6
+      insert_distance_mm: 159.7
       use_computed_insert_distance: true
     wait: true
 - description: Task 18
   global_goal:
-    x: 1510.42
-    y: 1364
-    theta: -179.85044410793256
+    x: '1531.41'
+    y: '1264.48'
+    theta: -141.27631500483733
   sequence:
   - device: STM
     command: go_to
     params:
-    - 1510.42
-    - 1364
+    - '1531.41'
+    - '1264.48'
     - 1000
     wait: true
 - description: Task 16
   global_goal:
-    x: 1510.42
-    y: 1364
-    theta: -179.85044410793256
+    x: '1531.41'
+    y: '1264.48'
+    theta: -141.27631500483733
   sequence:
   - device: RASP_PI
     command: steal
@@ -326,15 +326,15 @@ tasks:
   global_goal:
     x: '899.23'
     y: '802.21'
-    theta: -90.25191526508233
+    theta: -90.66584422572134
   sequence:
   - device: STM
     command: bezier
     params:
-    - '1097.65'
-    - '977.73'
-    - '901.78'
-    - '1382.18'
+    - '1194.59'
+    - '1076.20'
+    - '903.80'
+    - '1195.44'
     - '899.23'
     - '802.21'
     - 1000
@@ -345,7 +345,7 @@ tasks:
   global_goal:
     x: '899.23'
     y: '802.21'
-    theta: -90.25191526508233
+    theta: -90.66584422572134
   sequence:
   - device: RASP_PI
     command: wait_end_game
