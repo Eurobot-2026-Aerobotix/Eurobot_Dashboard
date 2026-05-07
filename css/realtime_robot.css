@@ -243,7 +243,6 @@ h1 {
 }
 
 .realtime-control-panel .button-container {
-    position: sticky;
     top: 20px;
     z-index: 220;
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.01));
@@ -252,7 +251,16 @@ h1 {
     display: flex;
     gap: 12px;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
+    flex-wrap: wrap; /* allow esp panel to sit above buttons */
+}
+
+.realtime-control-panel .button-container .esp-status-panel {
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
 .realtime-control-panel .button-container button {
@@ -279,9 +287,9 @@ h1 {
     align-items: stretch;
     justify-content: center;
     background: #161b22;
-    padding: 12px;
+    padding: 2px;
     border-radius: 10px;
-    gap: 14px;
+    gap: 0px;
 }
 
 .map-wrapper {
@@ -293,6 +301,8 @@ h1 {
     height: 100%;
     width: auto;
     overflow: visible;
+    transform: scale(0.9);
+    transform-origin: left top;
 }
 
 #map {
@@ -434,9 +444,8 @@ h1 {
     flex-direction: column;
     gap: 10px;
     margin-top: 0;
-    width: 340px;
+    flex: 1;
     min-width: 320px;
-    max-width: 360px;
     height: 100%;
 }
 
@@ -481,6 +490,10 @@ h1 {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     padding: 8px;
+    height: 210px; /* fixed to fit ~6 items */
+    min-height: 210px;
+    max-height: 210px;
+    overflow-y: auto;
 }
 
 .queue-title {

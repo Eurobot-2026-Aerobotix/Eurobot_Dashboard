@@ -23,36 +23,7 @@
         <img src="../resources/AeRobotix.png" alt="AeRobotix Logo" class="logo">
     </div>
 
-    <div class="esp-status-panel">
-        <div class="esp-status-card">
-            <span class="esp-status-dot disconnected" id="frontStatusDot"></span>
-            <div class="esp-status-text">
-                <span class="esp-status-name">Front ESP</span>
-                <span class="esp-status-value" id="frontStatusLabel">Disconnected</span>
-            </div>
-        </div>
-        <div class="esp-status-card">
-            <span class="esp-status-dot disconnected" id="backStatusDot"></span>
-            <div class="esp-status-text">
-                <span class="esp-status-name">Back ESP</span>
-                <span class="esp-status-value" id="backStatusLabel">Disconnected</span>
-            </div>
-        </div>
-        <div class="esp-status-card">
-            <span class="esp-status-dot disconnected" id="pneumaticStatusDot"></span>
-            <div class="esp-status-text">
-                <span class="esp-status-name">Pneumatic ESP</span>
-                <span class="esp-status-value" id="pneumaticStatusLabel">Disconnected</span>
-            </div>
-        </div>
-        <div class="esp-status-card">
-            <span class="esp-status-dot disconnected" id="beaconStatusDot"></span>
-            <div class="esp-status-text">
-                <span class="esp-status-name">Beacon</span>
-                <span class="esp-status-value" id="beaconStatusLabel">Not Ready</span>
-            </div>
-        </div>
-    </div>
+    
     
     <div class="container">
         <div class="header">
@@ -123,6 +94,36 @@
 
         <div class="realtime-control-panel">
             <div class="button-container" style="padding-left:auto; padding-right:auto; display:flex; gap:12px; justify-content:center;">
+                    <div class="esp-status-panel">
+                        <div class="esp-status-card">
+                            <span class="esp-status-dot disconnected" id="frontStatusDot"></span>
+                            <div class="esp-status-text">
+                                <span class="esp-status-name">Front ESP</span>
+                                <span class="esp-status-value" id="frontStatusLabel">Disconnected</span>
+                            </div>
+                        </div>
+                        <div class="esp-status-card">
+                            <span class="esp-status-dot disconnected" id="backStatusDot"></span>
+                            <div class="esp-status-text">
+                                <span class="esp-status-name">Back ESP</span>
+                                <span class="esp-status-value" id="backStatusLabel">Disconnected</span>
+                            </div>
+                        </div>
+                        <div class="esp-status-card">
+                            <span class="esp-status-dot disconnected" id="pneumaticStatusDot"></span>
+                            <div class="esp-status-text">
+                                <span class="esp-status-name">Pneumatic ESP</span>
+                                <span class="esp-status-value" id="pneumaticStatusLabel">Disconnected</span>
+                            </div>
+                        </div>
+                        <div class="esp-status-card">
+                            <span class="esp-status-dot disconnected" id="beaconStatusDot"></span>
+                            <div class="esp-status-text">
+                                <span class="esp-status-name">Beacon</span>
+                                <span class="esp-status-value" id="beaconStatusLabel">Not Ready</span>
+                            </div>
+                        </div>
+                    </div>
                 <div>
                     <button id="prepareBtn">Prepare Robot</button>
                 </div>
