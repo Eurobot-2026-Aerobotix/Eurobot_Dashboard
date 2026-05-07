@@ -1,5 +1,28 @@
 strategy_name: ninja_safe_strategy_blue
 pami_number: 5
-sequence: []
+sequence:
+- - 3
+  - 291
+  - 2948
+  - -90
+- - 0
+  - 12000
+- - 1
+  - 275.02
+  - 2918.97
+  - 380
+- - 5
+  - 85000
+- - 0
+  - 6000
+- - 4
+  - 290
+  - 2587.65
+  - 830.87
+  - 2341.04
+  - 1115.62
+  - 2809.83
+  - 380
+  - 1
 color: blue
-order: 7
+order: 4
