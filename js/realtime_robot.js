@@ -75,7 +75,6 @@ const QUEUE_DIRECTION_HOLD_MS = 1400;
 const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
-const startWithPamiCheckbox = document.getElementById('startWithPamiCheckbox');
 const outputSelector = document.getElementById('outputSelector');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
@@ -348,8 +347,8 @@ async function prepareRobot() {
 
 async function startStrategy() {
     if (startBtn) startBtn.disabled = true;
-    const publishPami = Boolean(startWithPamiCheckbox && startWithPamiCheckbox.checked);
-    showStatus(`Starting strategy${publishPami ? ' with PAMI' : ''}...`, 'info');
+    const publishPami = true; // PAMI is always enabled
+    showStatus(`Starting strategy with PAMI...`, 'info');
 
     try {
         const controller = new AbortController();
