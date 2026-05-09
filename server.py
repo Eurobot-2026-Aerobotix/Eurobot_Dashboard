@@ -799,6 +799,7 @@ def start_strategy():
     with process_lock:  # Protect process start operation
         try:
             publish_pami = False
+            override_strategy = None
             if request.is_json:
                 payload = request.get_json(silent=True) or {}
                 raw = payload.get("publish_pami", False)
@@ -806,6 +807,7 @@ def start_strategy():
                     publish_pami = raw
                 else:
                     publish_pami = str(raw).strip().lower() in ("1", "true", "yes", "y", "on")
+                override_strategy = payload.get("strategy") or None
 
             # Kill old process if still running to prevent zombies
             if start_process and start_process.poll() is None:
@@ -820,15 +822,26 @@ def start_strategy():
                         print(f"Error killing start_process: {e}")
                 except Exception as e:
                     print(f"Error terminating start_process: {e}")
-            
+
             script_path = "./scripts/start.sh"
             if not os.path.exists(script_path):
                 return jsonify({"status": "error", "error": "start.sh not found"}), 404
-            
-            with strategy_lock:  # Read SELECTED_STRATEGY_PATH safely
-                if not SELECTED_STRATEGY_PATH:
-                    return jsonify({"status": "error", "error": "No strategy selected"}), 400
-                strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
+
+            if override_strategy:
+                # Strategy name sent from the realtime page dropdown — resolve to a file path
+                candidate = os.path.join(STRATEGIES_DIR, override_strategy + ".yaml")
+                if not os.path.exists(candidate):
+                    candidate = os.path.join(STRATEGIES_DIR, override_strategy + ".yml")
+                if not os.path.exists(candidate):
+                    candidate = os.path.join(STRATEGIES_DIR, override_strategy)
+                if not os.path.exists(candidate):
+                    return jsonify({"status": "error", "error": f"Strategy '{override_strategy}' not found"}), 400
+                strategy_abs_path = os.path.abspath(candidate)
+            else:
+                with strategy_lock:  # Read SELECTED_STRATEGY_PATH safely
+                    if not SELECTED_STRATEGY_PATH:
+                        return jsonify({"status": "error", "error": "No strategy selected"}), 400
+                    strategy_abs_path = os.path.abspath(SELECTED_STRATEGY_PATH)
             
             # No need to clear queues - each client gets a fresh queue when subscribing
             
