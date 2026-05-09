@@ -302,7 +302,7 @@ h1 {
     width: auto;
     overflow: visible;
     transform: scale(0.9) rotate(180deg);
-    transform-origin: left top;
+    transform-origin: center;
 }
 
 #map {
