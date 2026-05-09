@@ -164,16 +164,37 @@
                 </div>
                 <p class="embed-description">Browse and manage strategies without leaving the realtime view.</p>
                 <div class="iframe-shell">
-                    <div class="strategy-mini">
-                        <label for="strategySelect" style="display:block; font-weight:600; margin-bottom:6px;">Choose strategy</label>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <select id="strategySelect" style="flex:1; padding:6px; border-radius:6px; border:1px solid #ccc;">
-                                <option>Loading...</option>
-                            </select>
-                            <button id="strategySelectBtn" class="button">Select</button>
-                            <a class="button" id="strategyOpenBtn" href="strategy_selector.html" target="_blank" rel="noreferrer">Open</a>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <div class="strategy-mini strategy-mini--blue" style="flex:1; min-width:200px; border-color:rgba(94,184,255,0.25);">
+                            <label style="font-weight:700; color:#5eb8ff;">&#9632; Blue strategy</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select id="strategySelectBlue" style="flex:1;">
+                                    <option>Loading...</option>
+                                </select>
+                                <button id="strategySelectBtnBlue" class="button">Select</button>
+                            </div>
+                            <div style="font-size:0.88rem;">Active: <span id="selectedStrategyLabelBlue" style="font-weight:700; color:#5eb8ff;">none</span></div>
                         </div>
-                        <div style="margin-top:8px; font-size:0.95rem; color:#444;">Selected: <span id="selectedStrategyLabel">none</span></div>
+                        <div class="strategy-mini strategy-mini--yellow" style="flex:1; min-width:200px; border-color:rgba(255,224,102,0.25);">
+                            <label style="font-weight:700; color:#ffe066;">&#9632; Yellow strategy</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select id="strategySelectYellow" style="flex:1;">
+                                    <option>Loading...</option>
+                                </select>
+                                <button id="strategySelectBtnYellow" class="button">Select</button>
+                            </div>
+                            <div style="font-size:0.88rem;">Active: <span id="selectedStrategyLabelYellow" style="font-weight:700; color:#ffe066;">none</span></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <span style="font-size:0.88rem; color:#9fb4ff; font-weight:600;">Team color:</span>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#5eb8ff;">
+                            <input type="radio" name="teamColor" id="teamColorBlue" value="blue" checked> Blue
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:#ffe066;">
+                            <input type="radio" name="teamColor" id="teamColorYellow" value="yellow"> Yellow
+                        </label>
+                        <span style="font-size:0.85rem; color:#9fb4ff;">Will start: <span id="activeStrategyLabel" style="font-weight:700; color:#cfe3ff;">none</span></span>
                     </div>
                 </div>
             </section>

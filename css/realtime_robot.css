@@ -301,7 +301,7 @@ h1 {
     height: 100%;
     width: auto;
     overflow: visible;
-    transform: scale(0.9);
+    transform: scale(0.9) rotate(180deg);
     transform-origin: left top;
 }
 

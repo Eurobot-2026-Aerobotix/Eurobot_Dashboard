@@ -75,17 +75,21 @@ const QUEUE_DIRECTION_HOLD_MS = 1400;
 const prepareBtn = document.getElementById('prepareBtn');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
-const startWithPamiCheckbox = document.getElementById('startWithPamiCheckbox');
 const outputSelector = document.getElementById('outputSelector');
 const statusDiv = document.getElementById('status');
 const outputDiv = document.getElementById('output');
 
-// Strategy selector UI (replaces iframe)
-const strategySelect = document.getElementById('strategySelect');
-const strategySelectBtn = document.getElementById('strategySelectBtn');
-const strategyOpenBtn = document.getElementById('strategyOpenBtn');
-const selectedStrategyLabel = document.getElementById('selectedStrategyLabel');
-const SELECTED_STRATEGY_KEY = 'realtimeSelectedStrategy';
+// Strategy selector UI — blue / yellow
+const strategySelectBlue   = document.getElementById('strategySelectBlue');
+const strategySelectBtnBlue = document.getElementById('strategySelectBtnBlue');
+const selectedStrategyLabelBlue = document.getElementById('selectedStrategyLabelBlue');
+const strategySelectYellow  = document.getElementById('strategySelectYellow');
+const strategySelectBtnYellow = document.getElementById('strategySelectBtnYellow');
+const selectedStrategyLabelYellow = document.getElementById('selectedStrategyLabelYellow');
+const activeStrategyLabel   = document.getElementById('activeStrategyLabel');
+const SELECTED_STRATEGY_KEY_BLUE   = 'realtimeSelectedStrategyBlue';
+const SELECTED_STRATEGY_KEY_YELLOW = 'realtimeSelectedStrategyYellow';
+const TEAM_COLOR_KEY = 'realtimeTeamColor';
 
 const frontStatusDot = document.getElementById('frontStatusDot');
 const backStatusDot = document.getElementById('backStatusDot');
@@ -348,13 +352,15 @@ async function prepareRobot() {
 
 async function startStrategy() {
     if (startBtn) startBtn.disabled = true;
-    const publishPami = Boolean(startWithPamiCheckbox && startWithPamiCheckbox.checked);
-    showStatus(`Starting strategy${publishPami ? ' with PAMI' : ''}...`, 'info');
+    const publishPami = true; // PAMI is always enabled
+    showStatus(`Starting strategy with PAMI...`, 'info');
 
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const selectedStrategy = localStorage.getItem(SELECTED_STRATEGY_KEY) || null;
+        const teamColor = localStorage.getItem(TEAM_COLOR_KEY) || 'blue';
+        const strategyKey = teamColor === 'yellow' ? SELECTED_STRATEGY_KEY_YELLOW : SELECTED_STRATEGY_KEY_BLUE;
+        const selectedStrategy = localStorage.getItem(strategyKey) || null;
         const body = { publish_pami: publishPami };
         if (selectedStrategy) body.strategy = selectedStrategy;
 
@@ -414,73 +420,94 @@ async function stopStrategy() {
 initROS();
 setupOutputStreaming();
 
-// --- Strategy selector logic (minimal) ---
-async function fetchStrategiesList() {
-    try {
-        // Try simple file list first
-        const res = await fetch(`${API_URL}/strategies`);
-        if (res.ok) {
-            const files = await res.json();
-            // files may be array of filenames or array of objects
-            return files.map(f => (typeof f === 'string' ? f : (f.name || f.filename || f.strategy_name || 'unknown'))).filter(Boolean);
-        }
-    } catch (e) {
-        // ignore and try fallback
-    }
-
+// --- Strategy selector logic (blue / yellow) ---
+async function fetchStrategiesFull() {
     try {
         const res = await fetch(`${API_URL}/strategies/full`);
-        if (res.ok) {
-            const objs = await res.json();
-            return objs.map(o => (o.name || o.strategy_name || o.filename)).filter(Boolean);
-        }
+        if (res.ok) return await res.json();
     } catch (e) {
-        console.warn('Failed to fetch strategies list:', e.message);
+        console.warn('Failed to fetch strategies:', e.message);
     }
-
     return [];
 }
 
-async function loadStrategiesUI() {
-    if (!strategySelect) return;
-    strategySelect.innerHTML = '<option>Loading...</option>';
-    const items = await fetchStrategiesList();
-    strategySelect.innerHTML = '';
-    if (!items || items.length === 0) {
+function populateSelect(selectEl, strategies, storageKey, labelEl) {
+    selectEl.innerHTML = '';
+    if (!strategies.length) {
         const opt = document.createElement('option'); opt.textContent = 'No strategies found'; opt.value = '';
-        strategySelect.appendChild(opt);
+        selectEl.appendChild(opt);
         return;
     }
-
-    items.forEach((name) => {
-        const display = String(name).replace(/\.ya?ml$/i, '');
+    strategies.forEach(s => {
+        const name = (s.name || s.strategy_name || '').replace(/\.ya?ml$/i, '');
+        if (!name) return;
         const opt = document.createElement('option');
-        opt.value = display;
-        opt.textContent = display;
-        strategySelect.appendChild(opt);
+        opt.value = name;
+        opt.textContent = name;
+        selectEl.appendChild(opt);
     });
-
-    // Restore previously selected
-    const prev = localStorage.getItem(SELECTED_STRATEGY_KEY);
+    const prev = localStorage.getItem(storageKey);
     if (prev) {
-        for (const o of strategySelect.options) {
-            if (o.value === prev) { strategySelect.value = prev; break; }
+        for (const o of selectEl.options) {
+            if (o.value === prev) { selectEl.value = prev; break; }
         }
-        selectedStrategyLabel.textContent = prev || 'none';
+        if (labelEl) labelEl.textContent = prev;
     } else {
-        selectedStrategyLabel.textContent = 'none';
+        if (labelEl) labelEl.textContent = 'none';
     }
 }
 
-if (strategySelectBtn) {
-    strategySelectBtn.addEventListener('click', () => {
-        const val = strategySelect?.value || null;
+function updateActiveStrategyLabel() {
+    const color = document.querySelector('input[name="teamColor"]:checked')?.value || 'blue';
+    const key = color === 'yellow' ? SELECTED_STRATEGY_KEY_YELLOW : SELECTED_STRATEGY_KEY_BLUE;
+    const val = localStorage.getItem(key) || 'none';
+    if (activeStrategyLabel) activeStrategyLabel.textContent = val;
+}
+
+async function loadStrategiesUI() {
+    const all = await fetchStrategiesFull();
+    const blue   = all.filter(s => (s.color || '').toLowerCase() === 'blue');
+    const yellow = all.filter(s => (s.color || '').toLowerCase() === 'yellow');
+
+    if (strategySelectBlue)   populateSelect(strategySelectBlue,   blue,   SELECTED_STRATEGY_KEY_BLUE,   selectedStrategyLabelBlue);
+    if (strategySelectYellow) populateSelect(strategySelectYellow, yellow, SELECTED_STRATEGY_KEY_YELLOW, selectedStrategyLabelYellow);
+
+    // Restore team color radio
+    const savedColor = localStorage.getItem(TEAM_COLOR_KEY) || 'blue';
+    const radio = document.querySelector(`input[name="teamColor"][value="${savedColor}"]`);
+    if (radio) radio.checked = true;
+    updateActiveStrategyLabel();
+}
+
+// Select buttons
+if (strategySelectBtnBlue) {
+    strategySelectBtnBlue.addEventListener('click', () => {
+        const val = strategySelectBlue?.value;
         if (!val) return;
-        localStorage.setItem(SELECTED_STRATEGY_KEY, val);
-        if (selectedStrategyLabel) selectedStrategyLabel.textContent = val;
-        showStatus(`Selected strategy: ${val}`, 'success');
+        localStorage.setItem(SELECTED_STRATEGY_KEY_BLUE, val);
+        if (selectedStrategyLabelBlue) selectedStrategyLabelBlue.textContent = val;
+        updateActiveStrategyLabel();
+        showStatus(`Blue strategy set: ${val}`, 'success');
     });
 }
+if (strategySelectBtnYellow) {
+    strategySelectBtnYellow.addEventListener('click', () => {
+        const val = strategySelectYellow?.value;
+        if (!val) return;
+        localStorage.setItem(SELECTED_STRATEGY_KEY_YELLOW, val);
+        if (selectedStrategyLabelYellow) selectedStrategyLabelYellow.textContent = val;
+        updateActiveStrategyLabel();
+        showStatus(`Yellow strategy set: ${val}`, 'success');
+    });
+}
+
+// Team color radios
+document.querySelectorAll('input[name="teamColor"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        localStorage.setItem(TEAM_COLOR_KEY, radio.value);
+        updateActiveStrategyLabel();
+    });
+});
 
 // Load strategies when page loads
 window.addEventListener('load', () => {
