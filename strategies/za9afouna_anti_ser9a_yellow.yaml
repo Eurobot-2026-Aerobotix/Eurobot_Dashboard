@@ -27,9 +27,9 @@ tasks:
     wait: false
 - description: Task 2
   global_goal:
-    x: 1600
-    y: 1910
-    theta: 0
+    x: '1635.94'
+    y: '1909.15'
+    theta: -0.3719316367269983
   sequence:
   - device: STM
     command: go_to
@@ -48,8 +48,8 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - 1600
-    - 1910
+    - '1635.94'
+    - '1909.15'
     - 1100
     - 1
     wait: false
@@ -106,15 +106,15 @@ tasks:
     wait: true
 - description: Task 2
   global_goal:
-    x: '1401.25'
-    y: '957.3800000000001'
+    x: 1401.25
+    y: 957.3800000000001
     theta: -136.5430077190911
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1585.76'
-    - '1131.5'
+    - '1599.48'
+    - '1146.13'
     - 1100
     wait: true
   - device: STM
@@ -127,9 +127,9 @@ tasks:
   - device: STM
     command: go_to
     params:
-    - '1401.25'
-    - '957.3800000000001'
-    - 1000
+    - 1401.25
+    - 957.3800000000001
+    - 1100
     wait: false
   - device: ESP_front
     command: put_down
@@ -178,7 +178,7 @@ tasks:
     params:
     - 800
     - 374.0999999999999
-    - 1100
+    - 1000
     - 1
     wait: false
   - device: ESP_back
@@ -187,23 +187,23 @@ tasks:
     wait: true
 - description: Task 3
   global_goal:
-    x: '1315.14'
-    y: '288.3800000000001'
+    x: 1315.14
+    y: 288.3800000000001
     theta: 48.48218543462761
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1452.50'
-    - '443.53999999999996'
+    - 1452.5
+    - 443.53999999999996
     - 1100
     wait: true
   - device: STM
     command: go_to_backwards
     params:
-    - '1315.14'
-    - '288.3800000000001'
-    - 1000
+    - 1315.14
+    - 288.3800000000001
+    - 1100
     wait: false
   - device: ESP_back
     command: put_down
@@ -269,28 +269,28 @@ tasks:
     wait: true
 - description: Task 14
   global_goal:
-    x: '1386.36'
-    y: '1433.06'
+    x: 1386.36
+    y: 1433.06
     theta: 165.96375653207355
   sequence:
   - device: STM
     command: go_to
     params:
-    - '1386.36'
-    - '1433.06'
-    - 1000
+    - 1386.36
+    - 1433.06
+    - 1100
     wait: true
 - description: Task 4
   global_goal:
-    x: '1656.00'
-    y: '1364.38'
+    x: 1656
+    y: 1364.38
     theta: -150
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '1656.00'
-    - '1364.38'
+    - 1656
+    - 1364.38
     - 1100
     wait: false
   - device: STM
@@ -313,7 +313,7 @@ tasks:
     params:
     - 1416.58
     - 1226.15
-    - 1000
+    - 1100
     wait: true
 - description: Task 18
   global_goal:
