@@ -206,12 +206,12 @@ tasks:
   global_goal:
     x: 1600
     y: 2600
-    theta: -135
+    theta: 135
   sequence:
   - device: STM
     command: orientate
     params:
-    - -135
+    - 135
     wait: true
   - device: ESP_back
     command: put_down
@@ -342,3 +342,4 @@ tasks:
 order: 48
 folders:
 - default
+- final

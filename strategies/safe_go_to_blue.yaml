@@ -277,3 +277,4 @@ tasks:
 order: 42
 folders:
 - default
+- final

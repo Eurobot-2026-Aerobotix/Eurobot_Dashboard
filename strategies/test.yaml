@@ -69,6 +69,6 @@ tasks:
     - '1747.82'
     - 1100
     wait: true
-order: 59
+order: 60
 folders:
 - default

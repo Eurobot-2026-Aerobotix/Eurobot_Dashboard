@@ -54,6 +54,6 @@ tasks:
     - 20
     - 0
     wait: false
-order: 45
+order: 47
 folders:
 - default

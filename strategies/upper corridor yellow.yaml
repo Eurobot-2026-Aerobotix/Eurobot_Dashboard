@@ -109,7 +109,7 @@ tasks:
     params:
     - 1200
     - 1150
-    - 800
+    - 450
     - 1
     wait: false
   - device: ESP_front
@@ -319,8 +319,8 @@ tasks:
   - device: RASP_PI
     command: steal
     params:
-    - 300
-    - 300
+    - 3000
+    - 0
     wait: false
 - description: Task 13
   global_goal:
@@ -352,6 +352,6 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 37
+order: 38
 folders:
 - default

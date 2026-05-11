@@ -180,7 +180,7 @@ tasks:
     command: go_to_backwards
     params:
     - 1200
-    - 1200
+    - 1150
     - 1100
     wait: true
   - device: STM
@@ -231,17 +231,18 @@ tasks:
     - 1000
     wait: true
   - device: STM
-    command: bezier
+    command: go_to
     params:
     - 1600
     - 400
-    - 933.58
-    - 500
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
     - 800
     - 500
-    - 1000
-    - 1000
-    - 1000
+    - 1100
     wait: false
   - device: STM
     command: go_to
@@ -257,21 +258,15 @@ tasks:
     wait: true
 - description: Task 11
   global_goal:
-    x: '1067.31'
-    y: '313.19'
-    theta: -54.90138754116175
+    x: '1031.78'
+    y: '244.54'
+    theta: -33.85063604230823
   sequence:
   - device: STM
-    command: bezier
+    command: go_to
     params:
-    - 964.09
-    - 414.89
-    - 1004.77
-    - 402.18
-    - '1067.31'
-    - '313.19'
-    - 1000
-    - 1000
+    - '1031.78'
+    - '244.54'
     - 1100
     wait: true
   - device: ESP_front
@@ -282,14 +277,14 @@ tasks:
   global_goal:
     x: '863.47'
     y: '1401.32'
-    theta: -91.27247383917967
+    theta: -93.62691694239345
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '843.14'
-    - '486.07'
-    - 1000
+    - 800
+    - 400
+    - 1100
     wait: true
   - device: STM
     command: go_to_backwards
@@ -302,7 +297,7 @@ tasks:
   global_goal:
     x: '863.47'
     y: '1401.32'
-    theta: -91.27247383917967
+    theta: -93.62691694239345
   sequence:
   - device: RASP_PI
     command: steal
@@ -314,7 +309,7 @@ tasks:
   global_goal:
     x: '863.47'
     y: '1401.32'
-    theta: -91.27247383917967
+    theta: -93.62691694239345
   sequence:
   - device: RASP_PI
     command: wait_end_game
@@ -340,6 +335,6 @@ tasks:
     - 1000
     - 1100
     wait: false
-order: 29
+order: 31
 folders:
 - default

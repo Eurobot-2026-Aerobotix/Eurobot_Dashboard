@@ -109,7 +109,7 @@ tasks:
     params:
     - 1200
     - 1850
-    - 800
+    - 450
     - 1
     wait: false
   - device: ESP_front
@@ -355,3 +355,4 @@ tasks:
 order: 63
 folders:
 - default
+- final

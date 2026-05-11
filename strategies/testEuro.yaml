@@ -1,0 +1,72 @@
+name: testEuro
+selected: false
+color: yellow
+tasks:
+- description: Task 1
+  global_goal:
+    x: null
+    y: null
+    theta: null
+  sequence:
+  - device: RASP_PI
+    command: Wait for manual start
+    params: []
+    wait: false
+  - device: STM
+    command: set_position
+    params:
+    - 300
+    - 2655
+    - 0
+    wait: false
+- description: Task 2
+  global_goal:
+    x: 800
+    y: 2620
+    theta: 90
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2510
+    - 1100
+    wait: false
+  - device: STM
+    command: go_to
+    params:
+    - 800
+    - 2620
+    - 1100
+    - 1
+    wait: false
+  - device: ESP_front
+    command: pick_up
+    params: []
+    wait: true
+- description: Task 3
+  global_goal:
+    x: '895.69'
+    y: '2512.38'
+    theta: -48.21486055051599
+  sequence:
+  - device: STM
+    command: go_to
+    params:
+    - '1002.56'
+    - '2392.79'
+    - 1100
+    wait: true
+  - device: ESP_front
+    command: put_down
+    params: {}
+    wait: true
+  - device: STM
+    command: go_to_backwards
+    params:
+    - '895.69'
+    - '2512.38'
+    - 1100
+    wait: true
+order: 68
+folders: []

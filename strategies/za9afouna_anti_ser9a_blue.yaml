@@ -1,5 +1,5 @@
 name: za9afouna_anti_ser9a_blue
-selected: true
+selected: false
 color: blue
 tasks:
 - description: Task 1
@@ -84,17 +84,22 @@ tasks:
     wait: true
 - description: Task 2
   global_goal:
-    x: '1722.14'
-    y: '2019.73'
-    theta: -131.8532380716972
+    x: '1698.39'
+    y: '2118.27'
+    theta: -135
   sequence:
   - device: STM
     command: go_to_backwards
     params:
-    - '1722.14'
-    - '2019.73'
+    - '1698.39'
+    - '2118.27'
     - 1100
     wait: true
+  - device: STM
+    command: orientate
+    params:
+    - -135
+    wait: false
   - device: ESP_back
     command: put_down
     params: {}
@@ -258,7 +263,9 @@ tasks:
     wait: false
   - device: ESP_front
     command: put_down
-    params: {}
+    params:
+      insert_distance_mm: 136.4
+      use_computed_insert_distance: true
     wait: true
 - description: Task 14
   global_goal:
@@ -372,3 +379,4 @@ tasks:
 order: 40
 folders:
 - default
+- final

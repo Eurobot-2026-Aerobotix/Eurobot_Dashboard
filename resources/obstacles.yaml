@@ -322,3 +322,248 @@ batches:
       y: 1322.8
       z: 0
     color: blue
+- batch_id: 14
+  known_id: f3
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1182
+    y: 815.6
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1182
+      y: 740.6
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1182
+      y: 790.6
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1182
+      y: 840.6
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1182
+      y: 890.6
+      z: 0
+    color: blue
+- batch_id: 15
+  known_id: f2
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1892.5
+    y: 678.7
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1892.5
+      y: 603.7
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1892.5
+      y: 653.7
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1892.5
+      y: 703.7
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1892.5
+      y: 753.7
+      z: 0
+    color: blue
+- batch_id: 16
+  known_id: f5
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1159.2
+    y: 1477.2
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1159.2
+      y: 1402.2
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1159.2
+      y: 1452.2
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1159.2
+      y: 1502.2
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1159.2
+      y: 1552.2
+      z: 0
+    color: blue
+- batch_id: 17
+  known_id: f6
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1875.3
+    y: 1485.7
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1875.3
+      y: 1410.7
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1875.3
+      y: 1460.7
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1875.3
+      y: 1510.7
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1875.3
+      y: 1560.7
+      z: 0
+    color: blue
+- batch_id: 18
+  known_id: f7
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 528.7
+    y: 1739.5
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 528.7
+      y: 1664.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 528.7
+      y: 1714.5
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 528.7
+      y: 1764.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 528.7
+      y: 1814.5
+      z: 0
+    color: blue
+- batch_id: 19
+  known_id: f8
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1196.3
+    y: 2221.5
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1196.3
+      y: 2146.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1196.3
+      y: 2196.5
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1196.3
+      y: 2246.5
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1196.3
+      y: 2296.5
+      z: 0
+    color: blue
+- batch_id: 20
+  known_id: f10
+  count: 4
+  direction: vertical
+  phi_deg: 0
+  avg_adjacent_dist_m: 0.05
+  center:
+    x: 1199.2
+    y: 2863.1
+    z: 0
+  members:
+  - aruco_id: 47
+    map_pos:
+      x: 1199.2
+      y: 2788.1
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1199.2
+      y: 2838.1
+      z: 0
+    color: blue
+  - aruco_id: 47
+    map_pos:
+      x: 1199.2
+      y: 2888.1
+      z: 0
+    color: yellow
+  - aruco_id: 36
+    map_pos:
+      x: 1199.2
+      y: 2938.1
+      z: 0
+    color: blue
