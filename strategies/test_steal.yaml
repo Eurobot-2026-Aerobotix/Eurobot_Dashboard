@@ -25,23 +25,6 @@ tasks:
     command: Wait for manual start
     params: []
     wait: false
-- description: Task 1
-  global_goal:
-    x: null
-    y: null
-    theta: null
-  sequence:
-  - device: STM
-    command: set_position
-    params:
-    - 300
-    - 345
-    - 0
-    wait: false
-  - device: RASP_PI
-    command: Wait for manual start
-    params: []
-    wait: false
 - description: Task 2
   global_goal:
     x: null
@@ -51,7 +34,7 @@ tasks:
   - device: RASP_PI
     command: steal
     params:
-    - 20
+    - 200
     - 0
     wait: false
 order: 47
